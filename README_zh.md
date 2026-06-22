@@ -210,6 +210,50 @@ mcp_servers:
 
 ---
 
+## CLI 使用
+
+free-agent-search-mcp 也可以作为 CLI 工具使用。
+
+### 安装
+
+```bash
+npm install -g agent-search-mcp
+```
+
+### 搜索
+
+```bash
+# 基础搜索
+fasm search "TypeScript MCP server"
+
+# 指定数量和引擎
+fasm search "query" --count 5 --engines bing,baidu
+
+# JSON 输出
+fasm search "query" --json
+```
+
+### 提取网页
+
+```bash
+fasm extract "https://example.com"
+fasm extract "https://example.com" --json
+```
+
+### 启动 HTTP 服务
+
+```bash
+fasm serve --port 8080
+```
+
+### 帮助
+
+```bash
+fasm --help
+```
+
+---
+
 ## Tools
 
 ### `free_search`

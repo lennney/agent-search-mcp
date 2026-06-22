@@ -230,6 +230,51 @@ mcp_servers:
 - **Fallback chain** — Free engines first, paid engines as backup. Automatic merge, dedup, and scoring.
 - **Health monitoring** — Real-time provider health tracking. Unhealthy providers filtered automatically.
 - **Security** — Prompt injection detection, output boundary markers, phishing URL filtering, and security metadata on every response.
+- **CLI tool** — Use as a command-line tool for terminal search, web extraction, and HTTP server.
+
+---
+
+## CLI Usage
+
+free-agent-search-mcp also works as a CLI tool.
+
+### Install
+
+```bash
+npm install -g agent-search-mcp
+```
+
+### Search
+
+```bash
+# Basic search
+fasm search "TypeScript MCP server"
+
+# With options
+fasm search "query" --count 5 --engines bing,baidu
+
+# JSON output
+fasm search "query" --json
+```
+
+### Extract Web Page
+
+```bash
+fasm extract "https://example.com"
+fasm extract "https://example.com" --json
+```
+
+### Start HTTP Server
+
+```bash
+fasm serve --port 8080
+```
+
+### Help
+
+```bash
+fasm --help
+```
 
 ---
 
