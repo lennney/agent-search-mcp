@@ -5,19 +5,62 @@ import { searchSogou } from '../engines/sogou.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import type { SearchResult, SearchProvider } from '../types.js';
-import { dedupByUrl, dedupByTitle, scoreAndRank, formatResults } from '../aggregation/index.js';
+import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter } from '../infrastructure/index.js';
 
 const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'brave', 'tavily'];
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou'];
 const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily'];
 
+// Engine weights (higher = more trusted)
+const ENGINE_WEIGHTS: Record<string, number> = {
+  duckduckgo: 0.85,
+  sogou: 0.8,
+  brave: 0.95,
+  tavily: 0.9,
+};
+
 // Infrastructure singletons
 const cache = new SearchCache();
 const healthTracker = new HealthTracker();
 const rateLimiter = new RateLimiter();
 
-async function searchEngine(engine: SearchProvider, query: string, limit: number): Promise<SearchResult[]> {
+// ─── Engine provider mapping (from ddgs pattern) ──────────────────────────
+// DDG uses Bing as backend, so we track providers to avoid duplicate queries
+const PROVIDER_MAP: Record<string, string> = {
+  duckduckgo: 'bing',
+  sogou: 'sogou',
+  brave: 'brave',
+  tavily: 'tavily',
+};
+
+/**
+ * Get unique providers from engine list.
+ * From ddgs: same provider only searches once.
+ */
+function getUniqueProviders(engines: SearchProvider[]): SearchProvider[] {
+  const seenProviders = new Set<string>();
+  const unique: SearchProvider[] = [];
+  
+  for (const engine of engines) {
+    const provider = PROVIDER_MAP[engine] || engine;
+    if (!seenProviders.has(provider)) {
+      seenProviders.add(provider);
+      unique.push(engine);
+    }
+  }
+  
+  return unique;
+}
+
+/**
+ * Search a single engine with health check and rate limiting.
+ */
+async function searchEngine(
+  engine: SearchProvider,
+  query: string,
+  limit: number
+): Promise<SearchResult[]> {
   // Skip unhealthy providers
   if (!healthTracker.isHealthy(engine)) {
     logger.warn({ engine }, 'Skipping unhealthy provider');
@@ -59,7 +102,7 @@ async function searchEngine(engine: SearchProvider, query: string, limit: number
 }
 
 /**
- * Check if a paid engine has its API key configured
+ * Check if a paid engine has its API key configured.
  */
 function hasApiKey(engine: SearchProvider): boolean {
   switch (engine) {
@@ -73,7 +116,6 @@ function hasApiKey(engine: SearchProvider): boolean {
 }
 
 // ─── Shared options & response types ────────────────────────────────────
-
 export interface SearchWithFallbackOptions {
   query: string;
   count?: number;
@@ -103,8 +145,17 @@ interface SearchResponse {
   partialFailures?: { engine: string; message: string }[];
 }
 
-// ─── Core search logic (shared between tools) ───────────────────────────
+// ─── Core search logic (fused patterns from ddgs) ──────────────────────
 
+/**
+ * Search with provider dedup, batch concurrency, and early exit.
+ * 
+ * Patterns from ddgs:
+ * 1. Provider dedup: same provider only searches once
+ * 2. Batch concurrency: search in batches to avoid rate limits
+ * 3. Early exit: stop when enough results collected
+ * 4. Frequency scoring: count how many engines returned each result
+ */
 export async function searchWithFallback(options: SearchWithFallbackOptions): Promise<SearchResponse> {
   const {
     query,
@@ -126,55 +177,107 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
 
   logger.info({ query, count, engines: userEngines }, 'Starting search');
 
-  // --- Phase 1: Search all free engines in parallel ---
-  const phase1Engines = FREE_ENGINES.filter(e => userEngines.includes(e));
-  const freeToSearch = phase1Engines.length > 0 ? phase1Engines : FREE_ENGINES;
+  // ── Step 1: Provider dedup (from ddgs) ──────────────────────────────
+  // Only search each provider once (e.g., DDG and Bing both use Bing backend)
+  const uniqueEngines = getUniqueProviders(userEngines);
+  logger.info({ engines: uniqueEngines }, 'After provider dedup');
 
-  logger.info({ engines: freeToSearch }, 'Phase 1: free engines');
-  const phase1Results = await Promise.all(
-    freeToSearch.map(async (engine) => {
-      const results = await searchEngine(engine, query, count);
-      return { engine, results, error: null };
-    })
-  );
+  // ── Step 2: Determine which engines to search ───────────────────────
+  // Phase 1: Free engines
+  const freeToSearch = uniqueEngines.filter(e => FREE_ENGINES.includes(e));
+  const allFree = FREE_ENGINES.filter(e => !uniqueEngines.includes(e));
+  const phase1Engines = [...freeToSearch, ...allFree];
 
-  let allResults = phase1Results.flatMap(r => r.results);
+  // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
+  // Adaptive batch size based on count and engine count
+  const BATCH_SIZE = Math.max(2, Math.min(phase1Engines.length, Math.ceil(count / 10) + 1));
+  const allResults: SearchResult[] = [];
   const failures: { engine: string; message: string }[] = [];
+  const searchedEngines: string[] = [];
+
+  // Batch 1: Free engines
+  logger.info({ engines: phase1Engines }, 'Phase 1: free engines (batch)');
+  
+  for (let i = 0; i < phase1Engines.length; i += BATCH_SIZE) {
+    const batch = phase1Engines.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(
+      batch.map(async (engine) => {
+        const results = await searchEngine(engine, query, count);
+        searchedEngines.push(engine);
+        return { engine, results };
+      })
+    );
+
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled') {
+        allResults.push(...result.value.results);
+      } else {
+        failures.push({
+          engine: 'unknown',
+          message: result.reason?.message || 'Unknown error',
+        });
+      }
+    }
+
+    // Early exit: stop if we have enough results
+    if (allResults.length >= count * 1.5) {
+      logger.info({ count: allResults.length }, 'Early exit: enough results');
+      break;
+    }
+  }
 
   logger.info({ count: allResults.length }, 'Phase 1 results');
 
-  // --- Phase 2: Fallback to paid engines if not enough results ---
+  // ── Step 4: Fallback to paid engines if not enough ───────────────────
   if (allResults.length < count) {
-    const phase2Engines = PAID_ENGINES.filter(
-      e => userEngines.includes(e) && hasApiKey(e)
+    const paidToSearch = uniqueEngines.filter(
+      e => PAID_ENGINES.includes(e) && hasApiKey(e)
     );
 
-    if (phase2Engines.length > 0) {
+    if (paidToSearch.length > 0) {
       const remaining = Math.max(count - allResults.length, 1);
-      logger.info({ engines: phase2Engines, remaining }, 'Phase 2: paid engines');
+      logger.info({ engines: paidToSearch, remaining }, 'Phase 2: paid engines');
 
-      const phase2Results = await Promise.all(
-        phase2Engines.map(async (engine) => {
+      const phase2Results = await Promise.allSettled(
+        paidToSearch.map(async (engine) => {
           const results = await searchEngine(engine, query, remaining);
-          return { engine, results, error: null };
+          searchedEngines.push(engine);
+          return { engine, results };
         })
       );
 
-      const phase2Success = phase2Results.flatMap(r => r.results);
-      allResults = [...allResults, ...phase2Success];
+      for (const result of phase2Results) {
+        if (result.status === 'fulfilled') {
+          allResults.push(...result.value.results);
+        } else {
+          failures.push({
+            engine: 'unknown',
+            message: result.reason?.message || 'Unknown error',
+          });
+        }
+      }
 
-      logger.info({ got: phase2Success.length, total: allResults.length }, 'Phase 2 results');
+      logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
       logger.info('Phase 2: no paid engines available');
     }
   }
 
-  // Apply aggregation layer
-  let deduped = dedupByUrl(allResults);
-  deduped = dedupByTitle(deduped);
-  let scored = scoreAndRank(deduped, query, {});
+  // ── Step 5: Aggregation layer (fused from ddgs + our patterns) ──────
+  
+  // 5a. Filter low-quality results (from ddgs)
+  const filtered = filterLowQuality(allResults);
+  
+  // 5b. URL dedup with frequency counting
+  const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
+  
+  // 5c. Title dedup
+  const titleDeduped = dedupByTitle(urlDeduped);
+  
+  // 5d. Score and rank with frequency bonus
+  let scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
 
-  // Apply post-search filters
+  // ── Step 6: Post-search filters ─────────────────────────────────────
   if (minConfidence > 1) {
     scored = scored.filter(r => r.confidence >= minConfidence);
   }
@@ -201,6 +304,7 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
     });
   }
 
+  // ── Step 7: Format output (token optimization) ──────────────────────
   const formatted = formatResults(scored);
 
   const response = {
@@ -212,9 +316,16 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
       : {}),
   } as SearchResponse;
 
-  // Cache the response
-  cache.set(cacheKey, response);
-  logger.info({ total: response.meta.total }, 'Search complete');
+  // ── Step 8: Async cache write (from ddgs) ───────────────────────────
+  // Don't block the response - write cache in background
+  setImmediate(() => {
+    try {
+      cache.set(cacheKey, response);
+      logger.info({ total: response.meta.total }, 'Search complete');
+    } catch (err) {
+      logger.error({ err }, 'Cache write failed');
+    }
+  });
 
   return response;
 }
