@@ -29,48 +29,13 @@
 
 **Agent Search MCP 的差异化：**
 
-### 1. 🆓 免费 + 高质量
-- DuckDuckGo + Sogou 为核心引擎，无需 API Key
-- 开箱即用，零配置
-- 付费引擎（Brave/Tavily）作为 fallback
-
-### 2. 🎯 多源验证
-- 跨引擎交叉验证，每个结果有置信度评分（1-3）
-- 单源搜索可能返回不可靠结果，多源验证提高可信度
-- 置信度 ≥2 的结果经过至少 2 个引擎验证
-
-### 3. 💰 Token 优化
-- 标题 ≤100 字符，摘要 ≤200 字符，智能截断
-- URL + 标题 Jaccard 去重，去除冗余
-- 节省 ~40-50% token 消耗
-
-**示例：** 搜索 "TypeScript MCP server tutorial"，原始 50 条结果 → 去重后 35 条 → 截断+置信度过滤后 20 条高质量结果，token 减少 ~40%。
-
-### 4. 🔧 渐进式披露
-- 3 个工具按复杂度递增，Agent 按需发现
-- `free_search`：基础搜索，快速问答
-- `free_search_advanced`：高级搜索，支持日期/域名/语言过滤
-- `free_extract`：URL 内容提取，获取完整页面
-
-### 5. 🔗 Fallback 机制
-```
-阶段 1：DuckDuckGo + Sogou（免费，并发）
-    ↓ 结果不足
-阶段 2：Brave + Tavily（付费，免费额度）
-    ↓ 合并 + 去重 + 评分
-最终：带置信度的排序结果
-```
-
-### 6. 🏥 健康监控
-- 实时追踪 Provider 健康状态
-- 失败 Provider 自动过滤，无需手动干预
-- 结构化日志（pino）
-
-### 7. 🛡️ 内置安全
-- Prompt 注入检测 — 标记可疑内容（如"忽略之前的指令"）
-- 输出边界标记 — XML 标签分离数据与指令
-- 钓鱼 URL 过滤 — 检测可疑模式（IP URL、typosquatting、短链）
-- 安全元数据 — 每条响应附加安全说明
+- **默认免费** — DuckDuckGo + Sogou 为核心引擎，无需 API Key，开箱即用。Brave 和 Tavily 作为可选付费 fallback。
+- **多源验证** — 跨引擎交叉验证，每个结果有置信度评分（1-3），置信度 ≥2 的结果经过至少 2 个引擎验证。
+- **Token 优化** — 标题 ≤100 字符，摘要 ≤200 字符，URL + 标题去重。节省 ~40-50% token 消耗。
+- **渐进式披露** — 3 个工具按复杂度递增：`free_search` 快速问答、`free_search_advanced` 过滤搜索、`free_extract` 页面提取。Agent 按需发现。
+- **Fallback 机制** — 免费引擎优先，付费引擎备用。自动合并、去重、评分。
+- **健康监控** — 实时追踪 Provider 健康状态，失败 Provider 自动过滤。
+- **内置安全** — Prompt 注入检测、输出边界标记、钓鱼 URL 过滤、安全元数据。
 
 ---
 
