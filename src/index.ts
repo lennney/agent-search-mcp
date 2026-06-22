@@ -6,11 +6,15 @@ import { registerFreeSearchAdvanced } from './tools/free-search-advanced.js';
 import { registerFreeExtract } from './tools/free-extract.js';
 import { registerCapabilities } from './tools/capabilities.js';
 import { registerHealth } from './tools/health.js';
+import { loadConfig } from './infrastructure/config.js';
+import { createHttpServer } from './infrastructure/http.js';
 
 async function main() {
+  const config = loadConfig();
+
   const server = new McpServer({
     name: 'agent-search-mcp',
-    version: '1.0.0',
+    version: '2.0.0',
   });
 
   // Register tools
@@ -22,12 +26,23 @@ async function main() {
   registerCapabilities(server);
   registerHealth(server, healthTracker);
 
-  console.error('🔍 agent-search-mcp starting in STDIO mode...');
+  // Start based on mode
+  if (config.mode === 'stdio' || config.mode === 'both') {
+    console.error('🔍 agent-search-mcp starting in STDIO mode...');
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('✅ agent-search-mcp ready (STDIO)');
+  }
 
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-
-  console.error('✅ agent-search-mcp ready');
+  if (config.mode === 'http' || config.mode === 'both') {
+    const httpServer = createHttpServer({
+      port: config.port,
+      enableCors: config.enableCors,
+      corsOrigin: config.corsOrigin,
+    });
+    await httpServer.listen();
+    console.error('✅ agent-search-mcp ready (HTTP)');
+  }
 }
 
 main().catch((error) => {
