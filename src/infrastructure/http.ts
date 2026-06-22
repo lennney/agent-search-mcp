@@ -16,6 +16,10 @@ export function createHttpServer(options: HttpServerOptions): HttpServer {
   const { port, enableCors, corsOrigin } = options;
   
   const server = http.createServer((req, res) => {
+    // Handle request errors (e.g., ECONNRESET)
+    req.on('error', () => { /* swallow */ });
+    res.on('error', () => { /* swallow */ });
+    
     // CORS headers
     if (enableCors) {
       res.setHeader('Access-Control-Allow-Origin', corsOrigin);
@@ -51,6 +55,11 @@ export function createHttpServer(options: HttpServerOptions): HttpServer {
     // 404
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
+  });
+
+  // Handle server-level errors (e.g., port conflicts)
+  server.on('error', (err) => {
+    console.error('HTTP server error:', err.message);
   });
 
   let actualPort = port;

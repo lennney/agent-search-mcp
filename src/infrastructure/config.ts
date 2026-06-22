@@ -10,9 +10,15 @@ export interface Config {
 }
 
 export function loadConfig(): Config {
+  const rawMode = process.env.MODE;
+  const mode: Config['mode'] = (rawMode === 'stdio' || rawMode === 'http' || rawMode === 'both') ? rawMode : 'stdio';
+  
+  const rawPort = parseInt(process.env.PORT || '3000', 10);
+  const port = Number.isFinite(rawPort) && rawPort > 0 ? rawPort : 3000;
+  
   return {
-    mode: (process.env.MODE as Config['mode']) || 'stdio',
-    port: parseInt(process.env.PORT || '3000', 10),
+    mode,
+    port,
     enableCors: process.env.ENABLE_CORS === 'true',
     corsOrigin: process.env.CORS_ORIGIN || '*',
     useProxy: process.env.USE_PROXY === 'true',

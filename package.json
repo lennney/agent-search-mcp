@@ -1,6 +1,6 @@
 {
   "name": "agent-search-mcp",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Lightweight MCP search server with free DuckDuckGo + Sogou engines, optional Brave + Tavily paid engines, deduplication, scoring, and caching",
   "type": "module",
   "bin": {
