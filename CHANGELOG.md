@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.0.1 (2026-06-22)
+
+### Bug Fixes
+
+- **DDG search**: Use `ddgs` Python library as backend (bypasses anti-bot detection)
+- **Logger**: Write to stderr instead of stdout (stdout reserved for JSON-RPC)
+- **Default engines**: Changed from `['duckduckgo']` to `['duckduckgo', 'sogou']`
+
+### Dependencies
+
+- Added `ddgs` (MIT) as Python dependency for DuckDuckGo search
+
 ## v1.0.0 (2026-06-22)
 
 ### Initial Release

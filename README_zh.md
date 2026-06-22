@@ -121,7 +121,17 @@
 
 ---
 
-## Quick Start
+## 快速开始
+
+### 前置要求
+
+- Node.js >= 18
+- Python 3 + `ddgs` 库：
+```bash
+pip install ddgs
+```
+
+### 安装
 
 ```bash
 # 方式 1：npx（推荐）
@@ -309,6 +319,23 @@ URL 内容提取，获取完整 Markdown。
 ```bash
 export BRAVE_API_KEY=your_key_here
 export TAVILY_API_KEY=your_key_here
+```
+
+---
+
+## 依赖项
+
+| 依赖 | 许可证 | 用途 |
+|------|--------|------|
+| @modelcontextprotocol/sdk | MIT | MCP 协议 |
+| zod | MIT | Schema 验证 |
+| pino | MIT | 日志 |
+| yaml | ISC | 配置解析 |
+| ddgs (Python) | MIT | DuckDuckGo 搜索后端（绕过反爬） |
+
+**注意：** `ddgs` 是 Python 库，通过子进程调用。需要单独安装：
+```bash
+pip install ddgs
 ```
 
 ---

@@ -103,6 +103,16 @@
 
 ## Quick Start
 
+### Prerequisites
+
+- Node.js >= 18
+- Python 3 with `ddgs` library:
+```bash
+pip install ddgs
+```
+
+### Install
+
 ```bash
 # Option 1: npx (recommended)
 npx agent-search-mcp
@@ -377,6 +387,23 @@ Set environment variables to enable fallback to paid engines when free results a
 ```bash
 export BRAVE_API_KEY=your_key_here
 export TAVILY_API_KEY=your_key_here
+```
+
+---
+
+## Dependencies
+
+| Dependency | License | Purpose |
+|------------|---------|---------|
+| @modelcontextprotocol/sdk | MIT | MCP protocol |
+| zod | MIT | Schema validation |
+| pino | MIT | Logging |
+| yaml | ISC | Config parsing |
+| ddgs (Python) | MIT | DuckDuckGo search backend (bypasses anti-bot) |
+
+**Note:** `ddgs` is a Python library called via subprocess. It must be installed separately:
+```bash
+pip install ddgs
 ```
 
 ---
