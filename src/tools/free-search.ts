@@ -109,7 +109,7 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
   const {
     query,
     count = 10,
-    engines: userEngines = ['duckduckgo' as SearchProvider],
+    engines: userEngines = ['duckduckgo', 'sogou'] as SearchProvider[],
     minConfidence = 1,
     language,
     includeDomains,
@@ -236,8 +236,8 @@ export function setupFreeSearchTool(server: McpServer): void {
       limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
       engines: z.array(z.enum(['duckduckgo', 'sogou', 'brave', 'tavily']))
         .min(1)
-        .default(['duckduckgo'])
-        .describe('Search engines to use (default: duckduckgo)'),
+        .default(['duckduckgo', 'sogou'])
+        .describe('Search engines to use (default: all free engines)'),
     },
     async ({ query, limit = 10, engines: userEngines }) => {
       try {
