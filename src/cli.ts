@@ -1,4 +1,7 @@
 import { SearchProvider } from './types.js';
+import { searchWithFallback } from './tools/free-search.js';
+import { createHttpServer } from './infrastructure/http.js';
+import { loadConfig } from './infrastructure/config.js';
 
 export interface CliArgs {
   command: 'search' | 'extract' | 'serve' | 'help';
@@ -90,4 +93,85 @@ Examples:
   fasm extract "https://example.com" --json
   fasm serve --port 8080
 `);
+}
+
+async function main(): Promise<void> {
+  const args = parseArgs(process.argv);
+
+  if (args.help) {
+    showHelp();
+    process.exit(0);
+  }
+
+  if (args.command === 'search') {
+    if (!args.query) {
+      console.error('Error: search command requires a query');
+      process.exit(1);
+    }
+
+    const results = await searchWithFallback({
+      query: args.query,
+      count: args.count || 10,
+      engines: args.engines || ['duckduckgo', 'sogou'],
+    });
+
+    if (args.json) {
+      console.log(JSON.stringify(results, null, 2));
+    } else {
+      console.log(`\nSearch: "${results.query}"`);
+      console.log(`Engines: ${results.engines.join(', ')}`);
+      console.log(`Results: ${results.meta.total}\n`);
+      
+      for (const r of results.results) {
+        console.log(`  ${r.title}`);
+        console.log(`  ${r.url}`);
+        console.log(`  ${r.snippet}`);
+        console.log();
+      }
+    }
+  } else if (args.command === 'extract') {
+    if (!args.url) {
+      console.error('Error: extract command requires a URL');
+      process.exit(1);
+    }
+
+    const res = await fetch(`https://r.jina.ai/${args.url}`, {
+      headers: { 'Accept': 'text/markdown' },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    const content = await res.text();
+
+    if (args.json) {
+      console.log(JSON.stringify({ url: args.url, content }, null, 2));
+    } else {
+      console.log(content);
+    }
+  } else if (args.command === 'serve') {
+    const config = loadConfig();
+    const port = args.port || config.port;
+
+    const server = createHttpServer({
+      port,
+      enableCors: config.enableCors,
+      corsOrigin: config.corsOrigin,
+    });
+
+    await server.listen();
+    console.log(`Server running on http://localhost:${port}`);
+    console.log('Press Ctrl+C to stop');
+  }
+}
+
+// Run main only when executed directly (not when imported)
+const isMainModule = process.argv[1] && (
+  process.argv[1].endsWith('/cli.js') || 
+  process.argv[1].endsWith('/cli.ts')
+);
+
+if (isMainModule) {
+  main().catch((error) => {
+    console.error('Error:', error.message);
+    process.exit(1);
+  });
 }
