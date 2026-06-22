@@ -1,0 +1,9 @@
+node_modules/
+build/
+dist/
+*.log
+.env*
+.vscode
+.github/copilot-instructions.md
+.github/prompts
+coverage/

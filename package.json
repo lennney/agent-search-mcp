@@ -1,0 +1,38 @@
+{
+  "name": "agent-search-mcp",
+  "version": "1.0.0",
+  "description": "Lightweight MCP search server with free DuckDuckGo + Sogou engines, optional Brave + Tavily paid engines, deduplication, scoring, and caching",
+  "type": "module",
+  "bin": {
+    "agent-search-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist/**",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('dist/index.js', '755')\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "watch": "tsc --watch",
+    "dev": "tsc && node dist/index.js",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.2",
+    "zod": "^3.25.76",
+    "pino": "^9.0.0",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.10",
+    "typescript": "^5.3.3",
+    "vitest": "^3.1.3"
+  }
+}
