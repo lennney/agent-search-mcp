@@ -131,6 +131,12 @@ interface FormattedResult {
   url: string;
   snippet: string;
   confidence: number;
+  security?: {
+    injection_detected: boolean;
+    url_safe: boolean;
+    threats: string[];
+    warnings: string[];
+  };
 }
 
 interface SearchResponse {
@@ -142,6 +148,7 @@ interface SearchResponse {
     high_confidence: number;
     engines: string[];
   };
+  security_note: string;
   partialFailures?: { engine: string; message: string }[];
 }
 
@@ -304,7 +311,7 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
     });
   }
 
-  // ── Step 7: Format output (token optimization) ──────────────────────
+  // ── Step 7: Format output with security processing ──────────────────
   const formatted = formatResults(scored);
 
   const response = {
@@ -341,7 +348,8 @@ export function setupFreeSearchTool(server: McpServer): void {
     'Search the web with automatic fallback between free and paid engines. ' +
     'Phase 1: DuckDuckGo + Sogou (free, no key required). ' +
     'Phase 2: Brave + Tavily (paid, requires BRAVE_API_KEY / TAVILY_API_KEY env vars). ' +
-    'All results are deduplicated, scored, and ranked.',
+    'All results are deduplicated, scored, and ranked. ' +
+    'Results include security metadata to protect against prompt injection.',
     {
       query: z.string().min(1, 'Search query must not be empty'),
       limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
