@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-42%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-65%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 
 **兼容 Hermes、Claude Code、Cursor、Windsurf、OpenClaw、Codex 等所有 MCP 客户端。**
 
@@ -66,6 +66,12 @@
 - 失败 Provider 自动过滤，无需手动干预
 - 结构化日志（pino）
 
+### 7. 🛡️ 内置安全
+- Prompt 注入检测 — 标记可疑内容（如"忽略之前的指令"）
+- 输出边界标记 — XML 标签分离数据与指令
+- 钓鱼 URL 过滤 — 检测可疑模式（IP URL、typosquatting、短链）
+- 安全元数据 — 每条响应附加安全说明
+
 ---
 
 ## 适用人群
@@ -109,6 +115,7 @@
 | **渐进式披露** | ✅ 3 工具 | ❌ | ❌ | ❌ | ❌ |
 | **健康监控** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Fallback** | ✅ 免费→付费 | ❌ | ❌ | ❌ | ❌ |
+| **安全** | ✅ 注入保护 | ❌ | ❌ | ❌ | ❌ |
 | **依赖数量** | 4 | 12+ | 15+ | 8 | 3 |
 
 **核心差异：**
@@ -118,6 +125,7 @@
 3. **Token 优化** — 智能截断和去重减少 ~40-50% token 消耗，对成本敏感的应用至关重要。
 4. **中文支持** — 搜狗引擎提供原生中文搜索，不是翻译层。
 5. **渐进式披露** — 3 个工具按复杂度递增，Agent 按需发现能力（Exa 模式）。
+6. **内置安全** — Prompt 注入检测、输出边界标记、钓鱼 URL 过滤。
 
 ---
 
@@ -355,6 +363,11 @@ MCP Server
   │   ├── URL + 标题去重
   │   ├── 评分 + 置信度
   │   └── 输出截断
+  ├── Security Layer
+  │   ├── Prompt 注入检测
+  │   ├── 输出边界标记
+  │   ├── 钓鱼 URL 过滤
+  │   └── 安全元数据
   ├── Fallback Chain
   │   ├── 阶段 1：免费引擎 (DDG + Sogou)
   │   └── 阶段 2：付费引擎 (Brave + Tavily)
@@ -436,4 +449,4 @@ Copyright 2026 Agent Search MCP Contributors
 
 ## Keywords
 
-MCP server, Model Context Protocol, AI agent search, free web search, multi-source search, DuckDuckGo MCP, Sogou search, token optimization, Hermes MCP, Claude Code MCP, Cursor MCP, AI tool, web search for agents, search aggregation, confidence scoring, 中文搜索, MCP 服务器, AI Agent 搜索, 免费搜索, 搜狗搜索, MCP 兼容, 自托管搜索, 搜狗搜索, 中文 MCP, 中文 AI 搜索
+MCP server, Model Context Protocol, AI agent search, free web search, multi-source search, DuckDuckGo MCP, Sogou search, token optimization, Hermes MCP, Claude Code MCP, Cursor MCP, AI tool, web search for agents, search aggregation, confidence scoring, prompt injection protection, security, 中文搜索, MCP 服务器, AI Agent 搜索, 免费搜索, 搜狗搜索, MCP 兼容, 自托管搜索, 中文 MCP, 中文 AI 搜索, 安全搜索
