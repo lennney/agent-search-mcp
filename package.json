@@ -4,7 +4,8 @@
   "description": "Lightweight MCP search server with free DuckDuckGo + Sogou engines, optional Brave + Tavily paid engines, deduplication, scoring, and caching",
   "type": "module",
   "bin": {
-    "agent-search-mcp": "./dist/index.js"
+    "agent-search-mcp": "./dist/index.js",
+    "fasm": "./dist/cli.js"
   },
   "files": [
     "dist/**",
@@ -23,6 +24,7 @@
     "dev": "tsc && node dist/index.js",
     "dev:http": "tsc && MODE=http PORT=3000 node dist/index.js",
     "dev:both": "tsc && MODE=both PORT=3000 node dist/index.js",
+    "cli": "tsc && node dist/cli.js",
     "start": "node dist/index.js",
     "start:http": "MODE=http PORT=3000 node dist/index.js",
     "prepublishOnly": "npm run build"
