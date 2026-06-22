@@ -2,20 +2,24 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { searchDuckDuckGo } from '../engines/duckduckgo.js';
 import { searchSogou } from '../engines/sogou.js';
+import { searchBing } from '../engines/bing.js';
+import { searchBaidu } from '../engines/baidu.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import type { SearchResult, SearchProvider } from '../types.js';
 import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter } from '../infrastructure/index.js';
 
-const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'brave', 'tavily'];
-const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou'];
+const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily'];
+const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
 const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily'];
 
 // Engine weights (higher = more trusted)
 const ENGINE_WEIGHTS: Record<string, number> = {
   duckduckgo: 0.85,
   sogou: 0.8,
+  bing: 0.9,
+  baidu: 0.75,
   brave: 0.95,
   tavily: 0.9,
 };
@@ -30,6 +34,8 @@ const rateLimiter = new RateLimiter();
 const PROVIDER_MAP: Record<string, string> = {
   duckduckgo: 'bing',
   sogou: 'sogou',
+  bing: 'bing',
+  baidu: 'baidu',
   brave: 'brave',
   tavily: 'tavily',
 };
@@ -79,6 +85,12 @@ async function searchEngine(
         break;
       case 'sogou':
         results = await searchSogou(query, limit);
+        break;
+      case 'bing':
+        results = await searchBing(query, limit);
+        break;
+      case 'baidu':
+        results = await searchBaidu(query, limit);
         break;
       case 'brave':
         results = await new BraveProvider().search(query, limit);
@@ -346,14 +358,14 @@ export function setupFreeSearchTool(server: McpServer): void {
   server.tool(
     'free_search',
     'Search the web with automatic fallback between free and paid engines. ' +
-    'Phase 1: DuckDuckGo + Sogou (free, no key required). ' +
+    'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required). ' +
     'Phase 2: Brave + Tavily (paid, requires BRAVE_API_KEY / TAVILY_API_KEY env vars). ' +
     'All results are deduplicated, scored, and ranked. ' +
     'Results include security metadata to protect against prompt injection.',
     {
       query: z.string().min(1, 'Search query must not be empty'),
       limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
-      engines: z.array(z.enum(['duckduckgo', 'sogou', 'brave', 'tavily']))
+      engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily']))
         .min(1)
         .default(['duckduckgo', 'sogou'])
         .describe('Search engines to use (default: all free engines)'),

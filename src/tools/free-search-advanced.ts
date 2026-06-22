@@ -28,7 +28,7 @@ Not recommended for: Simple queries — use free_search instead.`,
         const results = await searchWithFallback({
           query: input.query,
           count: input.count,
-          engines: ['duckduckgo', 'sogou', 'brave', 'tavily'],
+          engines: ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily'],
           minConfidence: input.min_confidence,
           language: input.language,
           includeDomains: input.include_domains,

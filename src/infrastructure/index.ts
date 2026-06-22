@@ -12,3 +12,8 @@ export {
   wrapWithBoundaryMarkers,
 } from './security.js';
 export type { InjectionCheckResult, UrlCheckResult, SecurityProcessedResult } from './security.js';
+export { loadConfig } from './config.js';
+export type { Config } from './config.js';
+export { createHttpServer } from './http.js';
+export type { HttpServerOptions, HttpServer } from './http.js';
+export { decodeHTMLTags } from './html-utils.js';

@@ -28,6 +28,8 @@ Each result has confidence 1-3 based on multi-source verification.
 ## Engines
 - DuckDuckGo (free)
 - Sogou (free, Chinese)
+- Bing (free, multilingual)
+- Baidu (free, Chinese)
 - Brave Search (paid, 2000 free/month)
 - Tavily (paid, 1000 free/month)`
     }]
