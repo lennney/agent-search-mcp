@@ -1,5 +1,44 @@
 # Changelog
 
+## v2.1.0 (2026-06-23)
+
+### Features
+
+- **CLI binary (`fasm`)**: Full CLI with argument parsing, help text, and search/health commands
+- **ContextManager**: Long-running autonomous session management with automatic context compaction
+- **HTTP mode support**: Run MCP server in HTTP/SSE or stdio+HTTP dual mode (`MODE=http`, `MODE=both`)
+- **Package.json scripts**: `dev:http`, `dev:both`, `start:http`, `cli` for development convenience
+
+### Documentation
+
+- Added CLI usage documentation to README (both English and Chinese)
+- Renamed CLI binary from `asm` → `fas` → `fasm` for clarity
+- Added HTTP mode configuration examples
+
+## v2.0.0 (2026-06-22)
+
+### Features
+
+- **Bing search engine**: Full Bing Web Search API integration
+- **Baidu search engine**: Full Baidu search API integration
+- **HTTP/SSE server**: Built-in HTTP server with health check endpoints and SSE streaming support
+- **Security layer**: Prompt injection protection, output boundary markers, phishing URL filtering
+- **Config module**: Environment variable parsing with defaults and validation
+- **Shared HTML utilities**: Common HTML parsing and content extraction module
+- **Architecture fusion**: Merged best patterns from ddgs/open-websearch/brave-mcp — provider dedup, frequency scoring, token optimization
+
+### Improvements
+
+- Multi-engine aggregation: provider-level dedup to avoid redundant queries
+- Frequency-based scoring: results verified by multiple engines rank higher
+- Cross-engine confidence scoring with cosine similarity fallback
+- Respect `Referer` header in HTTP requests
+- Better error handling and retry logic across all engines
+
+### Dependencies
+
+- Added `yaml` for configuration file parsing
+
 ## v1.0.1 (2026-06-22)
 
 ### Bug Fixes

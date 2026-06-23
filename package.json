@@ -1,8 +1,9 @@
 {
   "name": "agent-search-mcp",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Lightweight MCP search server with free DuckDuckGo + Sogou engines, optional Brave + Tavily paid engines, deduplication, scoring, and caching",
   "type": "module",
+  "main": "./dist/index.js",
   "bin": {
     "agent-search-mcp": "./dist/index.js",
     "fasm": "./dist/cli.js"
@@ -16,6 +17,30 @@
   "engines": {
     "node": ">=18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lennney/agent-search-mcp.git"
+  },
+  "homepage": "https://github.com/lennney/agent-search-mcp",
+  "bugs": {
+    "url": "https://github.com/lennney/agent-search-mcp/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "search",
+    "model-context-protocol",
+    "ai-agent",
+    "duckduckgo",
+    "sogou",
+    "bing",
+    "baidu",
+    "brave",
+    "tavily",
+    "exa",
+    "free-search",
+    "multi-engine"
+  ],
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('dist/index.js', '755')\"",
     "test": "vitest run",
