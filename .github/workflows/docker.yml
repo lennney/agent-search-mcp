@@ -1,5 +1,4 @@
 name: Build and Push to GHCR & ACR
-# 此工作流仅在推送标签 (v*) 时触发，用于构建和推送 Docker 镜像
 
 on:
   push:
@@ -13,36 +12,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 设置 Docker Buildx（支持多架构构建）
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 设置 QEMU（用于模拟不同架构）
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 检查 ACR 是否启用
-      - name: Check if ACR registry is set
-        id: check-acr
-        run: |
-          if [ -n "${{ secrets.ACR_REGISTRY }}" ]; then
-            echo "acr_enabled=true" >> $GITHUB_OUTPUT
-          else
-            echo "acr_enabled=false" >> $GITHUB_OUTPUT
-          fi
-
-      # 登录 ACR（仅在启用时）
-      - name: Log in to Aliyun ACR
-        if: steps.check-acr.outputs.acr_enabled == 'true'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.ACR_REGISTRY }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
-
-      # 登录 GitHub Container Registry
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -50,35 +27,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 获取仓库所有者小写形式
-      - name: Get lowercase repository owner
-        id: lowercase
-        run: echo "repository_owner_lowercase=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+      - name: Log in to Aliyun ACR
+        if: ${{ secrets.ACR_REGISTRY != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
-      # 准备镜像 tag（包括 latest 和版本 tag）
       - name: Prepare tags
         id: tags
         run: |
-          REPO_LOWERCASE="ghcr.io/${{ steps.lowercase.outputs.repository_owner_lowercase }}/open-web-search"
+          REPO_LOWERCASE="ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/agent-search-mcp"
           VERSION_TAG="${GITHUB_REF##*/}"
           TAGS="${REPO_LOWERCASE}:latest,${REPO_LOWERCASE}:${VERSION_TAG}"
 
-          if [ "${{ steps.check-acr.outputs.acr_enabled }}" == "true" ] && [ -n "${{ secrets.ACR_IMAGE_NAME }}" ]; then
+          if [ -n "${{ secrets.ACR_REGISTRY }}" ] && [ -n "${{ secrets.ACR_IMAGE_NAME }}" ]; then
             ACR_REPO="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_IMAGE_NAME }}"
             TAGS="${TAGS},${ACR_REPO}:latest,${ACR_REPO}:${VERSION_TAG}"
           fi
 
-          # 输出 tags 结果
           echo "tags<<EOF" >> $GITHUB_OUTPUT
           echo "$TAGS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # 构建并推送多架构镜像
       - name: Build and Push Multi-Platform Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64  # 🎯 这里添加了多平台支持
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha
