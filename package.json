@@ -5,8 +5,8 @@
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
-    "agent-search-mcp": "./dist/index.js",
-    "fasm": "./dist/cli.js"
+    "agent-search-mcp": "dist/index.js",
+    "fasm": "dist/cli.js"
   },
   "files": [
     "dist/**",
