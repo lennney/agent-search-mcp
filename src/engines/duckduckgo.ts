@@ -1,10 +1,27 @@
 import { execFileSync } from 'child_process';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 import { SearchResult } from '../types.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-search.py');
+
+// Python paths to check for ddgs availability, ordered by reliability.
+// pipx venv is preferred (has latest ddgs); PATH and common locations are fallbacks.
+const PYTHON_CANDIDATES = (() => {
+  const home = process.env.HOME || '';
+  const pipxDir = `${home}/.local/pipx/venvs/ddgs`;
+  const pipxPython = existsSync(pipxDir) ? `${pipxDir}/bin/python3` : null;
+  return [
+    ...(pipxPython ? [pipxPython] : []),
+    'python3',
+    '/usr/bin/python3',
+    '/usr/local/bin/python3',
+    '/opt/homebrew/bin/python3',
+    '/opt/homebrew/opt/python@3.14/bin/python3.14',
+  ];
+})();
 
 export const duckduckgoProvider = {
   id: 'duckduckgo' as const,
@@ -13,14 +30,16 @@ export const duckduckgoProvider = {
   languages: ['en'],
 };
 
-// Find python3 that has `ddgs` module available.
-// Tries PATH python3 first, then common hardcoded paths.
+/**
+ * Find python3 that has `ddgs` module available.
+ * Tries pipx venv first (most reliable), then PATH python3, then common hardcoded paths.
+ */
 function findPython(): string {
-  const candidates = ['python3', '/usr/bin/python3', '/usr/local/bin/python3', '/opt/homebrew/bin/python3'];
-  const testScript = 'from ddgs import DDGS; print("ok")';
-  for (const p of candidates) {
+  const testScript = 'import ddgs; print(ddgs.__version__)';
+  for (const p of PYTHON_CANDIDATES) {
     try {
-      execFileSync(p, ['-c', testScript], { timeout: 3000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+      const out = execFileSync(p, ['-c', testScript], { timeout: 3000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+      console.error(`DDG: Using python=${p} (ddgs v${out.trim()})`);
       return p;
     } catch {
       continue;
