@@ -53,4 +53,14 @@ describe('parseArgs', () => {
     const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--engines', 'bing,invalid,baidu']);
     expect(args.engines).toEqual(['bing', 'baidu']);
   });
+
+  it('parses --proxy flag', () => {
+    const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--proxy', 'http://127.0.0.1:7890']);
+    expect(args.proxy).toBe('http://127.0.0.1:7890');
+  });
+
+  it('parses --version flag', () => {
+    const args = parseArgs(['node', 'cli.ts', '--version']);
+    expect(args.version).toBe(true);
+  });
 });

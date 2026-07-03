@@ -6,7 +6,7 @@ export interface ScoredResult extends SearchResult {
 }
 
 /**
- * Enhanced scoring with token-based ranking.
+ * Enhanced scoring with token-based ranking and weighted confidence.
  * From ddgs SimpleFilterRanker: classify results into buckets.
  */
 export function scoreAndRank(
@@ -17,6 +17,9 @@ export function scoreAndRank(
 ): ScoredResult[] {
   const tokens = query.toLowerCase().split(/\W+/).filter(t => t.length >= 3);
   
+  // Calculate max possible weight for normalization
+  const maxWeightSum = Math.max(...Object.values(weights), 0.5) * Math.max(tokens.length, 1);
+  
   return results
     .map(r => {
       const normalizedUrl = normalizeUrl(r.url);
@@ -24,16 +27,50 @@ export function scoreAndRank(
       
       return {
         ...r,
-        confidence: r.engines?.length || 1,
+        confidence: calculateWeightedConfidence(r, weights, maxWeightSum),
         score: calculateScore(r, tokens, weights, freq),
       };
     })
     .sort((a, b) => {
-      // 1. Primary: confidence (more engines = higher)
+      // 1. Primary: confidence (weighted quality signal)
       if (b.confidence !== a.confidence) return b.confidence - a.confidence;
       // 2. Secondary: score
       return b.score - a.score;
     });
+}
+
+/**
+ * Calculate weighted confidence score (0-1) based on engine weights.
+ * Instead of raw engine count, uses sum of weights / max possible weight.
+ * 
+ * Example: Brave (0.95) + Exa (0.92) = (0.95+0.92)/max_possible
+ *          vs Sogou (0.80) + Baidu (0.75) = (0.80+0.75)/max_possible
+ * The first pair gets higher confidence.
+ */
+function calculateWeightedConfidence(
+  result: SearchResult,
+  weights: Record<string, number>,
+  maxWeightSum: number
+): number {
+  const engines = result.engines || [];
+  if (engines.length === 0) {
+    // No engine info, use source weight as fallback
+    const sourceWeight = weights[result.source] || 0.5;
+    return sourceWeight * 0.5; // Lower confidence for unknown source
+  }
+  
+  // Sum weights for engines that returned this result
+  const weightSum = engines.reduce((sum, engine) => {
+    return sum + (weights[engine] || 0.5);
+  }, 0);
+  
+  // Normalize: divide by max possible weight sum (considering count)
+  const normalizedConfidence = Math.min(weightSum / (maxWeightSum * engines.length), 1.0);
+  
+  // Apply count bonus (more engines still matters, but with diminishing returns)
+  const countBonus = Math.min(engines.length * 0.1, 0.3);
+  
+  return Math.min(normalizedConfidence + countBonus, 1.0);
 }
 
 function normalizeUrl(url: string): string {

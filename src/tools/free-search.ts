@@ -6,13 +6,14 @@ import { searchBing } from '../engines/bing.js';
 import { searchBaidu } from '../engines/baidu.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
+import { searchExa } from '../engines/exa.js';
 import type { SearchResult, SearchProvider } from '../types.js';
 import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter } from '../infrastructure/index.js';
 
-const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily'];
+const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
-const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily'];
+const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa'];
 
 // Engine weights (higher = more trusted)
 const ENGINE_WEIGHTS: Record<string, number> = {
@@ -22,6 +23,7 @@ const ENGINE_WEIGHTS: Record<string, number> = {
   baidu: 0.75,
   brave: 0.95,
   tavily: 0.9,
+  exa: 0.92,
 };
 
 // Infrastructure singletons
@@ -38,6 +40,7 @@ const PROVIDER_MAP: Record<string, string> = {
   baidu: 'baidu',
   brave: 'brave',
   tavily: 'tavily',
+  exa: 'exa',
 };
 
 /**
@@ -60,12 +63,13 @@ function getUniqueProviders(engines: SearchProvider[]): SearchProvider[] {
 }
 
 /**
- * Search a single engine with health check and rate limiting.
+ * Search a single engine with health check, rate limiting, and retry logic.
  */
 async function searchEngine(
   engine: SearchProvider,
   query: string,
-  limit: number
+  limit: number,
+  maxRetries: number = 2
 ): Promise<SearchResult[]> {
   // Skip unhealthy providers
   if (!healthTracker.isHealthy(engine)) {
@@ -76,41 +80,90 @@ async function searchEngine(
   // Rate limit before making the request
   await rateLimiter.waitForSlot(engine);
 
-  const startTime = Date.now();
-  try {
-    let results: SearchResult[];
-    switch (engine) {
-      case 'duckduckgo':
-        results = await searchDuckDuckGo(query, limit);
-        break;
-      case 'sogou':
-        results = await searchSogou(query, limit);
-        break;
-      case 'bing':
-        results = await searchBing(query, limit);
-        break;
-      case 'baidu':
-        results = await searchBaidu(query, limit);
-        break;
-      case 'brave':
-        results = await new BraveProvider().search(query, limit);
-        break;
-      case 'tavily':
-        results = await new TavilyProvider().search(query, limit);
-        break;
-      default:
-        return [];
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const startTime = Date.now();
+    try {
+      let results: SearchResult[];
+      switch (engine) {
+        case 'duckduckgo':
+          results = await searchDuckDuckGo(query, limit);
+          break;
+        case 'sogou':
+          results = await searchSogou(query, limit);
+          break;
+        case 'bing':
+          results = await searchBing(query, limit);
+          break;
+        case 'baidu':
+          results = await searchBaidu(query, limit);
+          break;
+        case 'brave':
+          results = await new BraveProvider().search(query, limit);
+          break;
+        case 'tavily':
+          results = await new TavilyProvider().search(query, limit);
+          break;
+        case 'exa':
+          results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY });
+          break;
+        default:
+          return [];
+      }
+      const latency = Date.now() - startTime;
+      healthTracker.recordSuccess(engine, latency);
+      logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
+      return results;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const latency = Date.now() - startTime;
+      
+      // Check if this is a retryable error (network, timeout, 5xx)
+      const isRetryable = isRetryableError(lastError);
+      
+      if (attempt < maxRetries && isRetryable) {
+        // Exponential backoff: 500ms, 1000ms, 2000ms...
+        const delay = Math.min(500 * Math.pow(2, attempt), 5000);
+        logger.warn({ engine, attempt, delay, err: lastError.message }, 'Retryable error, retrying...');
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // Non-retryable or max retries exceeded
+      healthTracker.recordFailure(engine);
+      logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
+      return [];
     }
-    const latency = Date.now() - startTime;
-    healthTracker.recordSuccess(engine, latency);
-    logger.info({ engine, latency, count: results.length }, 'Search completed');
-    return results;
-  } catch (err) {
-    const latency = Date.now() - startTime;
-    healthTracker.recordFailure(engine);
-    logger.error({ engine, latency, err: err instanceof Error ? err.message : String(err) }, 'Search failed');
-    return [];
   }
+  
+  // Should not reach here, but just in case
+  return [];
+}
+
+/**
+ * Check if an error is retryable (network, timeout, 5xx).
+ */
+function isRetryableError(err: Error): boolean {
+  const msg = err.message.toLowerCase();
+  
+  // Network errors
+  if (msg.includes('econnreset') || msg.includes('econnrefused') || 
+      msg.includes('etimedout') || msg.includes('network')) {
+    return true;
+  }
+  
+  // Timeout
+  if (msg.includes('timeout') || msg.includes('abort')) {
+    return true;
+  }
+  
+  // HTTP 5xx errors (but not 501 Not Implemented)
+  if (msg.includes('http 5') && !msg.includes('http 501')) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**
@@ -122,6 +175,8 @@ function hasApiKey(engine: SearchProvider): boolean {
       return !!process.env.BRAVE_API_KEY;
     case 'tavily':
       return !!process.env.TAVILY_API_KEY;
+    case 'exa':
+      return !!process.env.EXA_API_KEY;
     default:
       return true; // free engines always available
   }
@@ -164,6 +219,19 @@ interface SearchResponse {
   partialFailures?: { engine: string; message: string }[];
 }
 
+// ─── Request collapsing ───────────────────────────────────────────────
+// Track in-flight requests to avoid duplicate concurrent calls
+const pendingRequests = new Map<string, Promise<SearchResponse>>();
+
+/**
+ * Generate cache key for request collapsing.
+ */
+function makeCollapseKey(options: SearchWithFallbackOptions): string {
+  const { query, count = 10, engines = [] } = options;
+  const sortedEngines = [...engines].sort().join(',');
+  return `${query}:${count}:${sortedEngines}`;
+}
+
 // ─── Core search logic (fused patterns from ddgs) ──────────────────────
 
 /**
@@ -176,6 +244,31 @@ interface SearchResponse {
  * 4. Frequency scoring: count how many engines returned each result
  */
 export async function searchWithFallback(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+  const collapseKey = makeCollapseKey(options);
+  
+  // Check if same request is already in-flight
+  const pending = pendingRequests.get(collapseKey);
+  if (pending) {
+    logger.info({ query: options.query }, 'Request collapsing: reusing pending request');
+    return pending;
+  }
+  
+  // Start new request and track it
+  const searchPromise = executeSearch(options);
+  pendingRequests.set(collapseKey, searchPromise);
+  
+  // Clean up when done
+  searchPromise.finally(() => {
+    pendingRequests.delete(collapseKey);
+  });
+  
+  return searchPromise;
+}
+
+/**
+ * Execute the actual search logic (internal).
+ */
+async function executeSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
   const {
     query,
     count = 10,
@@ -359,13 +452,13 @@ export function setupFreeSearchTool(server: McpServer): void {
     'free_search',
     'Search the web with automatic fallback between free and paid engines. ' +
     'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required). ' +
-    'Phase 2: Brave + Tavily (paid, requires BRAVE_API_KEY / TAVILY_API_KEY env vars). ' +
+    'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars). ' +
     'All results are deduplicated, scored, and ranked. ' +
     'Results include security metadata to protect against prompt injection.',
     {
       query: z.string().min(1, 'Search query must not be empty'),
       limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
-      engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily']))
+      engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa']))
         .min(1)
         .default(['duckduckgo', 'sogou'])
         .describe('Search engines to use (default: all free engines)'),

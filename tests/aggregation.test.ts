@@ -140,8 +140,9 @@ describe('scoreAndRank', () => {
       { title: 'High', url: 'b', snippet: 'High confidence', source: '', engines: ['sogou', 'duckduckgo'] },
     ];
     const scored = scoreAndRank(results, 'test query');
-    expect(scored[0].confidence).toBe(2);
-    expect(scored[1].confidence).toBe(1);
+    // Weighted confidence: more engines = higher confidence
+    expect(scored[0].confidence).toBeGreaterThan(scored[1].confidence);
+    expect(scored[0].title).toBe('High');
   });
 
   it('calculates score with query match bonus', () => {

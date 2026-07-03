@@ -6,7 +6,7 @@ export interface SearchResult {
   engines?: string[];  // populated by aggregation layer, or set by single-engine searches
 }
 
-export type SearchProvider = 'duckduckgo' | 'sogou' | 'brave' | 'tavily' | 'bing' | 'baidu';
+export type SearchProvider = 'duckduckgo' | 'sogou' | 'brave' | 'tavily' | 'bing' | 'baidu' | 'exa';
 
 export interface SearchProviderInfo {
   id: SearchProvider;

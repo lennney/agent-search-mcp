@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { setupFreeSearchTool, healthTracker } from './tools/free-search.js';
 import { registerFreeSearchAdvanced } from './tools/free-search-advanced.js';
 import { registerFreeExtract } from './tools/free-extract.js';
+import { setupFetchTools } from './tools/fetch-tools.js';
 import { registerCapabilities } from './tools/capabilities.js';
 import { registerHealth } from './tools/health.js';
 import { loadConfig } from './infrastructure/config.js';
@@ -14,13 +15,14 @@ async function main() {
 
   const server = new McpServer({
     name: 'agent-search-mcp',
-    version: '2.0.0',
+    version: '2.1.0',
   });
 
   // Register tools
   setupFreeSearchTool(server);
   registerFreeSearchAdvanced(server);
   registerFreeExtract(server);
+  setupFetchTools(server);
 
   // Register resources
   registerCapabilities(server);

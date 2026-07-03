@@ -12,10 +12,12 @@ export interface CliArgs {
   port?: number;
   json?: boolean;
   help?: boolean;
+  proxy?: string;
+  version?: boolean;
 }
 
 const VALID_COMMANDS = ['search', 'extract', 'serve'];
-const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily'];
+const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
 
 export function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2); // skip node and script path
@@ -23,6 +25,11 @@ export function parseArgs(argv: string[]): CliArgs {
 
   if (args.length === 0 || args.includes('--help')) {
     result.help = true;
+    return result;
+  }
+
+  if (args.includes('--version')) {
+    result.version = true;
     return result;
   }
 
@@ -53,6 +60,8 @@ export function parseArgs(argv: string[]): CliArgs {
       result.port = parseInt(args[++i], 10);
     } else if (arg === '--json') {
       result.json = true;
+    } else if (arg === '--proxy' && args[i + 1]) {
+      result.proxy = args[++i];
     } else if (!arg.startsWith('--')) {
       // Positional arg
       if (result.command === 'search' && !result.query) {
@@ -68,21 +77,24 @@ export function parseArgs(argv: string[]): CliArgs {
 
 function showHelp(): void {
   console.log(`
-free-agent-search-mcp CLI v2.0.0
+free-agent-search-mcp CLI v2.1.0
 
 Usage:
   fasm search <query> [options]    Search the web
   fasm extract <url> [options]     Extract page content
   fasm serve [options]             Start HTTP server
   fasm --help                      Show this help
+  fasm --version                   Show version
 
 Search Options:
   --count <n>          Number of results (1-50, default: 10)
-  --engines <list>     Comma-separated engines (duckduckgo,sogou,bing,baidu,brave,tavily)
+  --engines <list>     Comma-separated engines (duckduckgo,sogou,bing,baidu,brave,tavily,exa)
   --json               Output as JSON
+  --proxy <url>        HTTP proxy URL (e.g., http://127.0.0.1:7890)
 
 Extract Options:
   --json               Output as JSON
+  --proxy <url>        HTTP proxy URL
 
 Serve Options:
   --port <n>           HTTP port (default: 3000)
@@ -92,6 +104,7 @@ Examples:
   fasm search "query" --count 5 --engines bing,baidu
   fasm extract "https://example.com" --json
   fasm serve --port 8080
+  fasm search "query" --proxy http://127.0.0.1:7890
 `);
 }
 
@@ -101,6 +114,17 @@ async function main(): Promise<void> {
   if (args.help) {
     showHelp();
     process.exit(0);
+  }
+
+  if (args.version) {
+    console.log('free-agent-search-mcp v2.1.0');
+    process.exit(0);
+  }
+
+  // Set proxy if provided
+  if (args.proxy) {
+    process.env.HTTP_PROXY = args.proxy;
+    process.env.HTTPS_PROXY = args.proxy;
   }
 
   if (args.command === 'search') {
