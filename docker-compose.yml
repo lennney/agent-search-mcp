@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  agent-search-mcp:
+    build: .
+    container_name: agent-search-mcp
+    ports:
+      - "3000:3000"
+    environment:
+      - MODE=http
+      - PORT=3000
+      - ENABLE_CORS=true
+      - CORS_ORIGIN=*
+      - DEFAULT_ENGINE=duckduckgo
+      # Uncomment to enable paid engines
+      # - BRAVE_API_KEY=your_brave_api_key
+      # - TAVILY_API_KEY=your_tavily_api_key
+      # - EXA_API_KEY=your_exa_api_key
+      # Uncomment to enable proxy
+      # - USE_PROXY=true
+      # - PROXY_URL=http://127.0.0.1:7890
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
