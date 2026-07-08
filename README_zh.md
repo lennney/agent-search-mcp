@@ -1,17 +1,18 @@
 # Agent Search MCP
 
-> 🔍 免费多源搜索 MCP 服务器 — 多源验证、Token 优化、MCP 原生、可自托管。
+> 🔍 免费多源搜索 MCP 服务器 — 多源验证、Token 优化、瀑布式搜索、MCP 原生、可自托管。
 
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-65%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-140%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 
 **兼容 Hermes、Claude Code、Cursor、Windsurf、OpenClaw、Codex 等所有 MCP 客户端。**
 
 ---
 
-[中文](#为什么选择-agent-search-mcp) · [English](#why-agent-search-mcp) · [安装](#quick-start) · [工具文档](#tools) · [竞品对比](#competitor-comparison)
+[中文](#为什么选择-agent-search-mcp) · [English](README.md) · [安装](#quick-start) · [工具文档](#tools) · [竞品对比](#competitor-comparison)
 
 ---
 
@@ -21,33 +22,52 @@
 
 | 方案 | 价格 | 问题 |
 |------|------|------|
-| **Tavily** | $0.01/次，月费 $20-50+ | 贵 |
-| **Exa** | $50/月起 | 语义搜索强但贵 |
+| **Tavily** | $0.01/次 | 搜索多了成本高，月费 $20-50+ |
+| **Exa** | $50/月起 | 语义搜索强但太贵 |
 | **Brave Search** | 2000 次/月免费，之后 $3/1000 | 免费额度不够 |
+| **Firecrawl** | $83/10万页 | 搜索+抓取一体，但量大了贵 |
+| **Perplexity Sonar** | $5/千次 + token | 答案引擎，无法评估原始来源 |
+| **Serper** | $0.30/千次 | 谷歌 SERP，无内容提取 |
 | **DDG MCP** | 免费 | 单源、无验证、无去重、结果不稳定 |
-| **open-websearch** | 免费 | 300MB+ 依赖、无 token 优化 |
 
 **Agent Search MCP 的差异化：**
 
-- **默认免费** — DuckDuckGo + Sogou 为核心引擎，无需 API Key，开箱即用。Brave 和 Tavily 作为可选付费 fallback。
-- **多源验证** — 跨引擎交叉验证，每个结果有置信度评分（1-3），置信度 ≥2 的结果经过至少 2 个引擎验证。
-- **Token 优化** — 标题 ≤100 字符，摘要 ≤200 字符，URL + 标题去重。节省 ~40-50% token 消耗。
-- **渐进式披露** — 3 个工具按复杂度递增：`free_search` 快速问答、`free_search_advanced` 过滤搜索、`free_extract` 页面提取。Agent 按需发现。
-- **Fallback 机制** — 免费引擎优先，付费引擎备用。自动合并、去重、评分。
-- **健康监控** — 实时追踪 Provider 健康状态，失败 Provider 自动过滤。
-- **内置安全** — Prompt 注入检测、输出边界标记、钓鱼 URL 过滤、安全元数据。
+### 核心搜索能力
 
----
-
-## 适用人群
-
-| 人群 | 场景 |
+| 特性 | 说明 |
 |------|------|
-| **AI Agent 开发者** | Hermes、OpenClaw、自定义 Agent 需要搜索能力 |
-| **IDE 用户** | Claude Code、Cursor、Windsurf 的 AI 搜索 |
-| **MCP 工具开发者** | 构建 MCP 兼容工具 |
-| **中文用户** | 需要中文搜索（搜狗集成） |
-| **成本敏感用户** | 不想为搜索付费，需要免费方案 |
+| **默认免费** | DuckDuckGo + Sogou + Bing + Baidu 为核心，无需 API Key。Brave + Tavily + Exa 作为可选付费 fallback |
+| **瀑布式渐进搜索** 🆕 | 3 阶段置信度门控搜索：(1) DDG+Sogou → 检查 → (2) Bing+Baidu → 检查 → (3) Brave+Tavily+Exa。置信度达标即停，节省 50-75% 引擎调用 |
+| **多源验证** | 跨引擎交叉验证，每个结果有置信度评分（1-3），≥2 的结果经过至少 2 个引擎验证 |
+| **内容丰富化** 🆕 | 低置信度/摘要过短的结果，自动通过 Jina Reader 提取全文回填。置信度提升 +0.33（上限 1.0） |
+| **域名权威评分** 🆕 | `.edu`/`.gov`/`.ac.xx` 域名 +0.12；高质量站点（wikipedia、stackoverflow、arxiv）加分；低质域名扣分 |
+| **自适应查询扩展** 🆕 | 置信度不足时自动生成 2 个备选查询重搜，4 种规则策略（vs-split、前缀剥离、核心关键词、技术同义词），无需 LLM |
+
+### Token 与成本优化
+
+| 特性 | 说明 |
+|------|------|
+| **Token 优化** | 标题 ≤100 字符，摘要 ≤200 字符，URL + 标题去重。节省 ~40-50% token 消耗 |
+| **渐进式披露** | 3 个工具按复杂度递增：`free_search` 快速问答、`free_search_advanced` 过滤搜索+瀑布流程、`free_extract` 页面提取。Agent 按需发现 |
+
+### 可靠性
+
+| 特性 | 说明 |
+|------|------|
+| **Fallback 机制** | 免费引擎优先，付费引擎备用。自动合并、去重、评分 |
+| **健康监控** | 实时追踪 Provider 健康状态，失败 Provider 自动过滤 |
+| **限速保护** | 每个 Provider 最小请求间隔 1 秒 |
+| **智能缓存** | LRU 缓存，60 秒 TTL，最多 1000 条目 |
+
+### 安全
+
+| 特性 | 说明 |
+|------|------|
+| **Prompt 注入检测** | 阻拦搜索请求中的注入模式 |
+| **输出边界标记** | 系统输出和搜索结果之间的清晰分隔 |
+| **钓鱼 URL 过滤** | 检测并标记可疑 URL |
+| **SSRF 保护** | 禁止私网 IP、localhost、元数据端点 |
+| **安全元数据** | 每次响应附带安全上下文 |
 
 ---
 
@@ -60,37 +80,50 @@
 | Tavily | ~$30 | ~$360 |
 | Exa | $50 | $600 |
 | Brave Search | ~$15 | ~$180 |
+| Firecrawl | ~$25 | ~$300 |
+| Perplexity Sonar | ~$30 | ~$360 |
+| Serper | ~$9 | ~$108 |
 | **Agent Search MCP** | **$0** | **$0** |
 
 ---
 
 ## Competitor Comparison
 
-| Feature | Agent Search MCP | Tavily | Exa | Brave Search | DDG MCP |
-|---------|:---:|:---:|:---:|:---:|:---:|
-| **价格** | 免费 | $0.01/次 | $50/月 | $3/1000 | 免费 |
-| **API Key** | 不需要 | 需要 | 需要 | 需要 | 需要 |
-| **多源验证** | ✅ 2-4 引擎 | ❌ 单源 | ❌ 单源 | ❌ 单源 | ❌ 单源 |
-| **置信度评分** | ✅ 1-3 | ❌ | ❌ | ❌ | ❌ |
-| **去重** | ✅ URL+标题 | ❌ | ❌ | ❌ | ❌ |
-| **Token 优化** | ✅ ~40-50% | ❌ | ❌ | ❌ | ❌ |
-| **中文搜索** | ✅ 搜狗 | ❌ | ❌ | ❌ | ❌ |
-| **MCP 原生** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **可自托管** | ✅ | ❌ 仅云端 | ❌ 仅云端 | ❌ 仅云端 | ✅ |
-| **渐进式披露** | ✅ 3 工具 | ❌ | ❌ | ❌ | ❌ |
-| **健康监控** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Fallback** | ✅ 免费→付费 | ❌ | ❌ | ❌ | ❌ |
-| **安全** | ✅ 注入保护 | ❌ | ❌ | ❌ | ❌ |
-| **依赖数量** | 4 | 12+ | 15+ | 8 | 3 |
+| Feature | Agent Search MCP | Tavily | Exa | Brave Search | Firecrawl | Perplexity Sonar | Serper | DDG MCP |
+|---------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **价格** | 免费 | $0.01/次 | $50/月 | $3/1000 | $83/10万页 | $5/千次+token | $0.30/千次 | 免费 |
+| **API Key** | 不需要 | 需要 | 需要 | 需要 | 需要 | 需要 | 需要 | 需要 |
+| **免费额度** | 无限 | 1千/月 | $10 额度 | 2千/月 | 有限 | 无 | 2.5千/月 | 无限 |
+| **多源验证** | ✅ 4+ 引擎 | ❌ 单源 | ❌ 单源 | ❌ 单源 | ❌ 单源 | ❌ 单源 | ❌ 单源 | ❌ 单源 |
+| **瀑布搜索** | ✅ 置信度门控 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **内容丰富化** | ✅ 自动提取 | ✅ (内置) | ✅ (内置) | ❌ | ✅ (内置) | ✅ (合成) | ❌ | ❌ |
+| **查询扩展** | ✅ 规则引擎 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **置信度评分** | ✅ 1-3 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **域名权威** | ✅ Edu/Gov 加分 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **去重** | ✅ URL+标题 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Token 优化** | ✅ ~40-50% | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **中文搜索** | ✅ 搜狗+百度 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **语义搜索** | ❌ (规划中) | ❌ | ✅ 神经 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **答案引擎** | ❌ (规划中) | ❌ | ❌ | ❌ | ❌ | ✅ 合成 | ❌ | ❌ |
+| **人/公司搜索** | ❌ (规划中) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **MCP 原生** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **可自托管** | ✅ | ❌ 仅云端 | ❌ 仅云端 | ❌ 仅云端 | ❌ 仅云端 | ❌ 仅云端 | ❌ 仅云端 | ✅ |
+| **安全** | ✅ 注入保护 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **依赖数量** | 4 | 12+ | 15+ | 8 | 10+ | 8+ | 5 | 3 |
 
 **核心差异：**
 
-1. **默认免费** — 无需 API Key，无需信用卡，无限制。DuckDuckGo + Sogou 开箱即用。
-2. **多源验证** — 跨引擎交叉验证，置信度告诉你结果有多可靠。
-3. **Token 优化** — 智能截断和去重减少 ~40-50% token 消耗，对成本敏感的应用至关重要。
-4. **中文支持** — 搜狗引擎提供原生中文搜索，不是翻译层。
-5. **渐进式披露** — 3 个工具按复杂度递增，Agent 按需发现能力（Exa 模式）。
-6. **内置安全** — Prompt 注入检测、输出边界标记、钓鱼 URL 过滤。
+1. **默认免费** — 无需 API Key，无需信用卡，无限制。DDG + Sogou + Bing + Baidu 开箱即用
+2. **多源验证** — 跨引擎交叉验证，置信度告诉你结果有多可靠
+3. **瀑布式搜索** — 独特的多阶段置信度门控搜索，质量达标即停，节省引擎调用和 Token
+4. **Token 优化** — 智能截断和去重减少 ~40-50% 消耗
+5. **中国搜索引擎** — 搜狗 + 百度提供原生中文搜索，不需要翻译层
+6. **安全性** — 内置 Prompt 注入检测、钓鱼 URL 过滤、输出边界标记
+
+**我方差距（规划中）：**
+- **语义/神经搜索** — Exa 的神经索引处理概念型查询。可添加 embedding 搜索
+- **答案引擎** — 类似 Perplexity 的多源结果 LLM 合成直接答案
+- **人/公司搜索** — Exa 的实体索引，用于销售/情报场景
 
 ---
 
@@ -212,7 +245,7 @@ mcp_servers:
 
 ## CLI 使用
 
-free-agent-search-mcp 也可以作为 CLI 工具使用。
+agent-search-mcp 也可以作为 CLI 工具使用。
 
 ### 安装
 
@@ -267,11 +300,11 @@ fasm --help
 }
 ```
 
-**返回：** 带置信度评分的搜索结果数组。
+**返回：** 带置信度评分（1-3）的搜索结果数组。
 
 ### `free_search_advanced`
 
-高级搜索，支持过滤。
+高级搜索，支持瀑布式渐进搜索、过滤和内容丰富化。
 
 ```json
 {
@@ -292,6 +325,13 @@ fasm --help
 - `include_domains`：只搜索这些域名
 - `exclude_domains`：排除这些域名
 
+**瀑布流程（默认开启）：**
+1. 阶段 1：DDG + Sogou → 检查置信度篮子
+2. 阶段 2（如果需要）：Bing + Baidu → 检查篮子
+3. 阶段 3（如果需要）：Brave + Tavily + Exa（付费引擎）
+4. 内容丰富化：低置信度结果自动通过 Jina Reader 提取全文
+5. 查询扩展（篮子仍不足）：自动生成备选查询
+
 ### `free_extract`
 
 URL 内容提取，获取完整 Markdown。
@@ -302,6 +342,8 @@ URL 内容提取，获取完整 Markdown。
   "max_length": 5000
 }
 ```
+
+**返回：** Markdown 格式内容及元数据。超过 `max_length` 的完整文本存储在磁盘。
 
 ---
 
@@ -325,9 +367,10 @@ URL 内容提取，获取完整 Markdown。
 |----------|-------------|----------|
 | `BRAVE_API_KEY` | Brave Search API key（2000 免费/月） | No |
 | `TAVILY_API_KEY` | Tavily API key（1000 免费/月） | No |
+| `EXA_API_KEY` | Exa API key（1000 免费/月） | No |
 | `LOG_LEVEL` | 日志级别（info, debug） | No |
 
-**零配置可用** — 基础搜索无需 API Key。
+**零配置可用** — DDG + Sogou + Bing + Baidu 基础搜索无需 API Key。
 
 ### 启用付费引擎
 
@@ -336,6 +379,7 @@ URL 内容提取，获取完整 Markdown。
 ```bash
 export BRAVE_API_KEY=your_key_here
 export TAVILY_API_KEY=your_key_here
+export EXA_API_KEY=your_key_here
 ```
 
 ---
@@ -361,13 +405,21 @@ pip install ddgs
 
 ```
 Agent
-  ↓ MCP Protocol (stdio)
+  ↓ MCP Protocol (stdio / HTTP)
 MCP Server
-  ├── Tools Layer (渐进式披露)
-  │   ├── free_search (默认)
-  │   ├── free_search_advanced (可选)
-  │   └── free_extract (可选)
+  ├── Tools Layer
+  │   ├── free_search (快速查询)
+  │   ├── free_search_advanced (瀑布 + 过滤)
+  │   └── free_extract (页面提取)
   ├── Aggregation Layer
+  │   ├── Waterfall Search Engine      ← 新增
+  │   │   ├── Phase 1: DDG + Sogou
+  │   │   ├── Phase 2: Bing + Baidu
+  │   │   └── Phase 3: Brave + Tavily + Exa (付费)
+  │   ├── Content Enricher (Jina)      ← 新增
+  │   ├── Domain Authority Scorer       ← 新增
+  │   ├── Query Expander (Rule Engine)  ← 新增
+  │   ├── Confidence Basket Checker     ← 新增
   │   ├── Top-1 Snippet 合并
   │   ├── URL + 标题去重
   │   ├── 评分 + 置信度
@@ -378,14 +430,27 @@ MCP Server
   │   ├── 钓鱼 URL 过滤
   │   └── 安全元数据
   ├── Fallback Chain
-  │   ├── 阶段 1：免费引擎 (DDG + Sogou)
-  │   └── 阶段 2：付费引擎 (Brave + Tavily)
+  │   ├── 阶段 1：免费引擎 (DDG + Sogou + Bing + Baidu)
+  │   └── 阶段 2：付费引擎 (Brave + Tavily + Exa)
   └── Infrastructure
       ├── Cache (LRU, 60s TTL)
       ├── Rate Limiter (1s per provider)
       ├── Health Tracker
       └── SSRF Protection
 ```
+
+---
+
+## 项目数据
+
+| 指标 | 数值 |
+|------|------|
+| 测试数量 | **140**（13 个文件） |
+| 源码量 | ~2,500 行 TypeScript |
+| 免费引擎 | 4（DDG + Sogou + Bing + Baidu） |
+| 付费引擎 | 3（Brave + Tavily + Exa） |
+| npm 生产依赖 | 4 |
+| 引擎总计 | 7 |
 
 ---
 
@@ -426,12 +491,15 @@ npm start
 
 ## Roadmap
 
-- [ ] v0.1.0 — 初始版本，DDG + Sogou
-- [ ] v0.2.0 — Brave + Tavily fallback
-- [ ] v0.3.0 — 健康监控 + 限速
-- [ ] v1.0.0 — 稳定版本 + 完整文档
-- [ ] v1.1.0 — 插件系统，支持自定义引擎
-- [ ] v2.0.0 — 浏览器提取（Playwright）
+- [x] v1.0.0 — DDG + Sogou 免费引擎、多源验证、去重、评分
+- [x] v2.0.0 — Bing + Baidu 引擎、HTTP/SSE 模式、安全层、配置模块
+- [x] v2.1.0 — CLI 二进制 (`fasm`)、ContextManager、双模式服务器
+- [x] **v2.2.0 — 瀑布搜索、内容丰富化、域名权威、查询扩展** ← 当前版本
+- [ ] v3.0.0 — 语义/神经搜索（基于 embedding 的概念匹配）
+- [ ] v3.1.0 — 答案引擎模式（多源结果 LLM 合成）
+- [ ] v3.2.0 — 实体搜索（人、公司、代码）
+- [ ] v4.0.0 — 插件系统，支持自定义引擎
+- [ ] v4.1.0 — 浏览器提取（Playwright）
 
 ---
 
@@ -453,9 +521,3 @@ Copyright 2026 Agent Search MCP Contributors
 ## Contributing
 
 欢迎贡献！请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。
-
----
-
-## Keywords
-
-MCP server, Model Context Protocol, AI agent search, free web search, multi-source search, DuckDuckGo MCP, Sogou search, token optimization, Hermes MCP, Claude Code MCP, Cursor MCP, AI tool, web search for agents, search aggregation, confidence scoring, prompt injection protection, security, 中文搜索, MCP 服务器, AI Agent 搜索, 免费搜索, 搜狗搜索, MCP 兼容, 自托管搜索, 中文 MCP, 中文 AI 搜索, 安全搜索
