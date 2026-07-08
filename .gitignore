@@ -5,6 +5,7 @@ dist/
 .env*
 .vscode
 .github/copilot-instructions.md
+.pi/
 .github/prompts
 coverage/
 # Claude Code hooks (不要提交到 repo, 因为路径可能不同)

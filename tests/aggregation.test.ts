@@ -215,3 +215,56 @@ describe('formatResults', () => {
     expect(formatted.meta.engines).toEqual([]);
   });
 });
+
+// ─── checkConfidenceBasket ──────────────────────────────────────────────────
+
+import { checkConfidenceBasket } from '../src/aggregation/scorer.js';
+
+describe('checkConfidenceBasket', () => {
+  function makeResult(confidence: number, index: number): ScoredResult {
+    return {
+      title: `Result ${index}`,
+      url: `https://example.com/${index}`,
+      snippet: `Snippet ${index}`,
+      source: 'duckduckgo',
+      engines: [],
+      confidence,
+      score: confidence,
+    };
+  }
+
+  it('returns sufficient=false for empty results', () => {
+    const result = checkConfidenceBasket([]);
+    expect(result.sufficient).toBe(false);
+    expect(result.basketConfidence).toBe(0);
+    expect(result.analyzedCount).toBe(0);
+  });
+
+  it('returns sufficient=true when top-5 confidence meets threshold', () => {
+    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.8 + i * 0.01, i));
+    const result = checkConfidenceBasket(results, { minResults: 3, minAvgConfidence: 0.6, topK: 5 });
+    expect(result.sufficient).toBe(true);
+    expect(result.basketConfidence).toBeGreaterThanOrEqual(0.8);
+  });
+
+  it('returns sufficient=false when confidence is too low', () => {
+    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.3, i));
+    const result = checkConfidenceBasket(results);
+    expect(result.sufficient).toBe(false);
+  });
+
+  it('returns sufficient=false when not enough results (minResults)', () => {
+    const results = [makeResult(0.9, 1), makeResult(0.9, 2)];
+    const result = checkConfidenceBasket(results, { minResults: 3, minAvgConfidence: 0.6, topK: 5 });
+    expect(result.sufficient).toBe(false);
+    expect(result.topResultsCount).toBe(2);
+  });
+
+  it('respects custom topK — picks only the top results', () => {
+    const high = [1, 2, 3].map(i => makeResult(0.9, i));
+    const low = [4, 5, 6, 7].map(i => makeResult(0.2, i));
+    const result = checkConfidenceBasket([...high, ...low], { topK: 3, minResults: 3, minAvgConfidence: 0.6 });
+    expect(result.sufficient).toBe(true);
+    expect(result.topResultsCount).toBe(3);
+  });
+});

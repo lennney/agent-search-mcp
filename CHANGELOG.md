@@ -1,6 +1,26 @@
 # Changelog
 
-## v2.1.0 (2026-06-23)
+## v2.2.0 (2026-07-08)
+
+### Features
+
+- **Waterfall progressive search** (`free_search_advanced`): Three-phase confidence-based search — DDG+Sogou → confidence check → Bing+Baidu → check → Brave+Tavily+Exa. Stops early when confidence basket is full, saving 50-75% engine calls.
+- **Content enrichment**: Low-confidence results auto-extract full page content via Jina Reader. Snippet replaced with extracted text, confidence boosted +0.33 (capped 1.0).
+- **Domain authority scoring**: `.edu`/`.gov`/`.ac.xx` domains get score boost (+0.12); known high-quality sites (wikipedia, stackoverflow, arxiv) weighted up; low-quality domains (blogspot, wordpress.com) penalized.
+- **Adaptive query expansion**: When waterfall confidence is insufficient, auto-generates alternative queries via rule engine (vs-split, prefix-strip, core keyword extraction, tech synonyms) and re-searches.
+
+### Improvements
+
+- `free_search_advanced` defaults to waterfall=enrich=true, `free_search` stays backward-compatible
+- `checkConfidenceBasket()` utility extracted as reusable aggregation primitive
+- `expandQuery()` rule engine covers 4 strategies without LLM dependency
+
+### Testing
+
+- 140 tests passing across 13 test files (was 95/11)
+- New modules: enricher, query-expander, checkConfidenceBasket
+
+## v2.1.1 (2026-07-03)
 
 ### Features
 

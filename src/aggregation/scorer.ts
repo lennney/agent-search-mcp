@@ -1,5 +1,54 @@
 import { SearchResult } from '../types.js';
 
+// 域名权威评级: 域名 → 评分加成
+// 基于 TLD + 域名知名度
+const DOMAIN_AUTHORITY: Record<string, number> = {
+  // .edu / .gov 高权威
+  ".edu": 0.12,
+  ".gov": 0.12,
+  ".ac.": 0.10,
+  // 知名技术站
+  "wikipedia.org": 0.15,
+  "github.com": 0.08,
+  "stackoverflow.com": 0.10,
+  "stackexchange.com": 0.08,
+  "arxiv.org": 0.12,
+  "scholar.google.com": 0.10,
+  "medium.com": 0.02,
+  "dev.to": 0.05,
+  "news.ycombinator.com": 0.08,
+  // 低质量/采集站 (负加成)
+  "blogspot.com": -0.03,
+  "wordpress.com": -0.02,
+};
+
+/**
+ * 从 URL 提取域名权威加成。
+ * 先匹配知名域名, 再按 TLD 降级匹配。
+ */
+function getDomainBoost(url: string): number {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    
+    // 1. 精确匹配知名域名
+    for (const [domain, boost] of Object.entries(DOMAIN_AUTHORITY)) {
+      if (hostname === domain || hostname.endsWith("." + domain)) {
+        return boost;
+      }
+    }
+    
+    // 2. TLD 匹配 (.edu / .gov / .ac.xx)
+    if (hostname.endsWith(".edu")) return DOMAIN_AUTHORITY[".edu"];
+    if (hostname.endsWith(".gov")) return DOMAIN_AUTHORITY[".gov"];
+    // .ac.uk, .ac.jp, .ac.cn 等学术域名
+    if (hostname.includes(".ac.")) return DOMAIN_AUTHORITY[".ac."];
+    
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
 export interface ScoredResult extends SearchResult {
   confidence: number;
   score: number;
@@ -122,14 +171,10 @@ function calculateScore(
     bucketScore = 0.2; // Body only
   }
   
-  // Wikipedia boost
-  if (result.url.includes('wikipedia.org')) {
-    bucketScore += 0.15;
-  }
-  
-  // GitHub boost (high quality for code queries)
-  if (result.url.includes('github.com')) {
-    bucketScore += 0.05;
+  // 域名权威加成 (替代原来硬编码的 wikipedia/github boost)
+  const domainBoost = getDomainBoost(result.url);
+  if (domainBoost !== 0) {
+    bucketScore += domainBoost;
   }
   
   // Frequency bonus (from ddgs: more engines = more trustworthy)
@@ -145,4 +190,42 @@ function calculateScore(
   score *= maxWeight;
   
   return Math.min(score, 1.0);
+}
+
+export interface ConfidenceBasketOptions {
+  minResults?: number;
+  minAvgConfidence?: number;
+  topK?: number;
+}
+
+export interface ConfidenceBasketResult {
+  sufficient: boolean;
+  basketConfidence: number;
+  topResultsCount: number;
+  analyzedCount: number;
+}
+
+export function checkConfidenceBasket(
+  results: ScoredResult[],
+  options?: ConfidenceBasketOptions
+): ConfidenceBasketResult {
+  const minResults = options?.minResults ?? 3;
+  const minAvgConfidence = options?.minAvgConfidence ?? 0.6;
+  const topK = options?.topK ?? 5;
+
+  if (results.length === 0) {
+    return { sufficient: false, basketConfidence: 0, topResultsCount: 0, analyzedCount: 0 };
+  }
+
+  const sorted = [...results].sort((a, b) => b.confidence - a.confidence);
+  const top = sorted.slice(0, topK);
+  const avgConfidence = top.reduce((sum, r) => sum + r.confidence, 0) / top.length;
+  const basketConfidence = Math.round(avgConfidence * 100) / 100;
+
+  return {
+    sufficient: top.length >= minResults && basketConfidence >= minAvgConfidence,
+    basketConfidence,
+    topResultsCount: top.length,
+    analyzedCount: results.length,
+  };
 }

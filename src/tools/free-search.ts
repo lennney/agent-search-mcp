@@ -8,7 +8,7 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import type { SearchResult, SearchProvider } from '../types.js';
-import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults } from '../aggregation/index.js';
+import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter } from '../infrastructure/index.js';
 
 const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
@@ -191,6 +191,12 @@ export interface SearchWithFallbackOptions {
   language?: string;
   includeDomains?: string[];
   excludeDomains?: string[];
+  waterfall?: boolean;
+  waterfallMinResults?: number;
+  waterfallMinConfidence?: number;
+  enrich?: boolean;
+  enrichMax?: number;
+  enrichMinConfidence?: number;
 }
 
 interface FormattedResult {
@@ -269,6 +275,13 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
  * Execute the actual search logic (internal).
  */
 async function executeSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+  if (options.waterfall) {
+    return executeWaterfallSearch(options);
+  }
+  return executeParallelSearch(options);
+}
+
+async function executeParallelSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
   const {
     query,
     count = 10,
@@ -417,6 +430,17 @@ async function executeSearch(options: SearchWithFallbackOptions): Promise<Search
   }
 
   // ── Step 7: Format output with security processing ──────────────────
+  if (options.enrich) {
+    const enriched = await enrichResults(scored, {
+      maxEnrich: options.enrichMax,
+      minConfidence: options.enrichMinConfidence,
+    });
+    scored = enriched.results;
+    if (enriched.enriched > 0) {
+      logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
+    }
+  }
+
   const formatted = formatResults(scored);
 
   const response = {
@@ -436,6 +460,201 @@ async function executeSearch(options: SearchWithFallbackOptions): Promise<Search
       logger.info({ total: response.meta.total }, 'Search complete');
     } catch (err) {
       logger.error({ err }, 'Cache write failed');
+    }
+  });
+
+  return response;
+}
+
+const WATERFALL_PHASES = {
+  phase1a: ["duckduckgo", "sogou"],
+  phase1b: ["bing", "baidu"],
+  phase2: ["brave", "tavily", "exa"],
+} as const;
+
+async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+  const {
+    query,
+    count = 10,
+    language,
+    includeDomains,
+    excludeDomains,
+    minConfidence = 1,
+    waterfallMinResults = 3,
+    waterfallMinConfidence = 0.6,
+  } = options;
+
+  const allResults: SearchResult[] = [];
+  const allFailures: { engine: string; message: string }[] = [];
+  const searchedEngines: string[] = [];
+
+  async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
+    const phaseResults = await Promise.allSettled(
+      engines.map(async (engine) => {
+        const results = await searchEngine(engine, query, count);
+        searchedEngines.push(engine);
+        return { engine, results };
+      })
+    );
+
+    for (const result of phaseResults) {
+      if (result.status === "fulfilled") {
+        allResults.push(...result.value.results);
+      } else {
+        allFailures.push({ engine: "unknown", message: result.reason?.message || "Unknown error" });
+      }
+    }
+
+    const filtered = filterLowQuality(allResults);
+    const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
+    const titleDeduped = dedupByTitle(urlDeduped);
+    const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
+
+    let basketScored = scored;
+    if (includeDomains && includeDomains.length > 0) {
+      basketScored = scored.filter((r) => {
+        try {
+          const hostname = new URL(r.url).hostname;
+          return includeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
+        } catch { return false; }
+      });
+    }
+    if (excludeDomains && excludeDomains.length > 0) {
+      basketScored = scored.filter((r) => {
+        try {
+          const hostname = new URL(r.url).hostname;
+          return !excludeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
+        } catch { return true; }
+      });
+    }
+
+    const basket = checkConfidenceBasket(basketScored, {
+      minResults: waterfallMinResults,
+      minAvgConfidence: waterfallMinConfidence,
+      topK: 5,
+    });
+
+    logger.info({ phase: phaseLabel, total: allResults.length, basket }, "Waterfall phase complete");
+    return basket.sufficient;
+  }
+
+  let basketFull = await searchBatch([...WATERFALL_PHASES.phase1a] as SearchProvider[], "1a");
+  if (basketFull) {
+    logger.info("Phase 1a satisfied — skipping remaining phases");
+  }
+
+  if (!basketFull) {
+    basketFull = await searchBatch([...WATERFALL_PHASES.phase1b] as SearchProvider[], "1b");
+    if (basketFull) {
+      logger.info("Phase 1b satisfied — skipping Phase 2");
+    }
+  }
+
+  if (!basketFull) {
+    const paidAvailable = WATERFALL_PHASES.phase2.filter((e) => hasApiKey(e as SearchProvider));
+    if (paidAvailable.length > 0) {
+      logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");
+      const paidResults = await Promise.allSettled(
+        paidAvailable.map(async (engine) => {
+          const remaining = Math.max(count - allResults.length, 1);
+          const results = await searchEngine(engine as SearchProvider, query, remaining);
+          searchedEngines.push(engine);
+          return { engine, results };
+        })
+      );
+      for (const result of paidResults) {
+        if (result.status === "fulfilled") {
+          allResults.push(...result.value.results);
+        } else {
+          allFailures.push({ engine: "unknown", message: result.reason?.message || "Unknown error" });
+        }
+      }
+    } else {
+      logger.info("Phase 2: no paid engines available");
+    }
+  }
+
+  // ── Phase 3: Query Expansion (if confidence still low) ──────────
+  if (!basketFull) {
+    const alternatives = expandQuery(query);
+    if (alternatives.length > 0) {
+      logger.info({ alternatives }, "Phase 3: query expansion");
+      for (const altQuery of alternatives) {
+        const altSearch = await executeWaterfallSearch({
+          ...options,
+          query: altQuery,
+          waterfall: true,
+          enrich: false,
+        });
+        if (altSearch.results && altSearch.results.length > 0) {
+          for (const r of altSearch.results) {
+            allResults.push({
+              title: r.title,
+              url: r.url,
+              snippet: r.snippet,
+              source: "expanded",
+              engines: altSearch.meta?.engines || [],
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Aggregate and output (same logic as executeParallelSearch)
+  const filtered = filterLowQuality(allResults);
+  const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
+  const titleDeduped = dedupByTitle(urlDeduped);
+  let scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
+
+  if (minConfidence > 1) {
+    scored = scored.filter((r) => r.confidence >= minConfidence);
+  }
+  if (includeDomains && includeDomains.length > 0) {
+    scored = scored.filter((r) => {
+      try {
+        const hostname = new URL(r.url).hostname;
+        return includeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
+      } catch {
+        return false;
+      }
+    });
+  }
+  if (excludeDomains && excludeDomains.length > 0) {
+    scored = scored.filter((r) => {
+      try {
+        const hostname = new URL(r.url).hostname;
+        return !excludeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
+      } catch {
+        return true;
+      }
+    });
+  }
+
+  if (options.enrich) {
+    const enriched = await enrichResults(scored, {
+      maxEnrich: options.enrichMax,
+      minConfidence: options.enrichMinConfidence,
+    });
+    scored = enriched.results;
+    if (enriched.enriched > 0) {
+      logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
+    }
+  }
+
+  const formatted = formatResults(scored);
+  const response = {
+    query,
+    engines: searchedEngines,
+    ...formatted,
+    ...(allFailures.length > 0 ? { partialFailures: allFailures } : {}),
+  } as SearchResponse;
+
+  setImmediate(() => {
+    try {
+      cache.set(cache.makeKey(query, count, searchedEngines), response);
+    } catch (err) {
+      logger.error({ err }, "Cache write failed");
     }
   });
 
