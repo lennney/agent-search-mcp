@@ -7,6 +7,9 @@ export interface Config {
   proxyUrl: string;
   defaultEngine: string;
   allowedEngines: string[];
+  embeddingProvider: string;
+  jinaApiKey: string;
+  openaiApiKey: string;
 }
 
 export function loadConfig(): Config {
@@ -27,5 +30,8 @@ export function loadConfig(): Config {
     allowedEngines: process.env.ALLOWED_ENGINES
       ? process.env.ALLOWED_ENGINES.split(',').map(e => e.trim())
       : [],
+    embeddingProvider: process.env.EMBEDDING_PROVIDER || 'auto',
+    jinaApiKey: process.env.JINA_API_KEY || '',
+    openaiApiKey: process.env.OPENAI_API_KEY || '',
   };
 }
