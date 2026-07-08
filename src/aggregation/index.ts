@@ -6,5 +6,3 @@ export { formatResults } from './format.js';
 export { expandQuery } from './query-expander.js';
 export { enrichResults } from './enricher.js';
 export type { EnrichOptions, EnrichResult } from './enricher.js';
-export { rerankBySemantics } from './semantic-reranker.js';
-export type { SemanticRerankerOptions, SemanticRerankerResult, EmbeddingProvider } from './semantic-reranker.js';

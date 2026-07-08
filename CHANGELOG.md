@@ -8,27 +8,10 @@
 - **Content enrichment**: Low-confidence results auto-extract full page content via Jina Reader. Snippet replaced with extracted text, confidence boosted +0.33 (capped 1.0).
 - **Domain authority scoring**: `.edu`/`.gov`/`.ac.xx` domains get score boost (+0.12); known high-quality sites (wikipedia, stackoverflow, arxiv) weighted up; low-quality domains (blogspot, wordpress.com) penalized.
 - **Adaptive query expansion**: When waterfall confidence is insufficient, auto-generates alternative queries via rule engine (vs-split, prefix-strip, core keyword extraction, tech synonyms) and re-searches.
-- **Semantic reranking** (`free_search_advanced` with `semantic=true`): Embedding-based cosine similarity reranking. Catches conceptually related results that don't share keywords. Supports Jina (`jina-embeddings-v3`) and OpenAI (`text-embedding-3-small`) backends. Graceful fallback when no API key is configured.
-
-### New Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `JINA_API_KEY` | Jina Embeddings API key (free tier available) |
-| `OPENAI_API_KEY` | OpenAI Embeddings API key (reused from other config) |
-| `EMBEDDING_PROVIDER` | Force specific provider: `auto` (default), `jina`, `openai` |
-
-### New Parameters (free_search_advanced)
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `semantic` | boolean | `false` | Enable semantic reranking |
-| `semantic_top_k` | number (5-50) | `20` | Max results to rerank |
 
 ### Testing
 
-- 152 tests passing across 14 test files (was 140/13)
-- New module: semantic-reranker with 12 tests (cosine similarity + reranking logic)
+- 140 tests passing across 13 test files (was 95/11)
 
 ## v2.1.1 (2026-07-03)
 

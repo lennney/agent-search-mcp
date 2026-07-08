@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { searchWithFallback } from './free-search.js';
-import { rerankBySemantics } from '../aggregation/semantic-reranker.js';
 
 export function registerFreeSearchAdvanced(server: McpServer) {
   server.tool(
@@ -33,10 +32,6 @@ Not recommended for: Simple queries — use free_search instead.`,
         .describe('Enable content enrichment (extract full page for low-confidence results)'),
       enrich_max: z.number().min(1).max(10).optional().default(3)
         .describe('Max results to enrich per search'),
-      semantic: z.boolean().optional().default(false)
-        .describe('Enable semantic reranking via embeddings (catches conceptually similar results)'),
-      semantic_top_k: z.number().min(5).max(50).optional().default(20)
-        .describe('Max results to semantically rerank (higher = more API cost)'),
     },
     async (input) => {
       try {
@@ -54,38 +49,6 @@ Not recommended for: Simple queries — use free_search instead.`,
           enrich: input.enrich,
           enrichMax: input.enrich_max,
         });
-
-        // Apply semantic reranking if requested
-        if (input.semantic) {
-          const reranked = await rerankBySemantics(input.query, results.results, {
-            maxResults: input.semantic_top_k,
-          });
-
-          if (reranked.rerankedCount > 0) {
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: JSON.stringify(
-                    {
-                      ...results,
-                      results: reranked.reranked,
-                      semantic: {
-                        enabled: true,
-                        rerankedCount: reranked.rerankedCount,
-                        provider: reranked.provider,
-                        model: reranked.model,
-                      },
-                    },
-                    null,
-                    2,
-                  ),
-                },
-              ],
-            };
-          }
-        }
-
         return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
       } catch (error) {
         return {
