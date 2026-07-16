@@ -20,6 +20,18 @@ const DOMAIN_AUTHORITY: Record<string, number> = {
   // 低质量/采集站 (负加成)
   "blogspot.com": -0.03,
   "wordpress.com": -0.02,
+  // 中文权威站点
+  "baike.baidu.com": 0.15,
+  "zhihu.com": 0.10,
+  "csdn.net": 0.05,
+  "cnblogs.com": 0.05,
+  "segmentfault.com": 0.05,
+  "infoq.cn": 0.05,
+  "jianshu.com": 0.03,
+  "oschina.net": 0.03,
+  "sspai.com": 0.03,
+  "36kr.com": 0.03,
+  "huxiu.com": 0.03,
 };
 
 /**
@@ -38,6 +50,8 @@ function getDomainBoost(url: string): number {
     }
     
     // 2. TLD 匹配 (.edu / .gov / .ac.xx)
+    if (hostname.endsWith(".edu.cn")) return 0.12;
+    if (hostname.endsWith(".gov.cn")) return 0.12;
     if (hostname.endsWith(".edu")) return DOMAIN_AUTHORITY[".edu"];
     if (hostname.endsWith(".gov")) return DOMAIN_AUTHORITY[".gov"];
     // .ac.uk, .ac.jp, .ac.cn 等学术域名

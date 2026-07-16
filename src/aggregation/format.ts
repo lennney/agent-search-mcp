@@ -1,6 +1,17 @@
 import { ScoredResult } from './scorer.js';
 import { processResultSecurity, getSecurityNote, wrapWithBoundaryMarkers } from '../infrastructure/security.js';
 
+const TITLE_MAX = 100;
+const TITLE_MAX_CN = 150;
+const SNIPPET_MAX = 200;
+const SNIPPET_MAX_CN = 300;
+
+const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/;
+
+export function isChinese(text: string): boolean {
+  return CJK_RE.test(text);
+}
+
 interface FormattedResult {
   title: string;
   url: string;
@@ -39,9 +50,9 @@ export function formatResults(results: ScoredResult[]): FormattedResponse {
 
   return {
     results: secured.map(r => ({
-      title: r.title.slice(0, 100),
+      title: isChinese(r.title) ? r.title.slice(0, TITLE_MAX_CN) : r.title.slice(0, TITLE_MAX),
       url: r.url,
-      snippet: r.snippet.slice(0, 200),
+      snippet: isChinese(r.snippet) ? r.snippet.slice(0, SNIPPET_MAX_CN) : r.snippet.slice(0, SNIPPET_MAX),
       confidence: r.confidence,
       // Only include security details if threats detected
       ...(r.security.injectionDetected || !r.security.urlSafe ? {
@@ -77,9 +88,9 @@ export function formatResultsXml(results: ScoredResult[]): string {
   const body = results.map(r => {
     const secured = processResultSecurity(r);
     return wrapWithBoundaryMarkers({
-      title: secured.title.slice(0, 100),
+      title: isChinese(secured.title) ? secured.title.slice(0, TITLE_MAX_CN) : secured.title.slice(0, TITLE_MAX),
       url: secured.url,
-      snippet: secured.snippet.slice(0, 200),
+      snippet: isChinese(secured.snippet) ? secured.snippet.slice(0, SNIPPET_MAX_CN) : secured.snippet.slice(0, SNIPPET_MAX),
       confidence: secured.confidence,
     });
   }).join('\n');
