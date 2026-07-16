@@ -7,6 +7,7 @@ import { registerFreeExtract } from './tools/free-extract.js';
 import { setupFetchTools } from './tools/fetch-tools.js';
 import { registerCapabilities } from './tools/capabilities.js';
 import { registerHealth } from './tools/health.js';
+import { registerSearchWithSynthesis } from './tools/search-with-synthesis.js';
 import { loadConfig } from './infrastructure/config.js';
 import { createHttpServer } from './infrastructure/http.js';
 
@@ -23,6 +24,7 @@ async function main() {
   registerFreeSearchAdvanced(server);
   registerFreeExtract(server);
   setupFetchTools(server);
+  registerSearchWithSynthesis(server);
 
   // Register resources
   registerCapabilities(server);
