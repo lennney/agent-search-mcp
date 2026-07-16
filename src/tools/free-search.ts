@@ -8,7 +8,7 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import type { SearchResult, SearchProvider } from '../types.js';
-import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery } from '../aggregation/index.js';
+import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy } from '../infrastructure/index.js';
 
 const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
@@ -618,7 +618,19 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
 
   // ── Phase 3: Query Expansion (if confidence still low) ──────────
   if (!basketFull) {
-    const alternatives = expandQuery(query);
+    // 3a: Chinese query optimization — try character variants first
+    let alternatives: string[] = [];
+    if (hasChinese(query)) {
+      alternatives = generateChineseVariants(query);
+      if (alternatives.length > 0) {
+        logger.info({ alternatives, source: 'chinese-optimizer' }, 'Phase 3a: Chinese query variants');
+      }
+    }
+    // 3b: Fall back to generic query expansion for non-Chinese or if Chinese
+    //     variants were insufficient (empty or already exhausted)
+    if (alternatives.length === 0) {
+      alternatives = expandQuery(query);
+    }
     if (alternatives.length > 0) {
       logger.info({ alternatives }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
