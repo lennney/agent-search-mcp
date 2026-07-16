@@ -9,7 +9,7 @@ import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import type { SearchResult, SearchProvider } from '../types.js';
 import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery } from '../aggregation/index.js';
-import { SearchCache, logger, HealthTracker, RateLimiter } from '../infrastructure/index.js';
+import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy } from '../infrastructure/index.js';
 
 const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
@@ -30,6 +30,8 @@ const ENGINE_WEIGHTS: Record<string, number> = {
 const cache = new SearchCache();
 const healthTracker = new HealthTracker();
 const rateLimiter = new RateLimiter();
+const config = loadConfig();
+const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
 
 // ─── Engine provider mapping (from ddgs pattern) ──────────────────────────
 // DDG uses Bing as backend, so we track providers to avoid duplicate queries
@@ -71,6 +73,12 @@ async function searchEngine(
   limit: number,
   maxRetries: number = 2
 ): Promise<SearchResult[]> {
+  // Skip engines blocked by policy
+  if (!enginePolicy.isAllowed(engine)) {
+    logger.info({ engine }, 'Engine blocked by policy');
+    return [];
+  }
+
   // Skip unhealthy providers
   if (!healthTracker.isHealthy(engine)) {
     logger.warn({ engine }, 'Skipping unhealthy provider');
@@ -664,7 +672,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
 // ─── Tool registration ──────────────────────────────────────────────────
 
 // Export the health tracker instance so index.ts can use the same singleton
-export { healthTracker };
+export { healthTracker, enginePolicy };
 
 export function setupFreeSearchTool(server: McpServer): void {
   server.tool(

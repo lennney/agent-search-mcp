@@ -7,6 +7,8 @@ export interface Config {
   proxyUrl: string;
   defaultEngine: string;
   allowedEngines: string[];
+  ALLOWED_ENGINES: string;
+  DENIED_ENGINES: string;
 }
 
 export function loadConfig(): Config {
@@ -27,5 +29,7 @@ export function loadConfig(): Config {
     allowedEngines: process.env.ALLOWED_ENGINES
       ? process.env.ALLOWED_ENGINES.split(',').map(e => e.trim())
       : [],
+    ALLOWED_ENGINES: process.env.ALLOWED_ENGINES || '',
+    DENIED_ENGINES: process.env.DENIED_ENGINES || '',
   };
 }
