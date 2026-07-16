@@ -289,6 +289,36 @@ async function executeSearch(options: SearchWithFallbackOptions): Promise<Search
   return executeParallelSearch(options);
 }
 
+/**
+ * Calculate adaptive concurrency based on engine health and request count.
+ *
+ * Strategy (ordered by priority):
+ * 1. If >50% of engines are unhealthy → reduce to 2 (conservative, avoids
+ *    overwhelming failing backends with concurrent requests)
+ * 2. If all engines are healthy (no recent failures) → increase to
+ *    `min(engines.length, ceil(count / 3))` — aggressive, capitalizes on
+ *    fast/reliable backends
+ * 3. Base concurrency: `min(engines.length, max(2, ceil(count / 5)))` —
+ *    slightly more aggressive than the original formula
+ *
+ * @param engines  Candidate search engines for the current batch/phase.
+ * @param count    Requested result count (drives how many engines to fan out).
+ * @returns        Number of engines to search concurrently in one batch.
+ */
+function calculateAdaptiveConcurrency(engines: SearchProvider[], count: number): number {
+  const unhealthyCount = engines.filter(e => !healthTracker.isHealthy(e)).length;
+  const unhealthyRatio = engines.length > 0 ? unhealthyCount / engines.length : 0;
+  const allHealthy = unhealthyCount === 0;
+
+  const conservativeConcurrency = 2;
+  const aggressiveConcurrency = Math.min(engines.length, Math.ceil(count / 3));
+  const baseConcurrency = Math.min(engines.length, Math.max(2, Math.ceil(count / 5)));
+
+  if (unhealthyRatio > 0.5) return conservativeConcurrency;
+  if (allHealthy) return aggressiveConcurrency;
+  return baseConcurrency;
+}
+
 async function executeParallelSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
   const {
     query,
@@ -322,8 +352,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const phase1Engines = [...freeToSearch, ...allFree];
 
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
-  // Adaptive batch size based on count and engine count
-  const BATCH_SIZE = Math.max(2, Math.min(phase1Engines.length, Math.ceil(count / 10) + 1));
+  const BATCH_SIZE = calculateAdaptiveConcurrency(phase1Engines, count);
   const allResults: SearchResult[] = [];
   const failures: { engine: string; message: string }[] = [];
   const searchedEngines: string[] = [];
@@ -497,19 +526,24 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
   const searchedEngines: string[] = [];
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
-    const phaseResults = await Promise.allSettled(
-      engines.map(async (engine) => {
-        const results = await searchEngine(engine, query, count);
-        searchedEngines.push(engine);
-        return { engine, results };
-      })
-    );
+    const batchSize = calculateAdaptiveConcurrency(engines, count);
 
-    for (const result of phaseResults) {
-      if (result.status === "fulfilled") {
-        allResults.push(...result.value.results);
-      } else {
-        allFailures.push({ engine: "unknown", message: result.reason?.message || "Unknown error" });
+    for (let i = 0; i < engines.length; i += batchSize) {
+      const batch = engines.slice(i, i + batchSize);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (engine) => {
+          const results = await searchEngine(engine, query, count);
+          searchedEngines.push(engine);
+          return { engine, results };
+        })
+      );
+
+      for (const result of batchResults) {
+        if (result.status === "fulfilled") {
+          allResults.push(...result.value.results);
+        } else {
+          allFailures.push({ engine: "unknown", message: result.reason?.message || "Unknown error" });
+        }
       }
     }
 
