@@ -3,10 +3,11 @@
 > 🔍 免费多源搜索 MCP 服务器 — 多源验证、Token 优化、瀑布式搜索、MCP 原生、可自托管。
 
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-140%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
-[![Version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-149%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 
 **兼容 Hermes、Claude Code、Cursor、Windsurf、OpenClaw、Codex 等所有 MCP 客户端。**
 
@@ -445,7 +446,7 @@ MCP Server
 
 | 指标 | 数值 |
 |------|------|
-| 测试数量 | **140**（13 个文件） |
+| 测试数量 | **149**（13 个文件） |
 | 源码量 | ~2,500 行 TypeScript |
 | 免费引擎 | 4（DDG + Sogou + Bing + Baidu） |
 | 付费引擎 | 3（Brave + Tavily + Exa） |
@@ -491,15 +492,15 @@ npm start
 
 ## Roadmap
 
-- [x] v1.0.0 — DDG + Sogou 免费引擎、多源验证、去重、评分
-- [x] v2.0.0 — Bing + Baidu 引擎、HTTP/SSE 模式、安全层、配置模块
-- [x] v2.1.0 — CLI 二进制 (`fasm`)、ContextManager、双模式服务器
-- [x] **v2.2.0 — 瀑布搜索、内容丰富化、域名权威、查询扩展** ← 当前版本
-- [ ] v3.0.0 — 语义/神经搜索（基于 embedding 的概念匹配）
-- [ ] v3.1.0 — 答案引擎模式（多源结果 LLM 合成）
-- [ ] v3.2.0 — 实体搜索（人、公司、代码）
-- [ ] v4.0.0 — 插件系统，支持自定义引擎
-- [ ] v4.1.0 — 浏览器提取（Playwright）
+- [x] DDG + Sogou 免费引擎、多源验证、去重、评分
+- [x] Bing + Baidu 引擎、HTTP/SSE 模式、安全层、配置模块
+- [x] CLI 二进制 (`fasm`)、ContextManager、双模式服务
+- [x] **瀑布搜索、内容丰富化、域名权威、查询扩展** ← 当前版本
+- [ ] 语义/神经搜索（基于 embedding 的概念匹配）
+- [ ] 答案引擎模式（多源结果 + LLM 综合）
+- [ ] 实体搜索（人物、公司、代码）
+- [ ] 插件系统（自定义引擎）
+- [ ] 浏览器提取（Playwright）
 
 ---
 

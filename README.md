@@ -3,10 +3,11 @@
 > 🔍 Free multi-source search for AI agents — multi-source verification, token savings, waterfall search, MCP native.
 
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-140%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
-[![Version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-149%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 
 **Works with Hermes, Claude Code, Cursor, Windsurf, OpenClaw, Codex, and any MCP-compatible client.**
 
@@ -477,7 +478,7 @@ MCP Server
 
 | Metric | Value |
 |--------|-------|
-| Test count | **140** (across 13 files) |
+| Test count | **149** (across 13 files) |
 | Source files | ~2,500 lines TypeScript |
 | Free engines | 4 (DDG + Sogou + Bing + Baidu) |
 | Paid engines | 3 (Brave + Tavily + Exa) |
@@ -523,15 +524,15 @@ npm start
 
 ## Roadmap
 
-- [x] v1.0.0 — DDG + Sogou free engines, multi-source verification, dedup, scoring
-- [x] v2.0.0 — Bing + Baidu engines, HTTP/SSE mode, security layer, config module
-- [x] v2.1.0 — CLI binary (`fasm`), ContextManager, dual-mode server
-- [x] **v2.2.0 — Waterfall search, content enrichment, domain authority, query expansion** ← You are here
-- [ ] v3.0.0 — Semantic/neural search (embedding-based conceptual matching)
-- [ ] v3.1.0 — Answer engine mode (LLM synthesis on multi-source results)
-- [ ] v3.2.0 — Entity-specific search (people, companies, code)
-- [ ] v4.0.0 — Plugin system for custom engines
-- [ ] v4.1.0 — Browser-based extraction (Playwright)
+- [x] DDG + Sogou free engines, multi-source verification, dedup, scoring
+- [x] Bing + Baidu engines, HTTP/SSE mode, security layer, config module
+- [x] CLI binary (`fasm`), ContextManager, dual-mode server
+- [x] **Waterfall search, content enrichment, domain authority, query expansion** ← You are here
+- [ ] Semantic/neural search (embedding-based conceptual matching)
+- [ ] Answer engine mode (LLM synthesis on multi-source results)
+- [ ] Entity-specific search (people, companies, code)
+- [ ] Plugin system for custom engines
+- [ ] Browser-based extraction (Playwright)
 
 ---
 
