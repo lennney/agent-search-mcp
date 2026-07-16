@@ -1,7 +1,7 @@
 {
   "name": "agent-search-mcp",
   "version": "2.2.0",
-  "description": "Lightweight MCP search server with free DuckDuckGo + Sogou engines, optional Brave + Tavily paid engines, deduplication, scoring, and caching",
+  "description": "Free multi-engine MCP search server — 7 engines (DDG, Sogou, Bing, Baidu, Brave, Tavily, Exa), waterfall progressive search, multi-source verification, content enrichment, and CLI. Zero API keys needed.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
