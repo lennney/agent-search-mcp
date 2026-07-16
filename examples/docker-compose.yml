@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  agent-search:
+    image: node:20-slim
+    working_dir: /app
+    command: npx agent-search-mcp
+    volumes:
+      - .:/app
+    ports:
+      - "3000:3000"
+    environment:
+      - BRAVE_API_KEY=${BRAVE_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - EXA_API_KEY=${EXA_API_KEY:-}
+    stdin_open: true
+    tty: true
