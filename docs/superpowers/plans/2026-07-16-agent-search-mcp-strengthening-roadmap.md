@@ -602,11 +602,14 @@ search_with_synthesis(query)
 
 ## 阶段规划
 
-| Phase | 内容 | 预计时间 | 核心交付 |
-|-------|------|---------|---------|
-| Phase 1 | 快速修复 | 1-2 天 | 百度摘要、npm 描述、LEARNINGS、badges |
-| Phase 2 | MCP 规范 + 架构债务 | 3-5 天 | MCP 规范合规、allow/denylist、自适应并发 |
-| Phase 3 | 中文搜索护城河 | 2-3 天 | 中文权威源、查询优化、摘要长度适配 |
-| Phase 4 | 答案引擎 | 3-5 天 | search_with_synthesis、LLM 总结 |
-| Phase 5 | Playwright + 嵌入排序 | 4-6 天 | 浏览器提取、嵌入二次排序 |
-| Phase 6 | 插件系统 + 实体搜索 | 5-7 天 | 插件接口、人物/公司/代码搜索 |
+| Phase | 内容 | 状态 | 核心交付 |
+|-------|------|------|---------|
+| Phase 1 | 快速修复 | ✅ 完成 | 百度摘要、npm 描述、LEARNINGS、badges |
+| Phase 2 | MCP 规范 + 架构债务 | ✅ 完成 | SDK 升级、allow/denylist、自适应并发 |
+| Phase 3 | 中文搜索护城河 | ✅ 完成 | 中文权威源、查询优化、摘要长度适配 |
+| Phase 4 | 答案引擎 | ✅ 完成 | search_with_synthesis（纯数据 + prompt_hint，零 LLM） |
+| Phase 5 | 扩充免费引擎 | ✅ 完成 | Wikipedia + Startpage（9 引擎总计） |
+| ~~Phase 5~~ | ~~Playwright + 嵌入排序~~ | 🚫 跳过 | 违背轻量化原则（Chromium ~300MB，模型 ~90MB） |
+| ~~Phase 6~~ | ~~插件系统 + 实体搜索~~ | 🚫 跳过 | 过度设计，ddgs 参考表明加引擎比加系统更有价值 |
+
+**最终结果**: 140 → 219 tests, 4 → 6 免费引擎, 6 → 7 MCP 工具, 依赖数不变（4 个）
