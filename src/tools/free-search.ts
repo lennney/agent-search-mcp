@@ -8,7 +8,7 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import type { SearchResult, SearchProvider } from '../types.js';
-import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants } from '../aggregation/index.js';
+import { dedupByProvider, dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy } from '../infrastructure/index.js';
 
 const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
@@ -230,6 +230,8 @@ interface SearchResponse {
     engines: string[];
   };
   security_note: string;
+  detected_language?: string;
+  rate_limits?: Record<string, { remaining: number; resetInMs: number }>;
   partialFailures?: { engine: string; message: string }[];
 }
 
@@ -329,6 +331,9 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     includeDomains,
     excludeDomains,
   } = options;
+
+  const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
+  logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
 
   // Check cache first
   const cacheKey = cache.makeKey(query, count, userEngines);
@@ -484,6 +489,8 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     query,
     engines: userEngines,
     ...formatted,
+    detected_language: detectedLang,
+    rate_limits: rateLimiter.getAllRateLimits(searchedEngines),
     ...(failures.length > 0
       ? { partialFailures: failures }
       : {}),
@@ -520,6 +527,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
     waterfallMinResults = 3,
     waterfallMinConfidence = 0.6,
   } = options;
+
+  const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
+  logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
 
   const allResults: SearchResult[] = [];
   const allFailures: { engine: string; message: string }[] = [];
@@ -701,6 +711,8 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
     query,
     engines: searchedEngines,
     ...formatted,
+    detected_language: detectedLang,
+    rate_limits: rateLimiter.getAllRateLimits(searchedEngines),
     ...(allFailures.length > 0 ? { partialFailures: allFailures } : {}),
   } as SearchResponse;
 

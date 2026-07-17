@@ -33,6 +33,7 @@ interface FormattedResponse {
     engines: string[];
   };
   security_note: string;
+  rate_limits?: Record<string, { remaining: number; resetInMs: number }>;
 }
 
 /**

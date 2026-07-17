@@ -90,3 +90,42 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
     return [];
   }
 }
+
+/**
+ * Search DuckDuckGo News using ddgs Python library.
+ * Falls back to empty array if Python/ddgs not available.
+ */
+export async function searchDuckduckgoNews(query: string, limit: number = 10, timeRange: string = 'w'): Promise<SearchResult[]> {
+  const pythonBin = findPython();
+  const timeMap: Record<string, string> = { day: 'd', week: 'w', month: 'm' };
+  const timelimit = timeMap[timeRange] || 'w';
+
+  try {
+    const output = execFileSync(
+      pythonBin,
+      ['-c', `from ddgs import DDGS
+ddgs = DDGS()
+results = list(ddgs.news(${JSON.stringify(query)}, max_results=${limit}, timelimit='${timelimit}'))
+import json
+print(json.dumps([{'title': r.get('title',''), 'url': r.get('url',''), 'snippet': r.get('body',''), 'date': r.get('date',''), 'source_name': r.get('source','')} for r in results]))`],
+      {
+        timeout: 15000,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }
+    );
+
+    const entries = JSON.parse(output.trim());
+    return entries.map((r: any) => ({
+      title: r.title || '',
+      url: r.url || '',
+      snippet: r.snippet || '',
+      source: r.source_name || 'duckduckgo-news',
+      engines: ['duckduckgo'],
+    }));
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('DDG News search failed:', msg.slice(0, 200));
+    return [];
+  }
+}
