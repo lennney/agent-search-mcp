@@ -609,7 +609,7 @@ search_with_synthesis(query)
 | Phase 3 | 中文搜索护城河 | ✅ 完成 | 中文权威源、查询优化、摘要长度适配 |
 | Phase 4 | 答案引擎 | ✅ 完成 | search_with_synthesis（纯数据 + prompt_hint，零 LLM） |
 | Phase 5 | 扩充免费引擎 | ✅ 完成 | Wikipedia + Startpage（9 引擎总计） |
-| ~~Phase 5~~ | ~~Playwright + 嵌入排序~~ | 🚫 跳过 | 违背轻量化原则（Chromium ~300MB，模型 ~90MB） |
+| Phase 6 | 语言检测 + 速率限制 + 新闻搜索 + 引擎 | ✅ 完成 | detectLanguage, rate_limits, free_search_news, Yandex, Mojeek（11 引擎） |
 | ~~Phase 6~~ | ~~插件系统 + 实体搜索~~ | 🚫 跳过 | 过度设计，ddgs 参考表明加引擎比加系统更有价值 |
 
-**最终结果**: 140 → 219 tests, 4 → 6 免费引擎, 6 → 7 MCP 工具, 依赖数不变（4 个）
+**最终结果**: 140 → 235 tests, 4 → 8 免费引擎, 6 → 8 MCP 工具, 依赖数不变（4 个）
