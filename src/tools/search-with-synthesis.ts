@@ -31,14 +31,13 @@ export function registerSearchWithSynthesis(server: McpServer) {
 
         const rawResults = response.results || [];
         const engines = response.meta?.engines ?? [];
-        const primaryEngine = engines[0] || 'unknown';
 
         const results: SynthesisResult[] = rawResults.map((r) => ({
           title: r.title,
           url: r.url,
           snippet: r.snippet,
           confidence: r.confidence,
-          source: primaryEngine,
+          source: engines[0] || 'unknown',
         }));
 
         const promptHint = buildPromptHint(input.query, results);

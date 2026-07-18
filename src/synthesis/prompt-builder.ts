@@ -26,9 +26,11 @@ export function buildPromptHint(query: string, results: SynthesisResult[]): stri
     }
     hint += '\n';
   }
-  
+
+  hint += 'Note on confidence scores: 1 = single source, 2 = verified by 2+ engines, 3 = verified by 3+ engines.\n';
+  hint += 'If any result has a date in its snippet or URL, weigh recency accordingly.\n';
   hint += 'Based on these results, please provide a concise, factual answer with citations using [1], [2], etc. ';
-  hint += 'If results are insufficient or contradictory, note that honestly.';
+  hint += 'If results are insufficient, contradictory, or lack authoritative sources, note that honestly.';
   
   return hint;
 }

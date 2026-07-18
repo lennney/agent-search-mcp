@@ -80,6 +80,6 @@ describe('buildPromptHint', () => {
 
     expect(hint).toContain('concise, factual answer');
     expect(hint).toContain('citations using [1], [2]');
-    expect(hint).toContain('insufficient or contradictory');
+    expect(hint).toContain('insufficient, contradictory, or lack');
   });
 });

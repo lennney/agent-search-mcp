@@ -7,7 +7,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-149%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-329%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 
 **Works with Hermes, Claude Code, Cursor, Windsurf, OpenClaw, Codex, and any MCP-compatible client.**
 
@@ -377,6 +377,40 @@ Extract full content from a URL as Markdown.
 ```
 
 **Returns:** Markdown content with metadata. Full text stored to disk for pages over `max_length`.
+
+### `search_with_synthesis`
+
+Deep search with waterfall multi-engine verification. Returns structured results plus a `prompt_hint` for LLM-powered synthesis — no external LLM API calls needed.
+
+```json
+{
+  "query": "TypeScript MCP server",
+  "count": 10,
+  "language": "auto",
+  "min_confidence": 1
+}
+```
+
+**Returns:** `{ results, prompt_hint, meta }` — the `prompt_hint` field contains a formatted prompt ready for an LLM to synthesize an answer with citations.
+
+**Behaviour:**
+- Runs waterfall search (DDG+Sogou → Bing+Baidu → Brave+Tavily+Exa)
+- Auto-enriches low-confidence results via Jina Reader
+- Generates a `prompt_hint` with confidence scores and citation guidance
+
+### `free_search_news`
+
+Search recent news articles across multiple free engines.
+
+```json
+{
+  "query": "AI regulation",
+  "count": 10,
+  "time_range": "week"
+}
+```
+
+**Sources:** DuckDuckGo News + Bing News (free, no API key required).
 
 ---
 
