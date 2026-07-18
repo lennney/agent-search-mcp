@@ -265,9 +265,7 @@ describe('SearchCache', () => {
 
   it('returns null for expired entries', async () => {
     const { SearchCache } = await import('../src/infrastructure/cache.js');
-    const cache = new SearchCache();
-    // Override ttl to 10ms
-    (cache as any).ttl = 10;
+    const cache = new SearchCache({ defaultTtlMs: 10 });
     cache.set('key', 'value');
     await new Promise(r => setTimeout(r, 20));
     expect(cache.get('key')).toBeNull();
