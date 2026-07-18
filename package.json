@@ -1,6 +1,6 @@
 {
   "name": "agent-search-mcp",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Free multi-engine MCP search server — 7 engines (DDG, Sogou, Bing, Baidu, Brave, Tavily, Exa), waterfall progressive search, multi-source verification, content enrichment, and CLI. Zero API keys needed.",
   "type": "module",
   "main": "./dist/index.js",
