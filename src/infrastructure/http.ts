@@ -37,7 +37,7 @@ export function createHttpServer(options: HttpServerOptions): HttpServer {
     // Health check
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', version: '2.1.0' }));
+      res.end(JSON.stringify({ status: 'ok', version: '3.0.0' }));
       return;
     }
 

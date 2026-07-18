@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { SearchProvider } from './types.js';
 import { searchWithFallback } from './tools/free-search.js';
 import { createHttpServer } from './infrastructure/http.js';
@@ -77,7 +78,7 @@ export function parseArgs(argv: string[]): CliArgs {
 
 function showHelp(): void {
   console.log(`
-free-agent-search-mcp CLI v2.1.0
+free-agent-search-mcp CLI v3.0.0
 
 Usage:
   fasm search <query> [options]    Search the web
@@ -117,7 +118,7 @@ async function main(): Promise<void> {
   }
 
   if (args.version) {
-    console.log('free-agent-search-mcp v2.1.0');
+    console.log('free-agent-search-mcp v3.0.0');
     process.exit(0);
   }
 
