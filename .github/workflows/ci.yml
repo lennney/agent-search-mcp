@@ -46,7 +46,20 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check if version already published
+        id: check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if npm view "${{ github.event.repository.name }}" "$VERSION" &>/dev/null; then
+            echo "already_published=true" >> $GITHUB_OUTPUT
+            echo "Version $VERSION already exists on npm, skipping publish."
+          else
+            echo "already_published=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION is new, proceeding with publish."
+          fi
+
       - name: Publish to npm
+        if: steps.check.outputs.already_published == 'false'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
