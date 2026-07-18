@@ -30,6 +30,11 @@ describe('URL validation — SSRF bypass resistance', () => {
     ['http://0/', '0 shorthand (parses as 0.0.0.0)'],
     ['http://2130706433/', 'IPv4 as decimal (resolves to 127.0.0.1)'],
     ['http://0x7f000001/', 'IPv4 as hex (resolves to 127.0.0.1)'],
+    ['http://[::1]:8080/', 'IPv6 loopback ::1'],
+    ['http://[::ffff:127.0.0.1]/', 'IPv4-mapped IPv6 127.0.0.1'],
+    ['http://[::ffff:10.0.0.1]/', 'IPv4-mapped IPv6 RFC1918 10.x'],
+    ['http://100.100.100.200/latest/meta-data/', 'Alibaba metadata'],
+    ['http://kubernetes.default.svc/', 'K8s internal DNS'],
   ];
 
   BLOCKED.forEach(([url, label]) => {
@@ -38,22 +43,9 @@ describe('URL validation — SSRF bypass resistance', () => {
     });
   });
 
-  // NOT BLOCKED — known bypasses in the current validator
-  // These document gaps, not failures
-  const GAPS: [string, string][] = [
-    ['http://[::1]:8080/', 'IPv6 localhost ::1'],
-    ['http://[::ffff:127.0.0.1]/', 'IPv4-mapped IPv6'],
-    ['http://100.100.100.200/latest/meta-data/', 'Alibaba metadata'],
-    ['http://kubernetes.default.svc/', 'K8s internal DNS'],
-  ];
-
-  GAPS.forEach(([url, label]) => {
-    it(`GAP — does NOT block: ${label}`, () => {
-      // Document the current behavior
-      const result = validateUrl(url);
-      expect(result.valid).toBe(true);
-    });
-  });
+  // ── All known SSRF bypass vectors are now blocked ──
+  // IPv6 loopback, IPv4-mapped IPv6, Alibaba metadata, K8s internal
+  // All verified in the BLOCKED tests above.
 
   // LEGITIMATE URLs — should pass
   const LEGIT: [string, string][] = [
