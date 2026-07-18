@@ -40,7 +40,15 @@ const INJECTION_PATTERNS = [
 const OBFUSCATION_INDICATORS = [
   /\u200b|\u200c|\u200d|\ufeff/i, // zero-width characters
   /\u00ad/i, // soft hyphen
+  // Unicode normalization bypass — characters that normalize to ASCII
+  // instructions (e.g. fullwidth letters, confusables)
+  /[\uff01-\uff5e]/u, // fullwidth ASCII variants
+  /\u2010|\u2011|\u2012|\u2013|\u2014|\u2212/u, // dash confusables (﹣−–—―−)
 ];
+
+/** Base64-encoded payloads often used to hide injection instructions */
+const BASE64_PATTERN =
+  /(?:[A-Za-z0-9+/]{40,}={0,2})(?:\s*(?:ignore|override|system|instructions?))?/i;
 
 export interface InjectionCheckResult {
   clean: boolean;
@@ -67,6 +75,12 @@ export function checkSnippetInjection(snippet: string): InjectionCheckResult {
     if (match) {
       threats.push(`Obfuscation detected: ${pattern.source}`);
     }
+  }
+
+  // Check for base64-encoded instruction payloads
+  const b64Match = snippet.match(BASE64_PATTERN);
+  if (b64Match) {
+    threats.push('Potential base64-encoded instruction payload detected');
   }
 
   if (threats.length === 0) {

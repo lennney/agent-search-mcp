@@ -6,6 +6,7 @@ import { SearchResult } from '../types.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-search.py');
+const NEWS_SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-news-search.py');
 
 // Python paths to check for ddgs availability, ordered by reliability.
 // pipx venv is preferred (has latest ddgs); PATH and common locations are fallbacks.
@@ -103,11 +104,7 @@ export async function searchDuckduckgoNews(query: string, limit: number = 10, ti
   try {
     const output = execFileSync(
       pythonBin,
-      ['-c', `from ddgs import DDGS
-ddgs = DDGS()
-results = list(ddgs.news(${JSON.stringify(query)}, max_results=${limit}, timelimit='${timelimit}'))
-import json
-print(json.dumps([{'title': r.get('title',''), 'url': r.get('url',''), 'snippet': r.get('body',''), 'date': r.get('date',''), 'source_name': r.get('source','')} for r in results]))`],
+      [NEWS_SCRIPT_PATH, query, String(limit), timelimit],
       {
         timeout: 15000,
         encoding: 'utf-8',
