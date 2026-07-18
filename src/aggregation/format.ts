@@ -1,6 +1,5 @@
 import { ScoredResult } from './scorer.js';
-import { processResultSecurity, getSecurityNote, wrapWithBoundaryMarkers } from '../infrastructure/security.js';
-
+import { processResultSecurity, getSecurityNote } from '../infrastructure/security.js';
 const TITLE_MAX = 100;
 const TITLE_MAX_CN = 150;
 const SNIPPET_MAX = 200;
@@ -42,11 +41,9 @@ interface FormattedResponse {
  * Security features:
  * - Snippet injection detection and marking
  * - URL phishing detection
- * - Boundary markers for agent clarity
  * - Security metadata per result
  */
 export function formatResults(results: ScoredResult[]): FormattedResponse {
-  // Process security for each result
   const secured = results.map(r => processResultSecurity(r));
 
   return {
@@ -55,7 +52,6 @@ export function formatResults(results: ScoredResult[]): FormattedResponse {
       url: r.url,
       snippet: isChinese(r.snippet) ? r.snippet.slice(0, SNIPPET_MAX_CN) : r.snippet.slice(0, SNIPPET_MAX),
       confidence: r.confidence,
-      // Only include security details if threats detected
       ...(r.security.injectionDetected || !r.security.urlSafe ? {
         security: {
           injection_detected: r.security.injectionDetected,
@@ -72,31 +68,4 @@ export function formatResults(results: ScoredResult[]): FormattedResponse {
     },
     security_note: getSecurityNote(),
   };
-}
-
-/**
- * Format results as XML boundary-marked output.
- * Useful for agents that need clear data/instruction separation.
- */
-export function formatResultsXml(results: ScoredResult[]): string {
-  const header = [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<search-response>',
-    `  <security-note>${getSecurityNote()}</security-note>`,
-    '  <results>',
-  ].join('\n');
-
-  const body = results.map(r => {
-    const secured = processResultSecurity(r);
-    return wrapWithBoundaryMarkers({
-      title: isChinese(secured.title) ? secured.title.slice(0, TITLE_MAX_CN) : secured.title.slice(0, TITLE_MAX),
-      url: secured.url,
-      snippet: isChinese(secured.snippet) ? secured.snippet.slice(0, SNIPPET_MAX_CN) : secured.snippet.slice(0, SNIPPET_MAX),
-      confidence: secured.confidence,
-    });
-  }).join('\n');
-
-  const footer = '  </results>\n</search-response>';
-
-  return [header, body, footer].join('\n');
 }
