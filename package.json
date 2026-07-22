@@ -1,7 +1,7 @@
 {
   "name": "agent-search-mcp",
-  "version": "3.1.1",
-  "description": "Zero-config, 11-engine free MCP search server. DuckDuckGo, Sogou, Bing, Baidu + 7 more. No API keys needed. Waterfall search, multi-source verification, content extraction & news.",
+  "version": "3.1.2",
+  "description": "Zero-config, 11-engine free MCP search server for AI agents. DuckDuckGo, Sogou, Bing, Baidu + 7 more. No API keys needed. Waterfall progressive search, multi-source verification, content extraction, news & CLI.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -38,6 +38,13 @@
     "ai-agent",
     "agent",
     "llm",
+    "claude",
+    "cursor",
+    "claude-code",
+    "windsurf",
+    "search-engine",
+    "multi-source",
+    "multi-engine",
     "duckduckgo",
     "sogou",
     "bing",
@@ -45,12 +52,13 @@
     "brave",
     "tavily",
     "exa",
-    "free-search",
-    "multi-engine",
     "waterfall",
+    "progressive-search",
     "news-search",
     "content-extraction",
-    "open-source"
+    "open-source",
+    "self-hosted",
+    "chinese-search"
   ],
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('dist/index.js', '755')\"",
