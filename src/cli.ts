@@ -1,8 +1,16 @@
 #!/usr/bin/env node
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { SearchProvider } from './types.js';
 import { searchWithFallback } from './tools/free-search.js';
 import { createHttpServer } from './infrastructure/http.js';
 import { loadConfig } from './infrastructure/config.js';
+import { checkForUpdates } from './infrastructure/version-check.js';
+
+// Read package.json version at module load
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')).version;
 
 export interface CliArgs {
   command: 'search' | 'extract' | 'serve' | 'help';
@@ -78,7 +86,7 @@ export function parseArgs(argv: string[]): CliArgs {
 
 function showHelp(): void {
   console.log(`
-free-agent-search-mcp CLI v3.0.0
+agent-search-mcp CLI v${PKG_VERSION}
 
 Usage:
   fasm search <query> [options]    Search the web
@@ -86,6 +94,7 @@ Usage:
   fasm serve [options]             Start HTTP server
   fasm --help                      Show this help
   fasm --version                   Show version
+  fasm update                      Check for updates
 
 Search Options:
   --count <n>          Number of results (1-50, default: 10)
@@ -118,9 +127,12 @@ async function main(): Promise<void> {
   }
 
   if (args.version) {
-    console.log('free-agent-search-mcp v3.0.0');
+    console.log(`agent-search-mcp v${PKG_VERSION}`);
     process.exit(0);
   }
+
+  // Check for updates in background (non-blocking, cached)
+  checkForUpdates();
 
   // Set proxy if provided
   if (args.proxy) {
