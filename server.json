@@ -1,0 +1,57 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.lennney/agent-search-mcp",
+  "description": "11-engine MCP search server for AI agents. Free, zero API keys needed. Waterfall, verify, extract.",
+  "repository": {
+    "url": "https://github.com/lennney/agent-search-mcp",
+    "source": "github"
+  },
+  "version": "3.1.2",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "agent-search-mcp",
+      "version": "3.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Brave Search API key (optional, enables Brave engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "BRAVE_API_KEY"
+        },
+        {
+          "description": "Tavily Search API key (optional, enables Tavily engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "TAVILY_API_KEY"
+        },
+        {
+          "description": "Exa Search API key (optional, enables Exa engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "EXA_API_KEY"
+        },
+        {
+          "description": "Run mode: stdio (default), http, or both",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "MODE"
+        },
+        {
+          "description": "HTTP port (default: 3000)",
+          "isRequired": false,
+          "format": "number",
+          "isSecret": false,
+          "name": "PORT"
+        }
+      ]
+    }
+  ]
+}

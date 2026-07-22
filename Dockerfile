@@ -7,9 +7,11 @@ RUN npm run build
 
 FROM node:20-slim AS runtime
 WORKDIR /app
+RUN groupadd -r agent-search && useradd -r -g agent-search agent-search
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package*.json ./
+USER agent-search
 EXPOSE 3000
 ENV MODE=http
 ENV PORT=3000
