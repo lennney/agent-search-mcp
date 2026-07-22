@@ -11,10 +11,11 @@ tags:
 
 ## 项目状态
 
-**版本**: v3.0.1（未发布）
+**版本**: v3.1.0（已发布 npm + GitHub Release）
 **引擎**: 11 个（ddg/sogou/bing/baidu/brave/tavily/exa/yandex/mojeek/wikipedia/startpage）
-**测试**: vitest — 424 passed, 38 test files
+**测试**: vitest — 438 passed, 38 test files
 **最后更新**: 2026-07-22
+**npm**: https://www.npmjs.com/package/agent-search-mcp
 **Python 依赖**: 可选（ddgs 不再是硬依赖，DDG 自动回退到 cheerio HTML 引擎）
 
 ## 最近活动
