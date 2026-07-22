@@ -1,5 +1,7 @@
 # agent-search-mcp 强化路线图 — 阶段性实现计划
 
+> **⚠️ 已废弃**: 旧 6 阶段路线图（Phase 1-6 全部完成）。新路线图见 [2026-07-22-iteration-roadmap.md](2026-07-22-iteration-roadmap.md)。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 分 6 个阶段强化 agent-search-mcp：快速修复 → MCP 规范合规 → 中文护城河 → 答案引擎 → 语义搜索 + 浏览器提取 → 插件系统 + 实体搜索。每个 Phase 独立可测。

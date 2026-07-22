@@ -16,7 +16,16 @@
 |------|------|
 | [AGENTS.md](../AGENTS.md) | 项目地图 — agent 进入项目的第一站 |
 | [conventions.md](conventions.md) | 编码规范详情 |
-| [architecture.md](architecture.md) | 技术架构文档 |
+| [release-process.md](release-process.md) | 发布流程 checklist |
+| [architecture.md](architecture.md) | 系统架构文档（分层+数据流+关键模式） |
+| [ARCHITECTURE-IMPROVEMENTS.md](ARCHITECTURE-IMPROVEMENTS.md) | 从竞品提炼的 8 个架构模式 |
+
+## 路线图
+
+| 文档 | 说明 |
+|------|------|
+| [superpowers/plans/2026-07-22-iteration-roadmap.md](superpowers/plans/2026-07-22-iteration-roadmap.md) | 当前路线图（v3.1.0 → v3.2.0） |
+| [superpowers/plans/2026-07-16-agent-search-mcp-strengthening-roadmap.md](superpowers/plans/2026-07-16-agent-search-mcp-strengthening-roadmap.md) | 旧路线图 — 全部完成，已废弃 |
 
 ## 架构决策
 
