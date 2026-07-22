@@ -3,13 +3,13 @@ import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { SearchResult } from '../types.js';
+import { logger } from '../infrastructure/logger.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-search.py');
 const NEWS_SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-news-search.py');
 
 // Python paths to check for ddgs availability, ordered by reliability.
-// pipx venv is preferred (has latest ddgs); PATH and common locations are fallbacks.
 const PYTHON_CANDIDATES = (() => {
   const home = process.env.HOME || '';
   const pipxDir = `${home}/.local/pipx/venvs/ddgs`;
@@ -31,37 +31,79 @@ export const duckduckgoProvider = {
   languages: ['en'],
 };
 
+// ─── Lazy Python detection (cached) ──────────────────────────────────────
+
+let _pythonBin: string | null = null;
+let _ddgsChecked = false;
+
 /**
- * Find python3 that has `ddgs` module available.
- * Tries pipx venv first (most reliable), then PATH python3, then common hardcoded paths.
+ * Probe Python candidates for ddgs availability. Called at most once;
+ * result is cached in _pythonBin.
  */
-function findPython(): string {
+function detectPythonBin(): string | null {
   const testScript = 'import ddgs; print(ddgs.__version__)';
   for (const p of PYTHON_CANDIDATES) {
     try {
-      const out = execFileSync(p, ['-c', testScript], { timeout: 3000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
-      console.error(`DDG: Using python=${p} (ddgs v${out.trim()})`);
+      const out = execFileSync(p, ['-c', testScript], {
+        timeout: 3000,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      logger.info({ python: p, version: out.trim() }, 'DDG: Using Python backend');
       return p;
     } catch {
       continue;
     }
   }
-  return 'python3'; // last resort, let execFileSync throw a clearer error
+  return null;
 }
 
 /**
+ * Get the cached Python binary path (or null if ddgs not available).
+ * Detection runs only once per process lifetime.
+ */
+function getPythonBin(): string | null {
+  if (_ddgsChecked) return _pythonBin;
+  _ddgsChecked = true;
+  _pythonBin = detectPythonBin();
+  if (!_pythonBin) {
+    logger.warn('DDG: Python/ddgs not available — DuckDuckGo engine will return empty results');
+  }
+  return _pythonBin;
+}
+
+/**
+ * Check whether the ddgs Python library is available.
+ * Triggers lazy detection on first call; subsequent calls use cached result.
+ */
+export function isDdgsAvailable(): boolean {
+  return getPythonBin() !== null;
+}
+
+/**
+ * Get the Python binary path for internal use. Returns null if unavailable.
+ */
+function getPythonBinOrNull(): string | null {
+  return getPythonBin();
+}
+
+// ─── Search functions ────────────────────────────────────────────────────
+
+/**
  * Search DuckDuckGo using ddgs Python library (bypasses anti-bot).
- * Falls back to empty array if Python/ddgs not available.
+ * Returns empty array if Python/ddgs not available.
  */
 export async function searchDuckDuckGo(query: string, limit: number = 10): Promise<SearchResult[]> {
-  const pythonBin = findPython();
+  const pythonBin = getPythonBinOrNull();
+  if (!pythonBin) {
+    return [];
+  }
   try {
-    // Use execFileSync to avoid shell injection (query passed as argument, not shell-interpolated)
     const output = execFileSync(
       pythonBin,
       [SCRIPT_PATH, query, String(limit)],
       {
-        timeout: 15000,  // 15s timeout
+        timeout: 15000,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
       }
@@ -76,17 +118,13 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
       engines: ['duckduckgo'],
     }));
   } catch (error) {
-    // Python/ddgs not available or timed out
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('ENOENT')) {
-      console.error(`DDG: ${pythonBin} not found, skipping`);
-      console.error(`DDG: script path = ${SCRIPT_PATH}`);
+      logger.warn({ python: pythonBin, script: SCRIPT_PATH }, 'DDG: Python binary not found');
     } else if (msg.includes('timeout')) {
-      console.error('DDG: Search timed out');
-    } else if (msg.includes('python3') || msg.includes('Python')) {
-      console.error(`DDG: Python error:`, msg.slice(0, 200));
+      logger.warn('DDG: Search timed out');
     } else {
-      console.error('DDG search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'DDG search failed');
     }
     return [];
   }
@@ -94,10 +132,13 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
 
 /**
  * Search DuckDuckGo News using ddgs Python library.
- * Falls back to empty array if Python/ddgs not available.
+ * Returns empty array if Python/ddgs not available.
  */
 export async function searchDuckduckgoNews(query: string, limit: number = 10, timeRange: string = 'w'): Promise<SearchResult[]> {
-  const pythonBin = findPython();
+  const pythonBin = getPythonBinOrNull();
+  if (!pythonBin) {
+    return [];
+  }
   const timeMap: Record<string, string> = { day: 'd', week: 'w', month: 'm' };
   const timelimit = timeMap[timeRange] || 'w';
 
@@ -122,7 +163,7 @@ export async function searchDuckduckgoNews(query: string, limit: number = 10, ti
     }));
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('DDG News search failed:', msg.slice(0, 200));
+    logger.warn({ err: msg.slice(0, 200) }, 'DDG News search failed');
     return [];
   }
 }
