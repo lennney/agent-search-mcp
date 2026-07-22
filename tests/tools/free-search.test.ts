@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
 // ── Module-level mocks (ALL factories are hoisted — no variable refs) ─
-vi.mock('../../src/engines/duckduckgo.js', () => ({ searchDuckDuckGo: vi.fn() }));
+vi.mock('../../src/engines/duckduckgo.js', () => ({
+  searchDuckDuckGo: vi.fn(),
+  isDdgsAvailable: vi.fn(() => true),
+}));
 vi.mock('../../src/engines/sogou.js', () => ({ searchSogou: vi.fn() }));
 vi.mock('../../src/engines/bing.js', () => ({ searchBing: vi.fn() }));
 vi.mock('../../src/engines/baidu.js', () => ({ searchBaidu: vi.fn() }));

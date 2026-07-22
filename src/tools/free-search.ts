@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { searchDuckDuckGo } from '../engines/duckduckgo.js';
+import { searchDuckDuckGo, isDdgsAvailable } from '../engines/duckduckgo.js';
 import { searchSogou } from '../engines/sogou.js';
 import { searchBing } from '../engines/bing.js';
 import { searchBaidu } from '../engines/baidu.js';
@@ -88,6 +88,12 @@ async function searchEngine(
 
   // Rate limit before making the request
   await rateLimiter.waitForSlot(engine);
+
+  // DDG-specific: throw early if ddgs is not available, so Promise.allSettled
+  // records it as a rejection → partialFailures gets the correct engine name
+  if (engine === 'duckduckgo' && !isDdgsAvailable()) {
+    throw new Error('DuckDuckGo unavailable: Python ddgs library not installed. Install with: pip install ddgs');
+  }
 
   let lastError: Error | null = null;
   
@@ -376,12 +382,13 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       })
     );
 
-    for (const result of batchResults) {
+    for (let i = 0; i < batchResults.length; i++) {
+      const result = batchResults[i];
       if (result.status === 'fulfilled') {
         allResults.push(...result.value.results);
       } else {
         failures.push({
-          engine: 'unknown',
+          engine: batch[i],
           message: result.reason?.message || 'Unknown error',
         });
       }
@@ -414,12 +421,13 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
         })
       );
 
-      for (const result of phase2Results) {
+      for (let i = 0; i < phase2Results.length; i++) {
+        const result = phase2Results[i];
         if (result.status === 'fulfilled') {
           allResults.push(...result.value.results);
         } else {
           failures.push({
-            engine: 'unknown',
+            engine: paidToSearch[i],
             message: result.reason?.message || 'Unknown error',
           });
         }
@@ -549,11 +557,12 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
         })
       );
 
-      for (const result of batchResults) {
+      for (let i = 0; i < batchResults.length; i++) {
+        const result = batchResults[i];
         if (result.status === "fulfilled") {
           allResults.push(...result.value.results);
         } else {
-          allFailures.push({ engine: "unknown", message: result.reason?.message || "Unknown error" });
+          allFailures.push({ engine: batch[i], message: result.reason?.message || "Unknown error" });
         }
       }
     }
@@ -615,11 +624,12 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
           return { engine, results };
         })
       );
-      for (const result of paidResults) {
+      for (let i = 0; i < paidResults.length; i++) {
+        const result = paidResults[i];
         if (result.status === "fulfilled") {
           allResults.push(...result.value.results);
         } else {
-          allFailures.push({ engine: "unknown", message: result.reason?.message || "Unknown error" });
+          allFailures.push({ engine: paidAvailable[i], message: result.reason?.message || "Unknown error" });
         }
       }
     } else {
