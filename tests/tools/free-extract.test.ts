@@ -23,16 +23,17 @@ describe('free_extract tool', () => {
   });
 
   function makeServer() {
-    const server = { tool: vi.fn() } as any;
+    const server = { registerTool: vi.fn() } as any;
     registerFreeExtract(server);
-    const handler = server.tool.mock.calls[0][3] as Function;
+    // registerTool(name, config, handler) → handler is at index 2
+    const handler = server.registerTool.mock.calls[0][2] as Function;
     return { server, handler };
   }
 
   it('registers a tool named free_extract', () => {
     const { server } = makeServer();
-    expect(server.tool).toHaveBeenCalledOnce();
-    expect(server.tool.mock.calls[0][0]).toBe('free_extract');
+    expect(server.registerTool).toHaveBeenCalledOnce();
+    expect(server.registerTool.mock.calls[0][0]).toBe('free_extract');
   });
 
   it('extracts content from a valid URL', async () => {

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
 import { SearchResult } from '../types.js';
 import { logger } from '../infrastructure/logger.js';
-import { searchDuckDuckGoHtml } from './duckduckgo-html.js';
+import { searchDuckDuckGoHtml, searchDuckDuckGoNewsHtml } from './duckduckgo-html.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-search.py');
@@ -141,8 +141,8 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
 export async function searchDuckduckgoNews(query: string, limit: number = 10, timeRange: string = 'w'): Promise<SearchResult[]> {
   const pythonBin = getPythonBinOrNull();
   if (!pythonBin) {
-    logger.info('DDG News: Python/ddgs not available, skipping (no HTML fallback for news)');
-    return [];
+    logger.info('DDG News: Python/ddgs not available, falling back to HTML engine');
+    return searchDuckDuckGoNewsHtml(query, limit);
   }
   const timeMap: Record<string, string> = { day: 'd', week: 'w', month: 'm' };
   const timelimit = timeMap[timeRange] || 'w';
@@ -168,7 +168,7 @@ export async function searchDuckduckgoNews(query: string, limit: number = 10, ti
     }));
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    logger.warn({ err: msg.slice(0, 200) }, 'DDG News search failed');
-    return [];
+    logger.warn({ err: msg.slice(0, 200) }, 'DDG News search failed, falling back to HTML engine');
+    return searchDuckDuckGoNewsHtml(query, limit);
   }
 }

@@ -13,7 +13,7 @@ import {
 
 function createMockServer(registeredTools: string[]): McpServer {
   return {
-    tool: (name: string) => {
+    registerTool: (name: string) => {
       registeredTools.push(name);
       return {};
     },

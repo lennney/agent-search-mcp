@@ -9,19 +9,37 @@ tags:
 ---
 # Changelog
 
-## [Unreleased]
+## v3.1.1 (2026-07-22)
 
-> 下次发布前在此记录变更。版本号在发布时确定。
+> **Headline: MCP 2025 compliance + DDG News HTML fallback + structured errors.**
 
-### Added
-- Fetch tools can now be enabled or disabled individually with `ENABLED_TOOLS` / `DISABLED_TOOLS`.
+### 📢 Why Update
 
-### Fixed
-- MCP server, HTTP health, and capabilities metadata now report the released v3.1.0 version.
+- **Agent UX**: All 8 tools now use MCP 2025 standard `registerTool` with `readOnlyHint`/`idempotentHint` annotations — agents make better tool selection decisions
+- **DDG News reliability**: News search now falls back to Node.js HTML engine when Python/ddgs is unavailable — no more silent empty results
+- **Streamable HTTP**: HTTP mode upgraded from deprecated HTTP+SSE to MCP 2025-11-25 Streamable HTTP transport
+- **Structured errors**: Engine failures now return typed `EngineError` (timeout/rate_limited/permission_denied/etc.) with actionable suggestions — agents can self-recover
 
-### Planned (see [iteration roadmap](docs/superpowers/plans/2026-07-22-iteration-roadmap.md))
-- **A2: MCP Tool annotations** — `readOnlyHint` / `idempotentHint` 标准字段
-- **C1: DDG News HTML 回退** — 无 Python 时 cheerio 回退
+### 🆕 Features
+
+- **C1: DDG News HTML 回退** — `searchDuckduckgoNews()` now falls back to cheerio HTML engine when Python unavailable, matching the web search behavior
+- **A2: MCP Tool annotations** — All 8 tools use `registerTool()` with `{ readOnlyHint: true, idempotentHint: true }` (MCP 2025 standard)
+- **A3: Structured EngineError** — New `EngineError` type with `type` (timeout/upstream_4xx/upstream_5xx/rate_limited/permission_denied/unknown) and `suggestion` fields
+- **B1: Streamable HTTP transport** — HTTP mode now uses `StreamableHTTPServerTransport` per MCP 2025-11-25 spec; POST/GET/DELETE `/mcp` endpoint
+- **B2: Capabilities negotiation** — Server explicitly declares `tools` and `resources` capabilities during initialization
+- **D3: E2E integration tests** — 4 end-to-end tests spawning server as subprocess, verifying initialize/list-tools/tool-calls
+
+### 🔧 Fixes
+
+- News search no longer returns empty results when Python/ddgs is unavailable
+- Error responses now include structured type information for agent self-recovery
+- HTTP mode deprecated SSE endpoint replaced with standard Streamable HTTP
+
+### 📊 Stats
+
+- **Tests**: 448 passing (was 438), 40 test files (was 38)
+- **Engines**: 11 (8 free, 3 paid)
+- **Dependencies**: 5 production (unchanged)
 
 ---
 
@@ -72,8 +90,6 @@ DISABLED_TOOLS=free_extract,fetch_github_readme
 - **Dependencies**: 5 production (removed Python as hard dependency)
 
 ---
-
-## [Unreleased]
 
 ## v3.0.0 (2026-07-17)
 

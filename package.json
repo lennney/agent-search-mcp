@@ -1,6 +1,6 @@
 {
   "name": "agent-search-mcp",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Zero-config, 11-engine free MCP search server. DuckDuckGo, Sogou, Bing, Baidu + 7 more. No API keys needed. Waterfall search, multi-source verification, content extraction & news.",
   "type": "module",
   "main": "./dist/index.js",

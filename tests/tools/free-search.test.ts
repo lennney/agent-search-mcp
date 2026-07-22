@@ -157,9 +157,9 @@ describe('searchWithFallback — waterfall', () => {
 
 describe('setupFreeSearchTool', () => {
   it('registers free_search tool', () => {
-    const server = { tool: vi.fn() } as any;
+    const server = { registerTool: vi.fn() } as any;
     setupFreeSearchTool(server);
-    expect(server.tool).toHaveBeenCalledOnce();
-    expect(server.tool.mock.calls[0][0]).toBe('free_search');
+    expect(server.registerTool).toHaveBeenCalledOnce();
+    expect(server.registerTool.mock.calls[0][0]).toBe('free_search');
   });
 });

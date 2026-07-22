@@ -4,7 +4,7 @@ import { createHttpServer } from '../../src/infrastructure/http.js';
 
 describe('createHttpServer', () => {
   it('returns server instance with listen method', () => {
-    const server = createHttpServer({ port: 0, enableCors: false, corsOrigin: '*' });
+    const server = createHttpServer(null, { port: 0, enableCors: false, corsOrigin: '*' });
     expect(server).toBeDefined();
     expect(typeof server.listen).toBe('function');
     expect(typeof server.close).toBe('function');
@@ -12,7 +12,7 @@ describe('createHttpServer', () => {
   });
 
   it('GET /health returns 200 with JSON', async () => {
-    const server = createHttpServer({ port: 0, enableCors: false, corsOrigin: '*' });
+    const server = createHttpServer(null, { port: 0, enableCors: false, corsOrigin: '*' });
     await server.listen();
     
     try {
@@ -21,33 +21,27 @@ describe('createHttpServer', () => {
       
       const body = await res.json();
       expect(body.status).toBe('ok');
-      expect(body.version).toBe('3.1.0');
+      expect(body.version).toBe('3.1.1');
     } finally {
       await server.close();
     }
   });
 
-  it('GET /sse returns SSE content-type header', async () => {
-    const server = createHttpServer({ port: 0, enableCors: false, corsOrigin: '*' });
+it('GET /mcp without transport returns 404', async () => {
+    const server = createHttpServer(null, { port: 0, enableCors: false, corsOrigin: '*' });
     await server.listen();
     
     try {
-      // Use http.get to check headers without waiting for body
-      await new Promise<void>((resolve, reject) => {
-        http.get(`http://localhost:${server.getPort()}/sse`, (res) => {
-          expect(res.statusCode).toBe(200);
-          expect(res.headers['content-type']).toContain('text/event-stream');
-          res.destroy(); // Close connection immediately
-          resolve();
-        }).on('error', reject);
-      });
+      const res = await fetch(`http://localhost:${server.getPort()}/mcp`);
+      // No transport connected: /mcp falls through to 404
+      expect(res.status).toBe(404);
     } finally {
       await server.close();
     }
   });
 
   it('CORS headers present when enableCors=true', async () => {
-    const server = createHttpServer({ port: 0, enableCors: true, corsOrigin: 'https://example.com' });
+    const server = createHttpServer(null, { port: 0, enableCors: true, corsOrigin: 'https://example.com' });
     await server.listen();
     
     try {
@@ -59,7 +53,7 @@ describe('createHttpServer', () => {
   });
 
   it('returns 404 for unknown routes', async () => {
-    const server = createHttpServer({ port: 0, enableCors: false, corsOrigin: '*' });
+    const server = createHttpServer(null, { port: 0, enableCors: false, corsOrigin: '*' });
     await server.listen();
     
     try {

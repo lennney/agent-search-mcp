@@ -106,9 +106,21 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10): P
 }
 
 /**
- * Parse DuckDuckGo HTML results using cheerio.
- * Filters ads via class "result--ad" AND rejects DDG-internal URLs.
+ * Search DuckDuckGo News using HTML parsing (no Python dependency).
+ * Uses the same HTML endpoint as web search — DDG News has no dedicated
+ * HTML endpoint, so we delegate to the web HTML parser and relabel results.
+ *
+ * This is the fallback for searchDuckduckgoNews() when Python/ddgs is
+ * unavailable, preventing silent empty results.
  */
+export async function searchDuckDuckGoNewsHtml(query: string, limit: number = 10): Promise<SearchResult[]> {
+  const results = await searchDuckDuckGoHtml(query, limit);
+  // Relabel source to distinguish from regular web search results
+  return results.map(r => ({
+    ...r,
+    source: 'duckduckgo-news',
+  }));
+}
 function parseDdgHtml(html: string, limit: number): SearchResult[] {
   const $ = cheerio.load(html);
 

@@ -14,3 +14,14 @@ export interface SearchProviderInfo {
   isFree: boolean;
   languages: string[];
 }
+
+/**
+ * Structured engine error for agent-friendly error recovery.
+ * Mirrors the Anti-Patterns Guide + Arcade.dev Error-Guided Recovery pattern.
+ */
+export interface EngineError {
+  engine: string;
+  type: 'validation_error' | 'timeout' | 'upstream_4xx' | 'upstream_5xx' | 'rate_limited' | 'permission_denied' | 'unknown';
+  message: string;
+  suggestion: string;
+}

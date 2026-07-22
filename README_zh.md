@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-444%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-448%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 
 **兼容 Claude Code、Cursor、Windsurf、Codex、Hermes、OpenClaw 等所有 MCP 客户端。**
 

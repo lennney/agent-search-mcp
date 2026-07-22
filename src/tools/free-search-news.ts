@@ -5,16 +5,20 @@ import { searchBingNews } from '../engines/bing.js';
 import { logger } from '../infrastructure/logger.js';
 
 export function registerFreeSearchNews(server: McpServer) {
-  server.tool(
+  server.registerTool(
     'free_search_news',
-    'Search news articles across multiple free engines. Returns recent news with source, date, and snippet.\n\n' +
-    'Best for: Recent news, current events, time-sensitive content.\n' +
-    'Not recommended for: General web search — use free_search instead.\n\n' +
-    '@readOnly true @idempotent true — makes outbound HTTP requests to DDG News + Bing News.',
     {
-      query: z.string().describe('News search query'),
-      count: z.number().int().min(1).max(20).optional().default(10).describe('Number of results (1-20)'),
-      time_range: z.enum(['day', 'week', 'month']).optional().default('week').describe('Time range filter'),
+      description:
+        'Search news articles across multiple free engines. Returns recent news with source, date, and snippet.\n\n' +
+        'Best for: Recent news, current events, time-sensitive content.\n' +
+        'Not recommended for: General web search — use free_search instead.\n\n' +
+        '@readOnly true @idempotent true — makes outbound HTTP requests to DDG News + Bing News.',
+      inputSchema: {
+        query: z.string().describe('News search query'),
+        count: z.number().int().min(1).max(20).optional().default(10).describe('Number of results (1-20)'),
+        time_range: z.enum(['day', 'week', 'month']).optional().default('week').describe('Time range filter'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async (input) => {
       try {

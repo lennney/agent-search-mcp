@@ -10,7 +10,7 @@ export function registerCapabilities(server: McpServer) {
 **Agent Search MCP** — Free & open-source multi-engine MCP search server.
 - GitHub: https://github.com/lennney/agent-search-mcp ⭐
 - npm: npx agent-search-mcp / npm install -g agent-search-mcp
-- Version: 3.1.0 | MIT | 5 deps | 444+ tests
+- Version: 3.1.1 | MIT | 5 deps | 448+ tests
 
 ## Quick Usage
 free_search(query) — search the web for free

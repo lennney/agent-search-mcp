@@ -7,7 +7,7 @@ import { searchBaidu } from '../engines/baidu.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
-import type { SearchResult, SearchProvider } from '../types.js';
+import type { SearchResult, SearchProvider, EngineError } from '../types.js';
 import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
@@ -183,8 +183,31 @@ function isRetryableError(err: Error): boolean {
 }
 
 /**
- * Check if a paid engine has its API key configured.
+ * Classify a raw error into a structured EngineError for agent-friendly recovery.
  */
+function classifyEngineError(engine: string, err: Error): EngineError {
+  const msg = err.message.toLowerCase();
+
+  if (msg.includes('timeout') || msg.includes('abort') || msg.includes('etimedout')) {
+    return { engine, type: 'timeout', message: err.message, suggestion: 'Retry with a shorter query or try again later' };
+  }
+  if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('forbidden')) {
+    return { engine, type: 'permission_denied', message: err.message, suggestion: 'Check API key configuration' };
+  }
+  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) {
+    return { engine, type: 'rate_limited', message: err.message, suggestion: 'Retry in 30s or reduce request rate' };
+  }
+  if (msg.includes('http 4') || msg.includes('400') || msg.includes('404')) {
+    return { engine, type: 'upstream_4xx', message: err.message, suggestion: 'Check query syntax or try a different engine' };
+  }
+  if (msg.includes('http 5') || msg.includes('500') || msg.includes('502') || msg.includes('503')) {
+    return { engine, type: 'upstream_5xx', message: err.message, suggestion: 'Engine may be temporarily unavailable, retry later' };
+  }
+  if (msg.includes('econnrefused') || msg.includes('econnreset') || msg.includes('enotfound') || msg.includes('network')) {
+    return { engine, type: 'unknown', message: err.message, suggestion: 'Network error — check connectivity or try a different engine' };
+  }
+  return { engine, type: 'unknown', message: err.message, suggestion: 'Try a different engine or check the query' };
+}
 function hasApiKey(engine: SearchProvider): boolean {
   switch (engine) {
     case 'brave':
@@ -240,7 +263,7 @@ interface SearchResponse {
   security_note: string;
   detected_language?: string;
   rate_limits?: Record<string, { remaining: number; resetInMs: number }>;
-  partialFailures?: { engine: string; message: string }[];
+  partialFailures?: EngineError[];
 }
 
 // ─── Request collapsing ───────────────────────────────────────────────
@@ -388,10 +411,9 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       if (result.status === 'fulfilled') {
         allResults.push(...result.value.results);
       } else {
-        failures.push({
-          engine: batch[i],
-          message: result.reason?.message || 'Unknown error',
-        });
+        failures.push(
+            classifyEngineError(batch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
+          );
       }
     }
 
@@ -427,10 +449,9 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
         if (result.status === 'fulfilled') {
           allResults.push(...result.value.results);
         } else {
-          failures.push({
-            engine: paidToSearch[i],
-            message: result.reason?.message || 'Unknown error',
-          });
+failures.push(
+            classifyEngineError(paidToSearch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
+          );
         }
       }
 
@@ -563,7 +584,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
         if (result.status === "fulfilled") {
           allResults.push(...result.value.results);
         } else {
-          allFailures.push({ engine: batch[i], message: result.reason?.message || "Unknown error" });
+          allFailures.push(
+            classifyEngineError(batch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
+          );
         }
       }
     }
@@ -630,7 +653,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
         if (result.status === "fulfilled") {
           allResults.push(...result.value.results);
         } else {
-          allFailures.push({ engine: paidAvailable[i], message: result.reason?.message || "Unknown error" });
+          allFailures.push(
+            classifyEngineError(paidAvailable[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
+          );
         }
       }
     } else {
@@ -745,23 +770,27 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
 export { cache, healthTracker, serverMetrics, enginePolicy };
 
 export function setupFreeSearchTool(server: McpServer): void {
-  server.tool(
+  server.registerTool(
     'free_search',
-    'Search the web with multi-engine automatic fallback.\n\n' +
-    'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
-    'Not recommended for: Filtered or verified-only results — use free_search_advanced.\n\n' +
-    'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required).\n' +
-    'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars).\n' +
-    'Results are deduplicated, scored by confidence (1-3), and include security metadata.\n\n' +
-    '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
-    'Injection detection and SSRF protection active.',
     {
-      query: z.string().min(1, 'Search query must not be empty'),
-      limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
-      engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa']))
-        .min(1)
-        .default(['duckduckgo', 'sogou'])
-        .describe('Search engines to use (default: duckduckgo + sogou)'),
+      description:
+        'Search the web with multi-engine automatic fallback.\n\n' +
+        'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
+        'Not recommended for: Filtered or verified-only results — use free_search_advanced.\n\n' +
+        'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required).\n' +
+        'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars).\n' +
+        'Results are deduplicated, scored by confidence (1-3), and include security metadata.\n\n' +
+        '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
+        'Injection detection and SSRF protection active.',
+      inputSchema: {
+        query: z.string().min(1, 'Search query must not be empty'),
+        limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
+        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa']))
+          .min(1)
+          .default(['duckduckgo', 'sogou'])
+          .describe('Search engines to use (default: duckduckgo + sogou)'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async ({ query, limit = 10, engines: userEngines }) => {
       const start = Date.now();

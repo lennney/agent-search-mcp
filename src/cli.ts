@@ -188,7 +188,7 @@ async function main(): Promise<void> {
     const config = loadConfig();
     const port = args.port || config.port;
 
-    const server = createHttpServer({
+    const server = createHttpServer(null, {
       port,
       enableCors: config.enableCors,
       corsOrigin: config.corsOrigin,

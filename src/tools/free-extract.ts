@@ -3,18 +3,22 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { validateUrl } from '../infrastructure/url-validator.js';
 
 export function registerFreeExtract(server: McpServer) {
-  server.tool(
+  server.registerTool(
     'free_extract',
-    `Extract full content from a URL. Returns clean markdown.
+    {
+      description:
+        `Extract full content from a URL. Returns clean markdown.
 
 Best for: Reading a specific page found in search results.
 Not recommended for: Bulk extraction — use search first.
 
 @readOnly true @idempotent true — makes an outbound HTTP request to Jina Reader (r.jina.ai). ` +
-    `Has SSRF protection: blocks private IPs, localhost, and metadata endpoints. 10s request timeout.`,
-    {
-      url: z.string().describe('URL to extract'),
-      max_length: z.number().optional().default(5000).describe('Max characters to return'),
+        `Has SSRF protection: blocks private IPs, localhost, and metadata endpoints. 10s request timeout.`,
+      inputSchema: {
+        url: z.string().describe('URL to extract'),
+        max_length: z.number().optional().default(5000).describe('Max characters to return'),
+      },
+      annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async ({ url, max_length }) => {
       // SSRF 防护

@@ -11,25 +11,28 @@ tags:
 
 ## 项目状态
 
-**版本**: v3.1.0（已发布 npm + GitHub Release）
+**版本**: v3.1.1（已发布 npm + GitHub Release）
 **引擎**: 11 个（ddg/sogou/bing/baidu/brave/tavily/exa/yandex/mojeek/wikipedia/startpage）
-**测试**: vitest — 444 passed, 39 test files
+**测试**: vitest — 448 passed, 40 test files
 **最后更新**: 2026-07-22
 **npm**: https://www.npmjs.com/package/agent-search-mcp
 **Python 依赖**: 可选（ddgs 不再是硬依赖，DDG 自动回退到 cheerio HTML 引擎）
 
 ## 最近活动
 
-- [2026-07-22] 📋 proposed: 可维护性与架构收敛计划
-  - 运行时版本统一为 `AppMetadata`，修复更新提示可能显示 `0.0.0` 的路径问题
-  - 后续按 EngineCatalog → SearchRuntime → JinaExtractor → transport 的顺序推进
-  - 计划：`docs/plans/2026-07-22-maintainability-architecture.md`
+- [2026-07-22] ✅ done: v3.1.1 — MCP 2025 合规 + DDG News 回退 + 结构化错误
+  - **B1: Streamable HTTP** — `http.ts` 重写为 `StreamableHTTPServerTransport`（MCP 2025-11-25 标准）
+  - **B2: Capabilities 声明** — 启动时显式声明 `tools` + `resources` capabilities
+  - **A2: MCP annotations** — 全部 8 工具升级到 `registerTool` + `readOnlyHint`/`idempotentHint`
+  - **A3: EngineError** — 结构化错误类型（timeout/rate_limited/permission_denied...）+ 建议
+  - **C1: DDG News HTML 回退** — `searchDuckduckgoNews()` 无 Python 时用 cheerio HTML 引擎
+  - **D3: E2E 集成测试** — 4 个端到端测试（spawn 子进程 → initialize → list tools → tool calls）
+  - 测试: 448 passed, 40 files（+4 tests, +2 files）
 
 - [2026-07-22] ✅ done: Phase A1 `setupFetchTools` 拆分
   - `fetch_github_readme` / `fetch_csdn_article` / `fetch_juejin_article` 现可独立注册
   - `ENABLED_TOOLS` / `DISABLED_TOOLS` 可细粒度控制三个 fetch 工具
   - 保留 `setupFetchTools()` 的原有批量注册行为，保证向后兼容
-  - 新增 6 个注册行为测试；总计 444 passed
   - 修复 MCP server、HTTP health 与 capabilities 中滞后的版本元数据
 
 - [2026-07-22] ✅ done: v3.1.0 发布 — npm + GitHub Release
@@ -37,7 +40,6 @@ tags:
   - 工具可见性控制（ENABLED_TOOLS/DISABLED_TOOLS + ToolPolicy）
   - CLI 版本检查（`fasm --version` + 后台自动检测更新）
   - npm 生态优化（23 keywords, llms.txt, Smithery 配置, badges）
-  - 发布流程规范（`docs/release-process.md`）
 
 - [2026-07-22] ✅ done: DDGS 独立化重构 — 8 个 commit，消除 Python 硬依赖
   - 惰性 Python 检测 + `isDdgsAvailable()` 导出
@@ -58,16 +60,22 @@ tags:
 
 详见完整路线图: [docs/superpowers/plans/2026-07-22-iteration-roadmap.md](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-### High Priority
-1. **Phase A2: MCP Tool annotations** — `readOnlyHint` 标准字段替代纯文本 `@readOnly`
-2. **Phase A3: 错误区分度提升** — 引擎错误返回结构化类型 (timeout/4xx/5xx/rate_limited)
-3. **Phase C1: DDG News HTML 回退** — `searchDuckduckgoNews()` 无 Python 时用 cheerio 回退
-4. **Phase D1: Brave/Tavily mock 测试** — mock fetch 覆盖付费引擎路径
+### 已完成 (v3.1.1)
+- ✅ A1: setupFetchTools 拆分
+- ✅ A2: MCP Tool annotations (registerTool + readOnlyHint/idempotentHint)
+- ✅ A3: 错误区分度提升 (EngineError + classifyEngineError)
+- ✅ C1: DDG News HTML 回退
+- ✅ D1: Brave/Tavily/Exa Mock 测试 (已存在)
+- ✅ D2: free-extract SSRF 安全测试 (已存在)
+- ✅ B1: Streamable HTTP 升级
+- ✅ B2: Capabilities 显式声明
+- ✅ D3: E2E 集成测试 (4 tests)
 
-### Medium Priority
-6. **Phase D2: free-extract SSRF 安全测试** — 对抗性 URL 输入验证
-7. **Phase C2: lite.duckduckgo.com 第三层回退** — 当 html.ddg 限流时的救火队
-8. **O1: awesome-mcp-servers PR** — 最大 MCP 目录站收录
+### 下一阶段 (v3.2.0+)
+- 📋 C2: lite.duckduckgo.com 第三层回退 — 当 html.ddg 限流时的救火队
+- 📋 C3: 引擎惰性加载 — 启动时只 import 配置的引擎
+- 📋 O1: awesome-mcp-servers PR — 最大 MCP 目录站收录
+- 📋 O2: 掘金文章 — 中文开发者社区推广
 
 ### On-going
 9. **分发推广** — 掘金文章、V2EX、reddit r/mcp

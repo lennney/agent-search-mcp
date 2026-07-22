@@ -20,10 +20,18 @@ import { createHttpServer } from './infrastructure/http.js';
 async function main() {
   const config = loadConfig();
 
-  const server = new McpServer({
-    name: 'agent-search-mcp',
-    version: '3.1.0',
-  });
+  const server = new McpServer(
+    {
+      name: 'agent-search-mcp',
+      version: '3.1.1',
+    },
+    {
+      capabilities: {
+        tools: { listChanged: true },
+        resources: { subscribe: false, listChanged: false },
+      },
+    }
+  );
 
   // Register tools (conditionally based on ENABLED_TOOLS / DISABLED_TOOLS)
   const toolPolicy = new ToolPolicy(config.enabledTools, config.disabledTools);
@@ -52,7 +60,7 @@ async function main() {
   }
 
   if (config.mode === 'http' || config.mode === 'both') {
-    const httpServer = createHttpServer({
+    const httpServer = createHttpServer(server, {
       port: config.port,
       enableCors: config.enableCors,
       corsOrigin: config.corsOrigin,

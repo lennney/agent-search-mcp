@@ -4,7 +4,7 @@ const registeredTools = vi.hoisted(() => [] as string[]);
 
 vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
   class MockMcpServer {
-    tool(name: string): void {
+    registerTool(name: string): void {
       registeredTools.push(name);
     }
 
