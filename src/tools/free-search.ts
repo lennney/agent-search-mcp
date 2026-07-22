@@ -11,7 +11,7 @@ import type { SearchResult, SearchProvider } from '../types.js';
 import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage } from '../aggregation/index.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
-const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
+const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
 const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa'];
 
@@ -96,7 +96,7 @@ async function searchEngine(
   }
 
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const startTime = Date.now();
     try {
@@ -121,7 +121,7 @@ async function searchEngine(
           results = await new TavilyProvider().search(query, limit);
           break;
         case 'exa':
-          results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY });
+          results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY || '' });
           break;
         default:
           return [];
@@ -133,10 +133,10 @@ async function searchEngine(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       const latency = Date.now() - startTime;
-      
+
       // Check if this is a retryable error (network, timeout, 5xx)
       const isRetryable = isRetryableError(lastError);
-      
+
       if (attempt < maxRetries && isRetryable) {
         // Exponential backoff: 500ms, 1000ms, 2000ms...
         const delay = Math.min(500 * Math.pow(2, attempt), 5000);
@@ -144,15 +144,16 @@ async function searchEngine(
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      
+
       // Non-retryable or max retries exceeded
       healthTracker.recordFailure(engine);
       logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
       return [];
     }
   }
-  
-  // Should not reach here, but just in case
+
+  // All retries exhausted
+  logger.error({ engine, lastError: lastError?.message }, 'All retries exhausted');
   return [];
 }
 

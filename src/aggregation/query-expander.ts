@@ -40,7 +40,7 @@ export function expandQuery(query: string): string[] {
 
   // 策略2: 去前缀
   if (alternatives.length < 2) {
-    let stripped = query
+    const stripped = query
       .replace(/^(how\s+to|what\s+is|what\s+are|why\s+do|best|top)\s+/i, "")
       .trim();
     if (stripped && stripped !== query && stripped.length > 2) {

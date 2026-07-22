@@ -13,6 +13,22 @@ tags:
 
 ## 踩坑记录
 
+## 2026-07-22: DDG HTML 引擎限流 (HTTP 202)
+- **问题**: html.duckduckgo.com POST 请求频繁时返回 HTTP 202 (rate-limited)，搜索返回空
+- **原因**: DDG 对无 JS 签名的请求有严格限流，普通 HTTP 库无法绕过
+- **解决**: rotating User-Agent (4 个) + HTTP 202 检测 + 空数组降级。Python ddgs 路径不受此限制（使用内部 API）
+- **规则**: DDG HTML 路径仅作为回退，主力仍是 Python ddgs
+
+## 2026-07-22: cheerio 相比 regex 的解析可靠性
+- **问题**: DDG HTML 结构复杂（redirect URL、嵌套 div、协议相对地址），regex 无法可靠解析
+- **解决**: cheerio（DOM 解析器）替代 regex，支持 CSS 选择器遍历嵌套结构
+- **规则**: 复杂 HTML 解析用 cheerio（或同类 DOM 库），不用 regex
+
+## 2026-07-22: ToolPolicy allow/deny 顺序
+- **问题**: ToolPolicy 初始化时如果某个工具既在 allow 又在 deny 中，行为不明确
+- **解决**: deny 优先（allowlist 只负责"不在列表中的禁用"，但 deny 直接踢出）
+- **规则**: 所有 allow/deny 策略中，deny 永远高于 allow
+
 ## 2026-07-16: Baidu 引擎只有标题没有摘要
 - **问题**: Baidu 搜索结果 snippet 字段始终为空，中文搜索结果质量受损
 - **原因**: HTML 解析只匹配了 h3 > a 提取标题和 URL，未解析 c-abstract 摘要区域

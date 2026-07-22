@@ -8,7 +8,7 @@ import { logger } from '../infrastructure/index.js';
 export async function fetchGithubReadme(url: string): Promise<string> {
   try {
     // Parse GitHub URL to extract owner/repo
-    const githubMatch = url.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    const githubMatch = url.match(/github\.com\/([^/]+)\/([^/]+)/);
     if (!githubMatch) {
       throw new Error('Invalid GitHub URL');
     }
@@ -79,7 +79,7 @@ export async function fetchCsdnArticle(url: string): Promise<string> {
     
     if (articleMatch) {
       // Basic HTML to text conversion
-      let content = articleMatch[1]
+      const content = articleMatch[1]
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
         .replace(/<[^>]+>/g, '\n')

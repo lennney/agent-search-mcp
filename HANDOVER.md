@@ -44,22 +44,22 @@ tags:
 
 ## 下一步方向
 
-### 高优先级
-1. **提 PR 到 awesome-mcp-servers** — 最大的 MCP 集合仓库，每 PR 都是曝光。仓库: `punkpeye/awesome-mcp-servers`
-2. **掘金文章** — 中文开发者社区推广，主题 "npm install 即用的免费 MCP 搜索，11 引擎零配置"
-3. **`lite.duckduckgo.com/lite/` 第三层回退** — 当 `html.duckduckgo.com` 被封时，lite 端点使用不同的 HTML 结构（`result-link` / `result-snippet` class），可作为第三层回退
-4. **DDG News HTML 回退** — 目前 `searchDuckduckgoNews()` 无 Python 时返回空数组，可参照 `https://duckduckgo.com/news` HTML 结构实现回退
+详见完整路线图: [docs/superpowers/plans/2026-07-22-iteration-roadmap.md](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-### 中优先级
-5. **分页支持** — DDG HTML 支持 "Next page" 但需要 `vqd` token
-6. **TLS 指纹随机化** — ddgs 用 `primp`（Rust curl-impersonate）+ 随机 TLS cipher suites
-7. **测试覆盖** — brave.ts + tavily.ts 测试（mock fetch），free-extract.ts SSRF 安全测试
-8. **`setupFetchTools` 拆分** — 当前一个 policy key 控制 3 个 fetch 工具，需拆分为独立注册函数以支持细粒度 ENABLED_TOOLS 控制
+### High Priority
+1. **Phase A1: `setupFetchTools` 拆分** — 3 fetch 工具独立注册，支持细粒度 ENABLED_TOOLS
+2. **Phase A2: MCP Tool annotations** — `readOnlyHint` 标准字段替代纯文本 `@readOnly`
+3. **Phase A3: 错误区分度提升** — 引擎错误返回结构化类型 (timeout/4xx/5xx/rate_limited)
+4. **Phase C1: DDG News HTML 回退** — `searchDuckduckgoNews()` 无 Python 时用 cheerio 回退
+5. **Phase D1: Brave/Tavily mock 测试** — mock fetch 覆盖付费引擎路径
 
-### 低优先级
-9. **DDG HTML 结构监控** — 定期验证 DDG HTML 选择器未改版
-10. **V2EX 发帖** — 中文技术社区二次曝光
-11. **验证 Smithery 部署** — 需要 Smithery 账号登录确认
+### Medium Priority
+6. **Phase D2: free-extract SSRF 安全测试** — 对抗性 URL 输入验证
+7. **Phase C2: lite.duckduckgo.com 第三层回退** — 当 html.ddg 限流时的救火队
+8. **O1: awesome-mcp-servers PR** — 最大 MCP 目录站收录
+
+### On-going
+9. **分发推广** — 掘金文章、V2EX、reddit r/mcp
 
 ## 已知限制
 

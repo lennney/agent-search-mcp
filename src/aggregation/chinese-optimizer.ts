@@ -108,7 +108,7 @@ export function generateChineseVariants(query: string): string[] {
   }
 
   // 4. If query has spaces/punctuation, try without them
-  const compact = query.replace(/[\s，。！？、；：""''（）【】《》\-,.!?;:'"()\[\]{}]/g, '');
+  const compact = query.replace(/[\s，。！？、；：""''（）【】《》\-,.!?;:'"()[\]{}]/g, '');
   if (compact !== query && compact.length >= 2) {
     variants.push(compact);
   }
