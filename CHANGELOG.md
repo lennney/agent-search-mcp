@@ -12,6 +12,8 @@ tags:
 ## [Unreleased]
 
 ### Added
+- `ENABLED_TOOLS` / `DISABLED_TOOLS` env vars — control which MCP tools are visible to the agent
+- `ToolPolicy` class — allow/deny pattern for tool registration
 - DuckDuckGo HTML engine — Node.js native DDG search via cheerio, no Python required
 - `isDdgsAvailable()` exported from DDG engine for health reporting
 - DDG health report includes `ddgs_available` field

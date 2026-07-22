@@ -465,6 +465,29 @@ export TAVILY_API_KEY=your_key_here
 export EXA_API_KEY=your_key_here
 ```
 
+### Tool Visibility
+
+Control which MCP tools are registered and visible to the agent:
+
+```bash
+# Only enable search tools (disable extraction)
+ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
+
+# Disable specific tools
+DISABLED_TOOLS=free_extract,fetch_github_readme
+
+# Combine: allow search tools, but disable news
+ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
+DISABLED_TOOLS=free_search_news
+```
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ENABLED_TOOLS` | (all) | Comma-separated list of tools to enable. If set, only these tools are registered. |
+| `DISABLED_TOOLS` | (none) | Comma-separated list of tools to disable. Takes priority over `ENABLED_TOOLS`. |
+
+Available tool names: `free_search`, `free_search_advanced`, `free_extract`, `fetch_github_readme`, `search_with_synthesis`, `free_search_news`
+
 ---
 
 ## Dependencies

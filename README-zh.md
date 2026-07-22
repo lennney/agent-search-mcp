@@ -250,6 +250,23 @@ export BRAVE_API_KEY=your_key
 export TAVILY_API_KEY=your_key
 ```
 
+### 工具可见性
+
+控制哪些 MCP 工具注册并对 Agent 可见：
+
+```bash
+# 只启用搜索工具（禁用提取）
+ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
+
+# 禁用特定工具
+DISABLED_TOOLS=free_extract,fetch_github_readme
+```
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `ENABLED_TOOLS` | (全部) | 逗号分隔的工具列表。设置后只注册这些工具。 |
+| `DISABLED_TOOLS` | (无) | 逗号分隔的禁用工具列表。优先级高于 `ENABLED_TOOLS`。 |
+
 ---
 
 ## 架构
