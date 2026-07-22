@@ -133,10 +133,11 @@
 ### 前置要求
 
 - Node.js >= 18
-- Python 3 + `ddgs` 库：
+- **可选：** Python 3 + `ddgs` 库（增强 DuckDuckGo 结果质量）：
 ```bash
 pip install ddgs
 ```
+> 不安装也能用——DuckDuckGo 会自动回退到 Node.js HTML 引擎。其他引擎（搜狗、Bing、百度）无需额外依赖。
 
 ### 安装
 
@@ -393,9 +394,9 @@ export EXA_API_KEY=your_key_here
 | zod | MIT | Schema 验证 |
 | pino | MIT | 日志 |
 | yaml | ISC | 配置解析 |
-| ddgs (Python) | MIT | DuckDuckGo 搜索后端（绕过反爬） |
+| ddgs (Python) | MIT | DuckDuckGo 搜索后端（绕过反爬）— **可选** |
 
-**注意：** `ddgs` 是 Python 库，通过子进程调用。需要单独安装：
+**注意：** `ddgs` 是可选的 Python 库。未安装时 DuckDuckGo 会回退到 Node.js HTML 引擎。推荐安装以获得最佳结果：
 ```bash
 pip install ddgs
 ```
