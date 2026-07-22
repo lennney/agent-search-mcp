@@ -39,25 +39,23 @@
 ```markdown
 ## vX.Y.Z (YYYY-MM-DD)
 
-### 🎉 Headline Feature (如有重大功能)
+> **Headline: 一句话卖点。用户为什么要更新。**
 
-一句话描述最大亮点。
+### 📢 Why Update （必填）
 
-### 分类
+- 如果你是 X 用户：具体收益
+- 如果你遇到 Y 问题：已修复
+- 如果你想要 Z 功能：已上线
 
-- **Added**: 新功能、新引擎、新工具
-- **Changed**: 行为变更、默认值变更
-- **Fixed**: Bug 修复
-- **Removed**: 废弃或删除的功能
+### Added / Changed / Fixed
+
+按分类列出变更，每条一句话，面向用户而非面向开发者。
+技术实现细节放 commit message，CHANGELOG 放用户能理解的价值。
 
 ### 📊 Stats
 
 - Tests: N passing, N test files
-- Key metrics
-
----
-
-## [Unreleased]
+- Key metrics (engines count, deps count, etc.)
 ```
 
 ### 2. 更新版本号
@@ -90,6 +88,21 @@ npm publish
 - [ ] 更新 HANDOVER.md 版本号
 - [ ] 清空 CHANGELOG [Unreleased] 区（或保留为占位）
 - [ ] 验证 `npm install -g agent-search-mcp` 可安装最新版
+- [ ] 验证 `fasm --version` 显示正确版本号
+- [ ] 更新 `smithery.yaml` 如有需要（configSchema 变更时）
+
+### 6. 分发渠道维护
+
+每次发布后检查以下渠道是否需要更新：
+
+| 渠道 | 操作 | 频率 |
+|------|------|------|
+| **npm** | `npm publish` | 每次发布 |
+| **GitHub Release** | 从 tag 创建，粘贴 CHANGELOG | 每次发布 |
+| **Glama** | 自动同步（从 GitHub） | 自动 |
+| **mcp.directory** | 自动同步（从 GitHub） | 自动 |
+| **Smithery** | 检查 `smithery.yaml` 是否最新 | 发布时 |
+| **awesome-mcp-servers** | 提 PR 更新描述/版本 | 首次收录后按需 |
 
 ## Agent 执行指南
 

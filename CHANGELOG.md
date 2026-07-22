@@ -13,6 +13,13 @@ tags:
 
 > **Headline: No more Python dependency. `npm install` is enough.**
 
+### 📢 Why Update
+
+- **If you're on Docker**: Remove Python from your image. Our image is now ~30% smaller and works on arm/v7.
+- **If you had `ddgs not found` errors**: Gone. DDG now works without Python — automatic Node.js fallback.
+- **If you want to limit tool visibility**: Use `ENABLED_TOOLS`/`DISABLED_TOOLS` to control what your agent can see.
+- **If you want auto-update notices**: CLI now checks npm for new versions and tells you to `npm update -g`.
+
 ### 🎉 DDGS Independence
 
 DuckDuckGo search now works without Python. A Node.js HTML engine (cheerio) serves as automatic fallback when Python/ddgs is unavailable. Docker image no longer includes Python — smaller, faster, architecture-independent.
