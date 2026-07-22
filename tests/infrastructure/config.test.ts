@@ -84,4 +84,34 @@ describe('loadConfig', () => {
     const config = loadConfig();
     expect(config.allowedEngines).toEqual([]);
   });
+
+  it('parses ENABLED_TOOLS as array', () => {
+    process.env.ENABLED_TOOLS = 'free_search,free_extract';
+    const config = loadConfig();
+    expect(config.enabledTools).toEqual(['free_search', 'free_extract']);
+  });
+
+  it('parses ENABLED_TOOLS with spaces', () => {
+    process.env.ENABLED_TOOLS = ' free_search , free_extract ';
+    const config = loadConfig();
+    expect(config.enabledTools).toEqual(['free_search', 'free_extract']);
+  });
+
+  it('defaults enabledTools to empty array', () => {
+    delete process.env.ENABLED_TOOLS;
+    const config = loadConfig();
+    expect(config.enabledTools).toEqual([]);
+  });
+
+  it('parses DISABLED_TOOLS as array', () => {
+    process.env.DISABLED_TOOLS = 'free_extract,fetch_github_readme';
+    const config = loadConfig();
+    expect(config.disabledTools).toEqual(['free_extract', 'fetch_github_readme']);
+  });
+
+  it('defaults disabledTools to empty array', () => {
+    delete process.env.DISABLED_TOOLS;
+    const config = loadConfig();
+    expect(config.disabledTools).toEqual([]);
+  });
 });
