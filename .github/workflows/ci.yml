@@ -24,11 +24,11 @@ jobs:
 
       - run: npm ci
 
-      - name: Run tests
-        run: npm test
-
       - name: Build
         run: npm run build
+
+      - name: Run tests
+        run: npm test
 
   publish:
     if: startsWith(github.ref, 'refs/tags/v')

@@ -1,11 +1,24 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
+import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface, Interface } from 'readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = resolve(__dirname, '../../dist/index.js');
+
+// Guard: the E2E test spawns the compiled binary, so dist/ must exist.
+// CI runs build before test, but this check gives a clear failure message
+// instead of cryptic timeouts when dist/ is missing.
+beforeAll(() => {
+  if (!existsSync(SERVER_PATH)) {
+    throw new Error(
+      `E2E test requires compiled server at ${SERVER_PATH}. ` +
+      'Run `npm run build` before `npm test`, or ensure your CI builds before testing.'
+    );
+  }
+});
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
