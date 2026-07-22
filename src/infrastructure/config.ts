@@ -9,8 +9,6 @@ export interface Config {
   allowedEngines: string[];
   ALLOWED_ENGINES: string;
   DENIED_ENGINES: string;
-  ENABLED_TOOLS: string;
-  DISABLED_TOOLS: string;
   enabledTools: string[];
   disabledTools: string[];
 }
@@ -35,8 +33,6 @@ export function loadConfig(): Config {
       : [],
     ALLOWED_ENGINES: process.env.ALLOWED_ENGINES || '',
     DENIED_ENGINES: process.env.DENIED_ENGINES || '',
-    ENABLED_TOOLS: process.env.ENABLED_TOOLS || '',
-    DISABLED_TOOLS: process.env.DISABLED_TOOLS || '',
     enabledTools: process.env.ENABLED_TOOLS
       ? process.env.ENABLED_TOOLS.split(',').map(t => t.trim()).filter(Boolean)
       : [],
