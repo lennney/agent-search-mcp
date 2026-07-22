@@ -1,0 +1,53 @@
+# Agent Search MCP
+
+> LLM-optimized project overview. For humans: README.md
+
+## What it is
+A free, zero-config MCP (Model Context Protocol) search server for AI agents.
+11 search engines, 8 free (no API keys), 3 paid. Waterfall progressive search
+with multi-source verification and confidence scoring.
+
+## Key differentiators
+- **Truly free**: 8 engines work with zero API keys (DuckDuckGo, Sogou, Bing, Baidu, Yandex, Mojeek, Wikipedia, Startpage)
+- **Chinese search**: Sogou + Baidu — unique in MCP ecosystem
+- **No Python dependency**: npm install is enough; DDG has Node.js HTML fallback
+- **Multi-source verification**: confidence scores 1-3 per result
+- **Agent-native**: @readOnly/@idempotent tool tags, capabilities resource, prompt_hint for synthesis
+- **Waterfall search**: phased engine dispatch, 50-75% fewer API calls
+
+## Quick start
+```bash
+npm install -g agent-search-mcp
+# Or: npx agent-search-mcp
+```
+
+Configure in your MCP client (Claude Code, Cursor, Windsurf, Codex, etc.):
+```json
+{
+  "mcpServers": {
+    "agent-search": {
+      "command": "npx",
+      "args": ["-y", "agent-search-mcp"]
+    }
+  }
+}
+```
+
+## MCP Tools
+- free_search(query, engines?, limit?) — General web search with multi-engine fallback
+- free_search_advanced(query, count?, time_range?, language?, min_confidence?, include_domains?, exclude_domains?, enrich?) — Filtered search with content enrichment
+- free_search_news(query, count?, time_range?) — News articles from DDG + Bing
+- search_with_synthesis(query, count?, language?, min_confidence?) — Deep search with prompt_hint for LLM synthesis
+- free_extract(url, max_length?) — Extract page content as clean markdown
+- fetch_github_readme(url) — Get GitHub repo README
+
+## CLI
+```bash
+fasm search "query" --count 5 --json
+fasm extract "https://example.com" --json
+```
+
+## Links
+- GitHub: https://github.com/lennney/agent-search-mcp
+- npm: https://www.npmjs.com/package/agent-search-mcp
+- License: MIT

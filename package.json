@@ -1,7 +1,7 @@
 {
   "name": "agent-search-mcp",
   "version": "3.0.1",
-  "description": "Free multi-engine MCP search server — 7 engines (DDG, Sogou, Bing, Baidu, Brave, Tavily, Exa), waterfall progressive search, multi-source verification, content enrichment, and CLI. Zero API keys needed.",
+  "description": "Zero-config, 11-engine free MCP search server. DuckDuckGo, Sogou, Bing, Baidu + 7 more. No API keys needed. Waterfall search, multi-source verification, content extraction & news.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -29,9 +29,15 @@
   "license": "MIT",
   "keywords": [
     "mcp",
+    "mcp-server",
     "search",
+    "web-search",
+    "free",
+    "zero-config",
     "model-context-protocol",
     "ai-agent",
+    "agent",
+    "llm",
     "duckduckgo",
     "sogou",
     "bing",
@@ -40,7 +46,11 @@
     "tavily",
     "exa",
     "free-search",
-    "multi-engine"
+    "multi-engine",
+    "waterfall",
+    "news-search",
+    "content-extraction",
+    "open-source"
   ],
   "scripts": {
     "build": "tsc && node -e \"require('fs').chmodSync('dist/index.js', '755')\"",

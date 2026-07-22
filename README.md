@@ -9,17 +9,18 @@ tags:
 ---
 # Agent Search MCP
 
-> 🔍 Free multi-source search for AI agents — multi-source verification, token savings, waterfall search, MCP native.
+> 🔍 **Truly free.** 11 engines, zero API keys. Chinese search (Sogou+Baidu). Multi-source verification. Agent-native. npm install is enough.
 
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-329%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-438%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 [![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
-**Works with Hermes, Claude Code, Cursor, Windsurf, OpenClaw, Codex, and any MCP-compatible client.**
+**Works with Claude Code, Cursor, Windsurf, Codex, Hermes, OpenClaw, and any MCP-compatible client.**
 
 > ⭐ **Like this project?** [Star it on GitHub](https://github.com/lennney/agent-search-mcp) — it helps others discover it! Your 1 second helps the project grow.
 

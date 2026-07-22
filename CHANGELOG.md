@@ -12,6 +12,7 @@ tags:
 ## [Unreleased]
 
 ### Added
+- `llms.txt` — LLM-optimized project overview for agent-based discovery
 - `ENABLED_TOOLS` / `DISABLED_TOOLS` env vars — control which MCP tools are visible to the agent
 - `ToolPolicy` class — allow/deny pattern for tool registration
 - DuckDuckGo HTML engine — Node.js native DDG search via cheerio, no Python required
