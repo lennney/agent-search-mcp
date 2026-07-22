@@ -56,6 +56,8 @@
     "build": "tsc && node -e \"require('fs').chmodSync('dist/index.js', '755')\"",
     "test": "vitest run",
     "test:watch": "vitest",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "watch": "tsc --watch",
     "dev": "tsc && node dist/index.js",
     "dev:http": "tsc && MODE=http PORT=3000 node dist/index.js",
@@ -73,8 +75,11 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^20.17.10",
+    "eslint": "^10.7.0",
     "typescript": "^5.3.3",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^3.1.3"
   }
 }

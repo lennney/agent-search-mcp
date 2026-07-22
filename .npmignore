@@ -1,0 +1,24 @@
+# npm publish exclusion — complements package.json "files"
+# Files listed here are EXCLUDED even if tracked by git.
+
+node_modules/
+dist/
+src/
+tests/
+coverage/
+docs/
+.eslintrc*
+eslint.config.js
+tsconfig.json
+vitest.config.ts
+smithery.yaml
+AGENTS.md
+HANDOVER.md
+LEARNINGS.md
+llms.txt
+npm-shrinkwrap.json
+package-lock.json
+.gitignore
+.gitattributes
+*.test.ts
+*.spec.ts
