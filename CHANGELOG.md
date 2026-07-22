@@ -9,33 +9,57 @@ tags:
 ---
 # Changelog
 
+## [Unreleased]
+
+### Added
+- DuckDuckGo HTML engine — Node.js native DDG search via cheerio, no Python required
+- `isDdgsAvailable()` exported from DDG engine for health reporting
+- DDG health report includes `ddgs_available` field
+- `partialFailures` now correctly includes DDG unavailability with engine name
+
+### Changed
+- DDG engine: Python path preferred → HTML fallback when ddgs unavailable
+- `findPython()` → lazy detection (cached, runs once per process)
+- `console.error` → `logger.warn` in DDG engine
+- Dockerfile: removed Python/ddgs from runtime image
+- README: `pip install ddgs` is now optional, not required
+
+### Fixed
+- `partialFailures` entries now show correct engine name instead of "unknown"
+
+## v3.0.0 (2026-07-17)
+
+### 🎉 Major Features
+
+- **New free engines**: Wikipedia (clean JSON API), Startpage (Google proxy), Yandex, Mojeek → 8 free engines total
+- **News search** (`free_search_news`): DDG News + Bing News RSS fallback, time-range filtering (day/week/month)
+- **Language auto-detection**: CJK/Japanese/Korean/English heuristic → smart engine routing
+- **Rate limit exposure**: Every search returns `rate_limits` per engine (remainingMs, nextAvailableAt)
+- **Chinese optimization**: 12 authority domains (baike.baidu.com, zhihu.com, csdn.net...), 300-char CJK snippets, S/T conversion + stopword removal
+- **Answer engine refactored**: `search_with_synthesis` now returns structured results + `prompt_hint` for agent-side synthesis — **zero LLM deps**, zero API keys, works on Raspberry Pi
+
+### Architecture
+
+- SDK bump: `@modelcontextprotocol/sdk` ^1.11.2 → ^1.29.0
+- Rate limiter API: `getRateLimitInfo()`, `getAllRateLimits()`
+- Engine allow/denylist via `ALLOWED_ENGINES` / `DENIED_ENGINES` env vars
+- Adaptive concurrency: dynamic batch size based on engine health
+
+### Testing
+
+- 235 tests passing across 21 test files (was 140/13)
+
+### Breaking Changes
+
+- `search_with_synthesis` response format: now returns `{results, prompt_hint, meta}` instead of synthesized answer
+- Removed `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` env vars (no longer needed)
+- `RateLimitInfo` interface changed: `remainingMs`/`nextAvailableAt` instead of `remaining`/`resetInMs`
+
 ## v2.2.0 (2026-07-08)
 
 ### Features
 
-- **Waterfall progressive search** (`free_search_advanced`): Three-phase confidence-based search — DDG+Sogou → confidence check → Bing+Baidu → check → Brave+Tavily+Exa. Stops early when confidence basket is full, saving 50-75% engine calls.
-- **Content enrichment**: Low-confidence results auto-extract full page content via Jina Reader. Snippet replaced with extracted text, confidence boosted +0.33 (capped 1.0).
-- **Domain authority scoring**: `.edu`/`.gov`/`.ac.xx` domains get score boost (+0.12); known high-quality sites (wikipedia, stackoverflow, arxiv) weighted up; low-quality domains (blogspot, wordpress.com) penalized.
-- **Adaptive query expansion**: When waterfall confidence is insufficient, auto-generates alternative queries via rule engine (vs-split, prefix-strip, core keyword extraction, tech synonyms) and re-searches.
-
-### Testing
-
-- 140 tests passing across 13 test files (was 95/11)
-
-## v2.1.1 (2026-07-03)
-
-### Features
-
-- **CLI binary (`fasm`)**: Full CLI with argument parsing, help text, and search/health commands
-- **ContextManager**: Long-running autonomous session management with automatic context compaction
-- **HTTP mode support**: Run MCP server in HTTP/SSE or stdio+HTTP dual mode (`MODE=http`, `MODE=both`)
-- **Package.json scripts**: `dev:http`, `dev:both`, `start:http`, `cli` for development convenience
-
-### Documentation
-
-- Added CLI usage documentation to README (both English and Chinese)
-- Renamed CLI binary from `asm` → `fas` → `fasm` for clarity
-- Added HTTP mode configuration examples
+- **Waterfall progressive search**...
 
 ## v2.0.0 (2026-06-22)
 

@@ -143,11 +143,14 @@ tags:
 ### Prerequisites
 
 - Node.js >= 18
-- **Optional:** Python 3 with `ddgs` library for enhanced DuckDuckGo results:
-```bash
-pip install ddgs
-```
-> Without this, DuckDuckGo falls back to a Node.js HTML engine automatically. Other engines (Sogou, Bing, Baidu) work without any extra dependencies.
+
+That's it. All search engines work out of the box.
+
+> **Optional:** For enhanced DuckDuckGo results, install Python + ddgs:
+> ```bash
+> pip install ddgs
+> ```
+> Without this, DuckDuckGo uses a Node.js HTML engine automatically.
 
 ### Install
 
@@ -472,12 +475,8 @@ export EXA_API_KEY=your_key_here
 | zod | MIT | Schema validation |
 | pino | MIT | Logging |
 | yaml | ISC | Config parsing |
-| ddgs (Python) | MIT | DuckDuckGo search backend (bypasses anti-bot) — **optional** |
-
-**Note:** `ddgs` is an optional Python library. If not installed, DuckDuckGo falls back to a Node.js HTML engine. Install for best results:
-```bash
-pip install ddgs
-```
+| cheerio | MIT | DuckDuckGo HTML parser (Node.js native) |
+| ddgs (Python, optional) | MIT | Enhanced DuckDuckGo backend (bypasses anti-bot) |
 
 ---
 
