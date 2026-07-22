@@ -10,6 +10,7 @@ import { registerHealth, registerHealthMetrics } from './tools/health.js';
 import { registerSearchWithSynthesis } from './tools/search-with-synthesis.js';
 import { registerFreeSearchNews } from './tools/free-search-news.js';
 import { loadConfig } from './infrastructure/config.js';
+import { ToolPolicy } from './infrastructure/tool-policy.js';
 import { createHttpServer } from './infrastructure/http.js';
 
 async function main() {
@@ -20,13 +21,15 @@ async function main() {
     version: '3.0.1',
   });
 
-  // Register tools
-  setupFreeSearchTool(server);
-  registerFreeSearchAdvanced(server);
-  registerFreeExtract(server);
-  setupFetchTools(server);
-  registerSearchWithSynthesis(server);
-  registerFreeSearchNews(server);
+  // Register tools (conditionally based on ENABLED_TOOLS / DISABLED_TOOLS)
+  const toolPolicy = new ToolPolicy(config.enabledTools, config.disabledTools);
+
+  if (toolPolicy.isToolEnabled('free_search')) setupFreeSearchTool(server);
+  if (toolPolicy.isToolEnabled('free_search_advanced')) registerFreeSearchAdvanced(server);
+  if (toolPolicy.isToolEnabled('free_extract')) registerFreeExtract(server);
+  if (toolPolicy.isToolEnabled('fetch_github_readme')) setupFetchTools(server);
+  if (toolPolicy.isToolEnabled('search_with_synthesis')) registerSearchWithSynthesis(server);
+  if (toolPolicy.isToolEnabled('free_search_news')) registerFreeSearchNews(server);
 
   // Register resources
   registerCapabilities(server);
