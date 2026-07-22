@@ -9,40 +9,83 @@ export const duckduckgoHtmlProvider = {
   languages: ['en'],
 };
 
+// Rotating User-Agents to avoid detection (pattern from ddgs/gajae-code)
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+];
+
+function randomUserAgent(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
 /**
  * Extract the real URL from a DuckDuckGo redirect link.
- * DDG wraps result URLs in /l/?uddg=<encoded_url> format.
- * Handles protocol-relative URLs (//duckduckgo.com/l/?uddg=...) that DDG returns.
+ * DDG wraps result URLs in /l/?uddg=<encoded_url> format (protocol-relative).
+ * Also filters out ad redirects (duckduckgo.com/y.js) and non-http URLs.
+ * Pattern adapted from gajae-code + ddgs post_extract_results.
  */
-function extractRealUrl(href: string): string {
+function extractRealUrl(href: string): string | null {
   // DDG returns protocol-relative URLs — prepend https: for URL parsing
   const normalized = href.startsWith('//') ? `https:${href}` : href;
   try {
     const url = new URL(normalized);
+
+    // Decode uddg redirect if present
     if (url.pathname === '/l/' && url.searchParams.has('uddg')) {
-      return url.searchParams.get('uddg') || href;
+      const uddg = url.searchParams.get('uddg');
+      if (!uddg) return null;
+      try {
+        const target = new URL(uddg);
+        if (target.protocol !== 'http:' && target.protocol !== 'https:') return null;
+        if (target.hostname.endsWith('duckduckgo.com')) return null;
+        return target.toString();
+      } catch {
+        return null;
+      }
     }
+
+    // Direct URL — reject DDG-internal links (ads, tracking)
+    if (url.hostname.endsWith('duckduckgo.com')) return null;
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.toString();
   } catch {
-    // Not a valid URL — return as-is
+    return null;
   }
-  return href;
 }
 
 /**
  * Search DuckDuckGo using direct HTML parsing (no Python dependency).
- * Fetches https://html.duckduckgo.com/html/?q=<query> and parses results with cheerio.
+ * Uses POST to https://html.duckduckgo.com/html/ (matches DDG's own form + ddgs).
  */
 export async function searchDuckDuckGoHtml(query: string, limit: number = 10): Promise<SearchResult[]> {
   try {
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-    const res = await fetch(url, {
+    const body = new URLSearchParams({
+      q: query,
+      b: '',         // first-page marker (ddgs pattern)
+      l: 'us-en',    // region
+    });
+
+    const res = await fetch('https://html.duckduckgo.com/html/', {
+      method: 'POST',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': randomUserAgent(),
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://html.duckduckgo.com/html/',
       },
+      body: body.toString(),
       signal: AbortSignal.timeout(10000),
     });
+
+    // DDG returns 202 for rate limits (gajae-code pattern)
+    if (res.status === 202) {
+      logger.warn('DDG HTML: Rate limited (HTTP 202)');
+      return [];
+    }
 
     if (!res.ok) {
       logger.warn({ status: res.status }, 'DDG HTML: HTTP error');
@@ -64,9 +107,17 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10): P
 
 /**
  * Parse DuckDuckGo HTML results using cheerio.
+ * Filters ads via class "result--ad" AND rejects DDG-internal URLs.
  */
 function parseDdgHtml(html: string, limit: number): SearchResult[] {
   const $ = cheerio.load(html);
+
+  // Detect captcha challenge page (searxng pattern)
+  if ($('#challenge-form').length > 0) {
+    logger.warn('DDG HTML: Captcha challenge detected, results will be empty');
+    return [];
+  }
+
   const results: SearchResult[] = [];
 
   $('.result').each((_, el) => {
@@ -85,6 +136,9 @@ function parseDdgHtml(html: string, limit: number): SearchResult[] {
     if (!title || !rawUrl) return;
 
     const url = extractRealUrl(rawUrl);
+
+    // Skip if URL extraction failed (ads, internal links, invalid URLs)
+    if (!url) return;
 
     const snippet = $el.find('.result__snippet').first().text().trim();
 

@@ -266,4 +266,90 @@ describe('DuckDuckGo HTML engine', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('returns empty array on rate limit (HTTP 202)', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = (async () => ({
+      ok: false,
+      status: 202,
+      text: async () => '',
+    })) as typeof fetch;
+
+    try {
+      const results = await searchDuckDuckGoHtml('test query', 10);
+      expect(results).toEqual([]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('returns empty array on captcha challenge page', async () => {
+    const html = `<html><body><form id="challenge-form"><input type="text" /></form></body></html>`;
+
+    const originalFetch = global.fetch;
+    global.fetch = (async () => ({
+      ok: true,
+      text: async () => html,
+    })) as typeof fetch;
+
+    try {
+      const results = await searchDuckDuckGoHtml('test query', 10);
+      expect(results).toEqual([]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('rejects DDG-internal ad URLs (duckduckgo.com/y.js)', async () => {
+    const html = `
+      <div class="result">
+        <h2 class="result__title">
+          <a class="result__a" href="https://duckduckgo.com/y.js?ad_domain=udemy.com&ad_provider=bing">Ad via y.js</a>
+        </h2>
+        <a class="result__snippet" href="https://duckduckgo.com/y.js?ad_domain=udemy.com">Ad snippet</a>
+      </div>
+      <div class="result">
+        <h2 class="result__title">
+          <a class="result__a" href="https://example.com/real">Real Result</a>
+        </h2>
+        <a class="result__snippet" href="https://example.com/real">Real snippet</a>
+      </div>
+    `;
+
+    const originalFetch = global.fetch;
+    global.fetch = (async () => ({
+      ok: true,
+      text: async () => html,
+    })) as typeof fetch;
+
+    try {
+      const results = await searchDuckDuckGoHtml('test query', 10);
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe('Real Result');
+      expect(results[0].url).toBe('https://example.com/real');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('uses POST method with form-encoded body', async () => {
+    const html = '<html><body>No results</body></html>';
+    let fetchCallArgs: any = null;
+
+    const originalFetch = global.fetch;
+    global.fetch = (async (input: any, init: any) => {
+      fetchCallArgs = { input, init };
+      return { ok: true, text: async () => html } as Response;
+    }) as typeof fetch;
+
+    try {
+      await searchDuckDuckGoHtml('test query', 10);
+      expect(fetchCallArgs.init.method).toBe('POST');
+      expect(fetchCallArgs.init.headers['Content-Type']).toBe('application/x-www-form-urlencoded');
+      expect(fetchCallArgs.init.body).toContain('q=test+query');
+      expect(fetchCallArgs.init.headers['Referer']).toBeDefined();
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
