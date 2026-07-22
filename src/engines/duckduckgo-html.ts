@@ -12,11 +12,13 @@ export const duckduckgoHtmlProvider = {
 /**
  * Extract the real URL from a DuckDuckGo redirect link.
  * DDG wraps result URLs in /l/?uddg=<encoded_url> format.
+ * Handles protocol-relative URLs (//duckduckgo.com/l/?uddg=...) that DDG returns.
  */
 function extractRealUrl(href: string): string {
-  // Check for DDG redirect pattern
+  // DDG returns protocol-relative URLs — prepend https: for URL parsing
+  const normalized = href.startsWith('//') ? `https:${href}` : href;
   try {
-    const url = new URL(href);
+    const url = new URL(normalized);
     if (url.pathname === '/l/' && url.searchParams.has('uddg')) {
       return url.searchParams.get('uddg') || href;
     }

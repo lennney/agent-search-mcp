@@ -195,4 +195,31 @@ describe('DuckDuckGo HTML engine', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('handles protocol-relative DDG redirect URLs (//duckduckgo.com/l/?uddg=...)', async () => {
+    // DDG actually returns protocol-relative URLs in production HTML
+    const html = `
+      <div class="result">
+        <h2 class="result__title">
+          <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fmodelcontextprotocol%2Ftypescript-sdk&rut=abc">MCP TypeScript SDK</a>
+        </h2>
+        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fmodelcontextprotocol%2Ftypescript-sdk">Official SDK</a>
+      </div>
+    `;
+
+    const originalFetch = global.fetch;
+    global.fetch = (async () => ({
+      ok: true,
+      text: async () => html,
+    })) as typeof fetch;
+
+    try {
+      const results = await searchDuckDuckGoHtml('test query', 10);
+      expect(results).toHaveLength(1);
+      expect(results[0].url).toBe('https://github.com/modelcontextprotocol/typescript-sdk');
+      expect(results[0].title).toBe('MCP TypeScript SDK');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
