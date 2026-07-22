@@ -20,8 +20,7 @@ export function detectLanguage(text: string): DetectedLanguage {
   }
 
   const total = text.length;
-
-  if (cjk / total > 0.15 && (hiragana + katakana) / total < 0.1) return 'zh';
+if (cjk / total > 0.15 && (hiragana + katakana) / total < 0.1) return 'zh';
   if (cjk > 0 && latin > 0 && cjk / total < 0.5 && latin / total < 0.7) return 'auto';
   if (hangul / total > 0.3) return 'ko';
   if ((hiragana + katakana) / total > 0.2) return 'ja';
