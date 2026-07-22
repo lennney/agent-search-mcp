@@ -16,6 +16,8 @@ tags:
 - `isDdgsAvailable()` exported from DDG engine for health reporting
 - DDG health report includes `ddgs_available` field
 - `partialFailures` now correctly includes DDG unavailability with engine name
+- DDG HTML engine uses POST (ddgs pattern) with rotating User-Agents (4 agents)
+- HTTP 202 rate-limit detection + captcha challenge page detection in DDG HTML engine
 
 ### Changed
 - DDG engine: Python path preferred → HTML fallback when ddgs unavailable
@@ -23,9 +25,12 @@ tags:
 - `console.error` → `logger.warn` in DDG engine
 - Dockerfile: removed Python/ddgs from runtime image
 - README: `pip install ddgs` is now optional, not required
+- DDG HTML engine: GET → POST with form-encoded body (`q`, `b`, `l` params)
 
 ### Fixed
 - `partialFailures` entries now show correct engine name instead of "unknown"
+- DDG HTML engine: protocol-relative URL parsing (`//duckduckgo.com/l/?uddg=...`) — `new URL()` was throwing, users got DDG redirect links instead of real URLs
+- DDG HTML engine: ad filtering via `result--ad` class + `duckduckgo.com/y.js` URL rejection (ads were appearing in results)
 
 ## v3.0.0 (2026-07-17)
 
