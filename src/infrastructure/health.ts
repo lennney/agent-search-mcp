@@ -92,6 +92,8 @@ export interface ProviderHealth {
   circuitState: 'closed' | 'open' | 'half-open';
   circuitOpenedAt: number | null;
   circuitCooldownMs: number;
+  // DDG-specific: whether the ddgs Python library is available
+  ddgs_available?: boolean;
 }
 
 export class HealthTracker {
