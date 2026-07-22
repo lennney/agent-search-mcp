@@ -9,31 +9,48 @@ tags:
 ---
 # Changelog
 
-## [Unreleased]
+## v3.1.0 (2026-07-22)
 
-### Added
+> **Headline: No more Python dependency. `npm install` is enough.**
+
+### 🎉 DDGS Independence
+
+DuckDuckGo search now works without Python. A Node.js HTML engine (cheerio) serves as automatic fallback when Python/ddgs is unavailable. Docker image no longer includes Python — smaller, faster, architecture-independent.
+
+- **Python preferred + HTML fallback**: ddgs is detected lazily (cached). When available, Python path is used (more stable, DDG internal API). When unavailable, Node.js cheerio HTML engine takes over automatically.
+- **DDG HTML engine**: POST requests (ddgs pattern), rotating User-Agents (4 agents), HTTP 202 rate-limit detection, captcha page detection, protocol-relative URL resolution, ad filtering.
+- **Docker**: Removed Python/ddgs from runtime image. Works on arm/v7 without pip compatibility issues.
+- **Health reporting**: `search://health` includes `ddgs_available` boolean per DDG provider.
+
+### 🛠 Tool Visibility Control
+
+`ENABLED_TOOLS` / `DISABLED_TOOLS` env vars let users control which MCP tools are registered and visible to the agent. `ToolPolicy` class uses the same allow/deny pattern as `EnginePolicy`.
+
+```bash
+ENABLED_TOOLS=free_search,free_search_advanced
+DISABLED_TOOLS=free_extract,fetch_github_readme
+```
+
+### 📦 npm Ecosystem
+
 - `llms.txt` — LLM-optimized project overview for agent-based discovery
-- `ENABLED_TOOLS` / `DISABLED_TOOLS` env vars — control which MCP tools are visible to the agent
-- `ToolPolicy` class — allow/deny pattern for tool registration
-- DuckDuckGo HTML engine — Node.js native DDG search via cheerio, no Python required
-- `isDdgsAvailable()` exported from DDG engine for health reporting
-- DDG health report includes `ddgs_available` field
-- `partialFailures` now correctly includes DDG unavailability with engine name
-- DDG HTML engine uses POST (ddgs pattern) with rotating User-Agents (4 agents)
-- HTTP 202 rate-limit detection + captcha challenge page detection in DDG HTML engine
+- Optimized `package.json` keywords (23 tags) and description for npm search ranking
+- Updated badges (TypeScript badge, test count 438, Glama score)
 
-### Changed
-- DDG engine: Python path preferred → HTML fallback when ddgs unavailable
-- `findPython()` → lazy detection (cached, runs once per process)
-- `console.error` → `logger.warn` in DDG engine
-- Dockerfile: removed Python/ddgs from runtime image
-- README: `pip install ddgs` is now optional, not required
-- DDG HTML engine: GET → POST with form-encoded body (`q`, `b`, `l` params)
+### 🔧 Fixes
 
-### Fixed
-- `partialFailures` entries now show correct engine name instead of "unknown"
-- DDG HTML engine: protocol-relative URL parsing (`//duckduckgo.com/l/?uddg=...`) — `new URL()` was throwing, users got DDG redirect links instead of real URLs
-- DDG HTML engine: ad filtering via `result--ad` class + `duckduckgo.com/y.js` URL rejection (ads were appearing in results)
+- `partialFailures` entries now show correct engine name (was "unknown")
+- Removed unused `ENABLED_TOOLS`/`DISABLED_TOOLS` raw string fields from Config
+
+### 📊 Stats
+
+- **Tests**: 438 passing (was 235 at v3.0.0), 38 test files (was 21)
+- **Engines**: 11 (8 free, 3 paid)
+- **Dependencies**: 5 production (removed Python as hard dependency)
+
+---
+
+## [Unreleased]
 
 ## v3.0.0 (2026-07-17)
 
