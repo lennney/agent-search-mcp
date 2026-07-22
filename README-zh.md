@@ -260,12 +260,17 @@ ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
 
 # 禁用特定工具
 DISABLED_TOOLS=free_extract,fetch_github_readme
+
+# 只启用一个特定来源的提取工具
+ENABLED_TOOLS=fetch_csdn_article
 ```
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
 | `ENABLED_TOOLS` | (全部) | 逗号分隔的工具列表。设置后只注册这些工具。 |
 | `DISABLED_TOOLS` | (无) | 逗号分隔的禁用工具列表。优先级高于 `ENABLED_TOOLS`。 |
+
+可用工具名：`free_search`、`free_search_advanced`、`free_extract`、`fetch_github_readme`、`fetch_csdn_article`、`fetch_juejin_article`、`search_with_synthesis`、`free_search_news`。
 
 ---
 

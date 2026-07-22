@@ -17,7 +17,7 @@ tags:
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-438%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-444%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 [![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
 **Works with Claude Code, Cursor, Windsurf, Codex, Hermes, OpenClaw, and any MCP-compatible client.**
@@ -477,6 +477,9 @@ ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
 # Disable specific tools
 DISABLED_TOOLS=free_extract,fetch_github_readme
 
+# Enable only one source-specific fetch tool
+ENABLED_TOOLS=fetch_csdn_article
+
 # Combine: allow search tools, but disable news
 ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
 DISABLED_TOOLS=free_search_news
@@ -487,7 +490,7 @@ DISABLED_TOOLS=free_search_news
 | `ENABLED_TOOLS` | (all) | Comma-separated list of tools to enable. If set, only these tools are registered. |
 | `DISABLED_TOOLS` | (none) | Comma-separated list of tools to disable. Takes priority over `ENABLED_TOOLS`. |
 
-Available tool names: `free_search`, `free_search_advanced`, `free_extract`, `fetch_github_readme`, `search_with_synthesis`, `free_search_news`
+Available tool names: `free_search`, `free_search_advanced`, `free_extract`, `fetch_github_readme`, `fetch_csdn_article`, `fetch_juejin_article`, `search_with_synthesis`, `free_search_news`
 
 ---
 

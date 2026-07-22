@@ -4,7 +4,11 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { setupFreeSearchTool, healthTracker, serverMetrics } from './tools/free-search.js';
 import { registerFreeSearchAdvanced } from './tools/free-search-advanced.js';
 import { registerFreeExtract } from './tools/free-extract.js';
-import { setupFetchTools } from './tools/fetch-tools.js';
+import {
+  setupFetchCsdnArticle,
+  setupFetchGithubReadme,
+  setupFetchJuejinArticle,
+} from './tools/fetch-tools.js';
 import { registerCapabilities } from './tools/capabilities.js';
 import { registerHealth, registerHealthMetrics } from './tools/health.js';
 import { registerSearchWithSynthesis } from './tools/search-with-synthesis.js';
@@ -18,7 +22,7 @@ async function main() {
 
   const server = new McpServer({
     name: 'agent-search-mcp',
-    version: '3.0.1',
+    version: '3.1.0',
   });
 
   // Register tools (conditionally based on ENABLED_TOOLS / DISABLED_TOOLS)
@@ -27,7 +31,9 @@ async function main() {
   if (toolPolicy.isToolEnabled('free_search')) setupFreeSearchTool(server);
   if (toolPolicy.isToolEnabled('free_search_advanced')) registerFreeSearchAdvanced(server);
   if (toolPolicy.isToolEnabled('free_extract')) registerFreeExtract(server);
-  if (toolPolicy.isToolEnabled('fetch_github_readme')) setupFetchTools(server);
+  if (toolPolicy.isToolEnabled('fetch_github_readme')) setupFetchGithubReadme(server);
+  if (toolPolicy.isToolEnabled('fetch_csdn_article')) setupFetchCsdnArticle(server);
+  if (toolPolicy.isToolEnabled('fetch_juejin_article')) setupFetchJuejinArticle(server);
   if (toolPolicy.isToolEnabled('search_with_synthesis')) registerSearchWithSynthesis(server);
   if (toolPolicy.isToolEnabled('free_search_news')) registerFreeSearchNews(server);
 

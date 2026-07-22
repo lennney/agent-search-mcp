@@ -134,8 +134,8 @@ export async function fetchJuejinArticle(url: string): Promise<string> {
   }
 }
 
-export function setupFetchTools(server: McpServer): void {
-  // GitHub README tool
+/** Register the GitHub README fetch tool. */
+export function setupFetchGithubReadme(server: McpServer): void {
   server.tool(
     'fetch_github_readme',
     'Fetch README content from a GitHub repository.\n\n' +
@@ -169,8 +169,10 @@ export function setupFetchTools(server: McpServer): void {
       }
     }
   );
+}
 
-  // CSDN article tool
+/** Register the CSDN article fetch tool. */
+export function setupFetchCsdnArticle(server: McpServer): void {
   server.tool(
     'fetch_csdn_article',
     'Fetch content from a CSDN blog article.\n\n' +
@@ -204,8 +206,10 @@ export function setupFetchTools(server: McpServer): void {
       }
     }
   );
+}
 
-  // Juejin article tool
+/** Register the Juejin article fetch tool. */
+export function setupFetchJuejinArticle(server: McpServer): void {
   server.tool(
     'fetch_juejin_article',
     'Fetch content from a Juejin article.\n\n' +
@@ -239,4 +243,15 @@ export function setupFetchTools(server: McpServer): void {
       }
     }
   );
+}
+
+/**
+ * Register every fetch tool.
+ *
+ * Kept for callers that depend on the original bundled registration behavior.
+ */
+export function setupFetchTools(server: McpServer): void {
+  setupFetchGithubReadme(server);
+  setupFetchCsdnArticle(server);
+  setupFetchJuejinArticle(server);
 }

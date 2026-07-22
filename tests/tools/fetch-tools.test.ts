@@ -1,5 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchGithubReadme, fetchCsdnArticle, fetchJuejinArticle } from '../../src/tools/fetch-tools.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+
+import {
+  fetchGithubReadme,
+  fetchCsdnArticle,
+  fetchJuejinArticle,
+  setupFetchCsdnArticle,
+  setupFetchGithubReadme,
+  setupFetchJuejinArticle,
+  setupFetchTools,
+} from '../../src/tools/fetch-tools.js';
+
+function createMockServer(registeredTools: string[]): McpServer {
+  return {
+    tool: (name: string) => {
+      registeredTools.push(name);
+      return {};
+    },
+  } as unknown as McpServer;
+}
 
 describe('Fetch tools', () => {
   const mockFetch = vi.fn();
@@ -74,6 +93,44 @@ describe('Fetch tools', () => {
 
     it('throws on invalid Juejin URL', async () => {
       await expect(fetchJuejinArticle('https://juejin.cn/user/123')).rejects.toThrow('Invalid Juejin URL');
+    });
+  });
+
+  describe('tool registration', () => {
+    it('registers only the GitHub README tool when requested', () => {
+      const registeredTools: string[] = [];
+
+      setupFetchGithubReadme(createMockServer(registeredTools));
+
+      expect(registeredTools).toEqual(['fetch_github_readme']);
+    });
+
+    it('registers only the CSDN article tool when requested', () => {
+      const registeredTools: string[] = [];
+
+      setupFetchCsdnArticle(createMockServer(registeredTools));
+
+      expect(registeredTools).toEqual(['fetch_csdn_article']);
+    });
+
+    it('registers only the Juejin article tool when requested', () => {
+      const registeredTools: string[] = [];
+
+      setupFetchJuejinArticle(createMockServer(registeredTools));
+
+      expect(registeredTools).toEqual(['fetch_juejin_article']);
+    });
+
+    it('keeps the legacy setup function registering all fetch tools', () => {
+      const registeredTools: string[] = [];
+
+      setupFetchTools(createMockServer(registeredTools));
+
+      expect(registeredTools).toEqual([
+        'fetch_github_readme',
+        'fetch_csdn_article',
+        'fetch_juejin_article',
+      ]);
     });
   });
 });

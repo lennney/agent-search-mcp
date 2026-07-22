@@ -13,8 +13,13 @@ tags:
 
 > 下次发布前在此记录变更。版本号在发布时确定。
 
+### Added
+- Fetch tools can now be enabled or disabled individually with `ENABLED_TOOLS` / `DISABLED_TOOLS`.
+
+### Fixed
+- MCP server, HTTP health, and capabilities metadata now report the released v3.1.0 version.
+
 ### Planned (see [iteration roadmap](docs/superpowers/plans/2026-07-22-iteration-roadmap.md))
-- **A1: `setupFetchTools` 拆分** — 3 fetch 工具独立注册，支持细粒度 `ENABLED_TOOLS` 控制
 - **A2: MCP Tool annotations** — `readOnlyHint` / `idempotentHint` 标准字段
 - **C1: DDG News HTML 回退** — 无 Python 时 cheerio 回退
 
