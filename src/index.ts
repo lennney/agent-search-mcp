@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { setupFreeSearchTool, healthTracker } from './tools/free-search.js';
+import { setupFreeSearchTool, healthTracker, serverMetrics } from './tools/free-search.js';
 import { registerFreeSearchAdvanced } from './tools/free-search-advanced.js';
 import { registerFreeExtract } from './tools/free-extract.js';
 import { setupFetchTools } from './tools/fetch-tools.js';
 import { registerCapabilities } from './tools/capabilities.js';
-import { registerHealth } from './tools/health.js';
+import { registerHealth, registerHealthMetrics } from './tools/health.js';
 import { registerSearchWithSynthesis } from './tools/search-with-synthesis.js';
 import { registerFreeSearchNews } from './tools/free-search-news.js';
 import { loadConfig } from './infrastructure/config.js';
@@ -17,7 +17,7 @@ async function main() {
 
   const server = new McpServer({
     name: 'agent-search-mcp',
-    version: '3.0.0',
+    version: '3.0.1',
   });
 
   // Register tools
@@ -31,6 +31,7 @@ async function main() {
   // Register resources
   registerCapabilities(server);
   registerHealth(server, healthTracker);
+  registerHealthMetrics(server, serverMetrics);
 
   // Start based on mode
   if (config.mode === 'stdio' || config.mode === 'both') {
@@ -38,6 +39,7 @@ async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.error('✅ agent-search-mcp ready (STDIO)');
+    console.error('⭐ Like agent-search-mcp? Star & watch for updates: https://github.com/lennney/agent-search-mcp');
   }
 
   if (config.mode === 'http' || config.mode === 'both') {
@@ -48,6 +50,7 @@ async function main() {
     });
     await httpServer.listen();
     console.error('✅ agent-search-mcp ready (HTTP)');
+    console.error('⭐ Like agent-search-mcp? Star & watch for updates: https://github.com/lennney/agent-search-mcp');
   }
 }
 

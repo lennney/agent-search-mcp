@@ -1,3 +1,12 @@
+---
+type: HandoverDoc
+title: agent-search-mcp HANDOVER
+timestamp: '2026-07-20T23:35:20+08:00'
+description: 会话日志和项目状态
+tags:
+- agent-search-mcp
+- handoverdoc
+---
 # Agent Search MCP — Handover
 
 ## 项目状态

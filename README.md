@@ -1,3 +1,12 @@
+---
+type: Readme
+title: Agent Search MCP
+timestamp: '2026-07-20T23:35:20+08:00'
+description: 7 引擎搜索，MCP 协议接入，免费 + 多源验证 + Token 优化
+tags:
+- agent-search-mcp
+- readme
+---
 # Agent Search MCP
 
 > 🔍 Free multi-source search for AI agents — multi-source verification, token savings, waterfall search, MCP native.
@@ -8,8 +17,11 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![MCP](https://img.shields.io/badge/MCP-compatible-blue)](https://modelcontextprotocol.io)
 [![Tests](https://img.shields.io/badge/tests-329%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
 **Works with Hermes, Claude Code, Cursor, Windsurf, OpenClaw, Codex, and any MCP-compatible client.**
+
+> ⭐ **Like this project?** [Star it on GitHub](https://github.com/lennney/agent-search-mcp) — it helps others discover it! Your 1 second helps the project grow.
 
 ---
 

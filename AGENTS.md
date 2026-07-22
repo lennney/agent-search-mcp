@@ -1,15 +1,25 @@
+---
+type: AgentInstruction
+title: Agent Search MCP — 多引擎统一搜索 MCP Server
+timestamp: '2026-07-20T23:35:20+08:00'
+description: 7 引擎搜索，MCP 协议接入，免费 + 多源验证 + Token 优化
+tags:
+- agent-search-mcp
+- agentinstruction
+---
 # Agent Search MCP — 多引擎统一搜索 MCP Server
 
-一句话：7 引擎搜索（ddg/sogou/bing/baidu/brave/tavily/exa），MCP 协议接入，**免费 + 多源验证 + Token 优化**。
+一句话：11 引擎搜索（ddg/sogou/bing/baidu/brave/tavily/exa/wikipedia/startpage/yandex/mojeek），MCP 协议接入，**免费 + 多源验证 + Token 优化**。
 
 ## 当前阶段
 
-v2.2.0 — 稳定迭代期。瀑布搜索、内容丰富化、域名权威、查询扩展已落地。
+v3.0.1 — 稳定迭代期。Synthesis Engine、News Search、8 免费引擎、语言自动检测已落地。
 
 当前优先事项：
-1. **文档规范维护** — AGENTS.md / conventions.md 持续更新，确保 agent 进来自知
-2. **新技术调研** — 语义搜索、答案引擎、实体搜索（等用户确认方向）
-3. **npm publish** — 下个版本发布前更新 CHANGELOG + 切 official registry
+1. **Geo 推广** — 掘金/V2EX/gh.l-web 中文内容上线，占中文开发者流量
+2. **目录站分发** — 完善 Glama/mcp.directory/awesome-mcp-servers 收录
+3. **Agent 自然传播** — capabilities 资源 + tool description 让 agent 发现项目信息
+4. **npm publish** — 下个版本发布前更新 CHANGELOG + 切 official registry（版本号克制）
 
 ## 常用命令
 
@@ -35,11 +45,9 @@ fasm extract "https://..."                  # CLI 提取
 
 ## 技术判断
 
-- **形态**：MCP Server（stdio/HTTP 双模式）+ CLI 二进制 (`fasm`)
-- **核心能力**：多源搜索聚合、置信度评分、Token 优化、瀑布渐进搜索、内容丰富化、域名权威、查询扩展
-- **免费引擎**：ddg + sogou + bing + baidu（无需 API key）
-- **付费引擎**：brave + tavily + exa（需 API key，可选 fallback）
-- **非目标**：不做爬虫管理、不做搜索引擎索引、不做文档存储
+**形态**: MCP Server（stdio/HTTP 双模式）+ CLI (`fasm`)。  
+**核心**: 多源搜索聚合、置信度评分、瀑布搜索、内容丰富化、查询扩展。  
+**免费引擎**: ddg/sogou/bing/baidu。**付费**: brave/tavily/exa（可选 fallback）。
 
 ## 架构
 
@@ -85,13 +93,9 @@ src/
 ## 编码规范
 
 详细规范见 `docs/conventions.md`。关键点：
-
-1. **命名**: 文件/函数 snake_case、类/类型 PascalCase、常量 UPPER_SNAKE
-2. **导入**: 标准库 → 第三方 → 项目内部（每组空行）
-3. **导出**: 公共函数必须有类型注解，禁止 `any`
-4. **引擎模式**: 每个引擎独立文件 → `src/engines/{name}.ts` → 导出 `search{Name}(query, count)` 函数
-5. **工具模式**: 每个 MCP 工具独立文件 → `src/tools/{name}.ts` → `register{Name}(server)` 函数
-6. **异步**: 全部用 `async/await`，不用裸 `.then()`
+1. 文件/函数 snake_case，类/类型 PascalCase
+2. 每个引擎独立文件 `src/engines/{name}.ts`
+3. 每个 MCP 工具独立文件 `src/tools/{name}.ts`
 
 ## 约束
 
@@ -100,26 +104,16 @@ src/
 3. npm publish 前切 official registry（registry.npmjs.org）
 4. 包名: `agent-search-mcp`（npm）/ `free-agent-search-mcp`（AGENTS.md 标注）
 5. 不改现有工具接口签名（向后兼容）
+6. **版本号克制**: 不频繁发版。只有真正的新功能/修复才 bump。小文档改动、CI 调整不触发版本号变更。每周最多 1 次 publish。patch 版本只留给 bugfix。
 
 ## 文档规范
 
-每次功能变更后必须更新：
-- `CHANGELOG.md` — 版本变更记录
-- `README.md` / `README_zh.md` — 用户文档
-- 新增功能 → 更新 Architecture 图 + Features 表
-- 新增参数 → 更新 Tools 文档
-- 新增引擎 → 更新引擎列表 + 配置表格
-- 重大架构决策 → 写 ADR 到 `docs/decisions/`
-- 踩坑经验 → 写 `LEARNINGS.md`
+每次功能变更后更新 `CHANGELOG.md` / `README.md` / 功能文档。
+重大架构决策写 ADR 到 `docs/decisions/`。
 
 ## 测试要求
 
-- 所有测试用 vitest
-- 测试文件放 `tests/`，按功能目录组织
-- 公共函数必须有测试
-- 新功能必须有测试（单元测试 + 集成测试）
-- 每个 PR/commit 必须 `npm test` 全通过
-- 测试命名: `describe('模块名')` + `it('做了什么')`
+vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测试。
 
 ## 边界
 
@@ -138,19 +132,7 @@ src/
 
 ## 文档索引
 
-| 文档 | 位置 | 用途 |
-|------|------|------|
-| AGENTS.md | 项目根 | 项目地图 + 规范（本文件） |
-| README.md | 项目根 | 英文用户文档 |
-| README_zh.md | 项目根 | 中文用户文档 |
-| CHANGELOG.md | 项目根 | 版本变更记录 |
-| HANDOVER.md | 项目根 | 会话交接日志 |
-| LEARNINGS.md | 项目根 | 踩坑经验记录 |
-| conventions.md | `docs/` | 编码规范详情 |
-| index.md | `docs/` | 文档导航 |
-| plans/ | `docs/plans/` | 功能计划 + 评审 |
-| decisions/ | `docs/decisions/` | ADR 架构决策 |
-| reviews/ | `docs/reviews/` | 安全/多平台评审 |
+`docs/conventions.md` — 编码规范  |  `docs/plans/` — 功能计划  |  `docs/decisions/` — ADR
 
 ## Agent 规则
 

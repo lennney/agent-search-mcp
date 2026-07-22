@@ -1,6 +1,8 @@
 # Agent Search MCP
 
 > 🔍 AI Agent 的免费搜索引擎——多源验证，省 token，MCP 原生
+>
+> ⭐ **喜欢这个项目？** [在 GitHub 上点个 Star](https://github.com/lennney/agent-search-mcp) — 帮助更多人发现它！
 
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)

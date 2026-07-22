@@ -138,7 +138,10 @@ export function setupFetchTools(server: McpServer): void {
   // GitHub README tool
   server.tool(
     'fetch_github_readme',
-    'Fetch README content from a GitHub repository',
+    'Fetch README content from a GitHub repository.\n\n' +
+    'Best for: Getting project documentation quickly.\n' +
+    'Not recommended for: Non-GitHub URLs — use free_extract instead.\n\n' +
+    '@readOnly true @idempotent true — makes outbound HTTP requests to raw.githubusercontent.com.',
     {
       url: z.string().url('Must be a valid URL').describe('GitHub repository URL (e.g., https://github.com/owner/repo)'),
     },
@@ -170,7 +173,10 @@ export function setupFetchTools(server: McpServer): void {
   // CSDN article tool
   server.tool(
     'fetch_csdn_article',
-    'Fetch content from a CSDN blog article',
+    'Fetch content from a CSDN blog article.\n\n' +
+    'Best for: Chinese developer blog content on CSDN.\n' +
+    'Not recommended for: Other Chinese sites — use free_extract instead.\n\n' +
+    '@readOnly true @idempotent true — makes outbound HTTP requests to the CSDN article URL.',
     {
       url: z.string().url('Must be a valid URL').describe('CSDN article URL'),
     },
@@ -202,7 +208,10 @@ export function setupFetchTools(server: McpServer): void {
   // Juejin article tool
   server.tool(
     'fetch_juejin_article',
-    'Fetch content from a Juejin article',
+    'Fetch content from a Juejin article.\n\n' +
+    'Best for: Chinese developer articles on Juejin.\n' +
+    'Not recommended for: Non-Juejin content — use free_extract instead.\n\n' +
+    '@readOnly true @idempotent true — makes outbound HTTP requests to juejin.cn API.',
     {
       url: z.string().url('Must be a valid URL').describe('Juejin article URL'),
     },

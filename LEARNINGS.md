@@ -1,3 +1,12 @@
+---
+type: Learnings
+title: agent-search-mcp LEARNINGS
+timestamp: '2026-07-20T23:35:20+08:00'
+description: 技术教训和踩坑记录
+tags:
+- agent-search-mcp
+- learnings
+---
 # LEARNINGS.md — Agent Search MCP
 
 > Agent 每次任务后自动追加，不需要手动维护

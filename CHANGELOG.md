@@ -1,3 +1,12 @@
+---
+type: Changelog
+title: Agent Search MCP CHANGELOG
+timestamp: '2026-07-20T23:35:20+08:00'
+description: 版本变更记录
+tags:
+- agent-search-mcp
+- changelog
+---
 # Changelog
 
 ## v2.2.0 (2026-07-08)

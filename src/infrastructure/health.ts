@@ -1,3 +1,86 @@
+import { SearchCache } from './cache.js';
+
+export interface ServerMetricsData {
+  /** Server uptime in seconds */
+  uptime: number;
+  /** Process memory usage from process.memoryUsage() */
+  memory: {
+    rss: number;
+    heapTotal: number;
+    heapUsed: number;
+    external: number;
+  };
+  /** Total number of requests handled */
+  requestCount: number;
+  /** Average request latency in milliseconds */
+  avgLatency: number;
+  /** Cache hit rate as a float 0–1, or -1 if no cache requests yet */
+  cacheHitRate: number;
+  /** Cache statistics from SearchCache */
+  cacheStats: {
+    hits: number;
+    misses: number;
+    size: number;
+    maxSize: number;
+  };
+}
+
+/**
+ * Tracks server-wide runtime metrics: uptime, memory, request count,
+ * average latency, and cache hit rate.
+ *
+ * Uses only built-in Node.js modules (node:process).
+ * Integrates with SearchCache for cache telemetry.
+ */
+export class ServerMetrics {
+  private readonly startTime = Date.now();
+  private requestCount = 0;
+  private totalLatency = 0;
+  private readonly cache?: SearchCache;
+
+  constructor(cache?: SearchCache) {
+    this.cache = cache;
+  }
+
+  /** Record a completed request with its latency in milliseconds. */
+  recordRequest(latency: number): void {
+    this.requestCount++;
+    this.totalLatency += latency;
+  }
+
+  /** Return a snapshot of current server metrics. */
+  getMetrics(): ServerMetricsData {
+    const mem = process.memoryUsage();
+    const avgLat = this.requestCount > 0
+      ? this.totalLatency / this.requestCount
+      : 0;
+
+    let cacheHitRate = -1;
+    let cacheStats = { hits: 0, misses: 0, size: 0, maxSize: 0 };
+
+    if (this.cache) {
+      const stats = this.cache.stats();
+      cacheStats = stats;
+      const total = stats.hits + stats.misses;
+      cacheHitRate = total > 0 ? stats.hits / total : -1;
+    }
+
+    return {
+      uptime: (Date.now() - this.startTime) / 1000,
+      memory: {
+        rss: mem.rss,
+        heapTotal: mem.heapTotal,
+        heapUsed: mem.heapUsed,
+        external: mem.external,
+      },
+      requestCount: this.requestCount,
+      avgLatency: Math.round(avgLat * 100) / 100,
+      cacheHitRate: Math.round(cacheHitRate * 10000) / 10000,
+      cacheStats,
+    };
+  }
+}
+
 export interface ProviderHealth {
   provider: string;
   lastSuccess: number | null;

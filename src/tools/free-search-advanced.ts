@@ -8,7 +8,10 @@ export function registerFreeSearchAdvanced(server: McpServer) {
     `Advanced search with filters and quality control.
 
 Best for: Date ranges, domain filtering, high-confidence only, Chinese content.
-Not recommended for: Simple queries — use free_search instead.`,
+Not recommended for: Simple queries — use free_search instead.
+
+@readOnly true @idempotent true — runs waterfall progressive search across free+paid engines. ` + 
+    `Makes outbound HTTP requests to search engines and optionally to Jina Reader for content enrichment.`,
     {
       query: z.string().describe('Search query'),
       count: z.number().optional().default(5).describe('Number of results (1-20)'),

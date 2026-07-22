@@ -9,7 +9,7 @@ import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import type { SearchResult, SearchProvider } from '../types.js';
 import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage } from '../aggregation/index.js';
-import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy } from '../infrastructure/index.js';
+import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
 const SUPPORTED_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
@@ -29,6 +29,7 @@ const ENGINE_WEIGHTS: Record<string, number> = {
 // Infrastructure singletons
 const cache = new SearchCache();
 const healthTracker = new HealthTracker();
+const serverMetrics = new ServerMetrics(cache);
 const rateLimiter = new RateLimiter();
 const config = loadConfig();
 const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
@@ -730,31 +731,36 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
 // ─── Tool registration ──────────────────────────────────────────────────
 
 // Export the health tracker instance so index.ts can use the same singleton
-export { healthTracker, enginePolicy };
+export { cache, healthTracker, serverMetrics, enginePolicy };
 
 export function setupFreeSearchTool(server: McpServer): void {
   server.tool(
     'free_search',
-    'Search the web with automatic fallback between free and paid engines. ' +
-    'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required). ' +
-    'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars). ' +
-    'All results are deduplicated, scored, and ranked. ' +
-    'Results include security metadata to protect against prompt injection.',
+    'Search the web with multi-engine automatic fallback.\n\n' +
+    'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
+    'Not recommended for: Filtered or verified-only results — use free_search_advanced.\n\n' +
+    'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required).\n' +
+    'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars).\n' +
+    'Results are deduplicated, scored by confidence (1-3), and include security metadata.\n\n' +
+    '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
+    'Injection detection and SSRF protection active.',
     {
       query: z.string().min(1, 'Search query must not be empty'),
       limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
       engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa']))
         .min(1)
         .default(['duckduckgo', 'sogou'])
-        .describe('Search engines to use (default: all free engines)'),
+        .describe('Search engines to use (default: duckduckgo + sogou)'),
     },
     async ({ query, limit = 10, engines: userEngines }) => {
+      const start = Date.now();
       try {
         const results = await searchWithFallback({
           query,
           count: limit,
           engines: userEngines,
         });
+        serverMetrics.recordRequest(Date.now() - start);
         return {
           content: [
             {
@@ -764,6 +770,7 @@ export function setupFreeSearchTool(server: McpServer): void {
           ],
         };
       } catch (error) {
+        serverMetrics.recordRequest(Date.now() - start);
         logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Search tool execution failed');
         return {
           content: [
