@@ -776,19 +776,23 @@ export function setupFreeSearchTool(server: McpServer): void {
       description:
         'Search the web with multi-engine automatic fallback.\n\n' +
         'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
-        'Not recommended for: Filtered or verified-only results — use free_search_advanced.\n\n' +
+        'Not recommended for: Filtered or verified-only results — use free_search_advanced. ' +
+        'For full page content — use free_extract.\n\n' +
         'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required).\n' +
         'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars).\n' +
         'Results are deduplicated, scored by confidence (1-3), and include security metadata.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
         'Injection detection and SSRF protection active.',
       inputSchema: {
-        query: z.string().min(1, 'Search query must not be empty'),
-        limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50)'),
+        query: z.string().min(1, 'Search query must not be empty')
+          .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese queries, Sogou and Baidu are used automatically.'),
+        limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
         engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa']))
           .min(1)
           .default(['duckduckgo', 'sogou'])
-          .describe('Search engines to use (default: duckduckgo + sogou)'),
+          .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +
+            'Paid engines (brave/tavily/exa) require corresponding env vars. ' +
+            'For Chinese results, include sogou or baidu.'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": ["lennney"],
+  "relatedServers": [
+    "punkpeye/free-kagi-search",
+    "secretive/duckduckgo-mcp-server",
+    "tavily-ai/tavily-mcp",
+    "exa-labs/exa-mcp-server",
+    "modelcontextprotocol/server-brave-search",
+    "nicholasgriffintn/mcp-server-search"
+  ]
+}

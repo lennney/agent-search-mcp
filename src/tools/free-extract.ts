@@ -7,16 +7,20 @@ export function registerFreeExtract(server: McpServer) {
     'free_extract',
     {
       description:
-        `Extract full content from a URL. Returns clean markdown.
+        `Extract full content from a URL. Returns clean markdown text.
 
-Best for: Reading a specific page found in search results.
-Not recommended for: Bulk extraction — use search first.
+Best for: Reading a specific page found in search results to get full context.
+Not recommended for: Bulk extraction — use free_search first to find relevant pages.
 
-@readOnly true @idempotent true — makes an outbound HTTP request to Jina Reader (r.jina.ai). ` +
-        `Has SSRF protection: blocks private IPs, localhost, and metadata endpoints. 10s request timeout.`,
+Behavior: Makes an outbound HTTP request to Jina Reader (r.jina.ai) which fetches and converts the page to markdown. ` +
+        `Has SSRF protection: blocks private IPs, localhost, and metadata endpoints. ` +
+        `10s request timeout — pages exceeding this will fail with a timeout error. ` +
+        `HTTP errors (4xx, 5xx) are returned as structured error responses.`,
       inputSchema: {
-        url: z.string().describe('URL to extract'),
-        max_length: z.number().optional().default(5000).describe('Max characters to return'),
+        url: z.string().describe('URL to extract content from. Supports any public web page URL (http/https). ' +
+          'For best results, use a complete URL including the protocol (https://).'),
+        max_length: z.number().optional().default(5000).describe('Maximum characters to return (default: 5000). ' +
+          'Content beyond this limit is truncated. Increase for long articles, decrease for quick snippets.'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },

@@ -9,6 +9,34 @@ tags:
 ---
 # Changelog
 
+## v3.1.2 (2026-07-22)
+
+> **Headline: Glama quality score B→A. CI, glama.json, TDQS tool descriptions optimized.**
+
+### 📢 Why Update
+
+- **Glama quality score**: Added `glama.json` metadata, improved tool descriptions per TDQS framework, added GitHub Actions CI — pushing score from B to A tier
+- **TDQS tool descriptions**: All 3 primary tools optimized for Glama's Tool Definition Quality Score (6 dimensions per tool)
+- **CI pipeline**: Added GitHub Actions CI workflow (build + lint + test across Node 18/20/22)
+
+### 🆕 Features
+
+- **glama.json**: Added server metadata file for Glama directory — enables maintainer verification, related servers, and richer listing
+- **CI workflow**: GitHub Actions CI with Node 18/20/22 matrix, lint, build, test, and type-check steps
+
+### 🔧 Fixes
+
+- `free_search` tool description: Added `.describe()` for `query` parameter (was missing, causing 67% schema coverage), improved Usage Guidelines with explicit sibling tool references
+- `free_extract` tool description: Added behavioral details (timeout, error modes, SSRF), improved parameter descriptions beyond schema
+
+### 📊 Stats
+
+- **Tests**: 448 passing (unchanged)
+- **Engines**: 11 (8 free, 3 paid)
+- **Glama Score**: B → A (target)
+
+---
+
 ## v3.1.1 (2026-07-22)
 
 > **Headline: MCP 2025 compliance + DDG News HTML fallback + structured errors.**
