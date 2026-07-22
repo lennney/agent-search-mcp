@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EnginePolicy } from '../../src/infrastructure/tool-policy.js';
+import { EnginePolicy, ToolPolicy } from '../../src/infrastructure/tool-policy.js';
 import type { SearchProvider } from '../../src/types.js';
 
 const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
@@ -120,6 +120,72 @@ describe('EnginePolicy', () => {
       const policy = new EnginePolicy(' duckduckgo , sogou ');
       expect(policy.isAllowed('duckduckgo')).toBe(true);
       expect(policy.isAllowed('sogou')).toBe(true);
+    });
+  });
+});
+
+describe('ToolPolicy', () => {
+  describe('empty/null config', () => {
+    it('allows all tools when no params provided', () => {
+      const policy = new ToolPolicy();
+      expect(policy.isToolEnabled('free_search')).toBe(true);
+      expect(policy.isToolEnabled('free_extract')).toBe(true);
+      expect(policy.isToolEnabled('search_with_synthesis')).toBe(true);
+    });
+
+    it('allows all tools with empty arrays', () => {
+      const policy = new ToolPolicy([], []);
+      expect(policy.isToolEnabled('free_search')).toBe(true);
+      expect(policy.isToolEnabled('free_extract')).toBe(true);
+    });
+  });
+
+  describe('isToolEnabled', () => {
+    it('returns true for an enabled tool', () => {
+      const policy = new ToolPolicy(['free_search', 'free_extract']);
+      expect(policy.isToolEnabled('free_search')).toBe(true);
+      expect(policy.isToolEnabled('free_extract')).toBe(true);
+    });
+
+    it('returns false for a non-enabled tool when allowlist is set', () => {
+      const policy = new ToolPolicy(['free_search']);
+      expect(policy.isToolEnabled('free_extract')).toBe(false);
+      expect(policy.isToolEnabled('search_with_synthesis')).toBe(false);
+    });
+
+    it('returns false for a denied tool', () => {
+      const policy = new ToolPolicy(undefined, ['free_extract', 'free_search_news']);
+      expect(policy.isToolEnabled('free_extract')).toBe(false);
+      expect(policy.isToolEnabled('free_search_news')).toBe(false);
+    });
+
+    it('denied takes priority over allowed', () => {
+      const policy = new ToolPolicy(['free_search', 'free_extract', 'free_search_news'], ['free_extract']);
+      expect(policy.isToolEnabled('free_extract')).toBe(false);
+      expect(policy.isToolEnabled('free_search')).toBe(true);
+      expect(policy.isToolEnabled('free_search_news')).toBe(true);
+    });
+
+    it('allows tools not in denied list when no allowlist set', () => {
+      const policy = new ToolPolicy(undefined, ['free_extract']);
+      expect(policy.isToolEnabled('free_extract')).toBe(false);
+      expect(policy.isToolEnabled('free_search')).toBe(true);
+      expect(policy.isToolEnabled('search_with_synthesis')).toBe(true);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('trims whitespace in tool names', () => {
+      // Tool names passed to isToolEnabled should be clean;
+      // the constructor handles trimming of config values
+      const policy = new ToolPolicy([' free_search ', ' free_extract ']);
+      expect(policy.isToolEnabled('free_search')).toBe(true);
+      expect(policy.isToolEnabled('free_extract')).toBe(true);
+    });
+
+    it('returns false for unknown tool when allowlist set', () => {
+      const policy = new ToolPolicy(['free_search']);
+      expect(policy.isToolEnabled('nonexistent_tool')).toBe(false);
     });
   });
 });
