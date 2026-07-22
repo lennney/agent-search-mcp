@@ -20,6 +20,11 @@ tags:
 
 ## 最近活动
 
+- [2026-07-22] 📋 proposed: 可维护性与架构收敛计划
+  - 运行时版本统一为 `AppMetadata`，修复更新提示可能显示 `0.0.0` 的路径问题
+  - 后续按 EngineCatalog → SearchRuntime → JinaExtractor → transport 的顺序推进
+  - 计划：`docs/plans/2026-07-22-maintainability-architecture.md`
+
 - [2026-07-22] ✅ done: Phase A1 `setupFetchTools` 拆分
   - `fetch_github_readme` / `fetch_csdn_article` / `fetch_juejin_article` 现可独立注册
   - `ENABLED_TOOLS` / `DISABLED_TOOLS` 可细粒度控制三个 fetch 工具
