@@ -222,4 +222,48 @@ describe('DuckDuckGo HTML engine', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('filters out sponsored results (class="result--ad")', async () => {
+    const html = `
+      <div class="result results_links results_links_deep result--ad ">
+        <h2 class="result__title">
+          <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fudemy.com%2Fcourse">Sponsored Course</a>
+        </h2>
+        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fudemy.com%2Fcourse">Ad snippet</a>
+      </div>
+      <div class="result results_links results_links_deep">
+        <h2 class="result__title">
+          <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fexample">Real Result</a>
+        </h2>
+        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fgithub.com%2Fexample">Real snippet</a>
+      </div>
+      <div class="result results_links results_links_deep result--ad result--ad--plain">
+        <h2 class="result__title">
+          <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fanother-ad.com">Another Ad</a>
+        </h2>
+        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fanother-ad.com">Ad 2</a>
+      </div>
+      <div class="result results_links results_links_deep">
+        <h2 class="result__title">
+          <a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freal-result.com%2Fpage">Second Real Result</a>
+        </h2>
+        <a class="result__snippet" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Freal-result.com%2Fpage">Real 2</a>
+      </div>
+    `;
+
+    const originalFetch = global.fetch;
+    global.fetch = (async () => ({
+      ok: true,
+      text: async () => html,
+    })) as typeof fetch;
+
+    try {
+      const results = await searchDuckDuckGoHtml('test query', 10);
+      expect(results).toHaveLength(2);
+      expect(results[0].title).toBe('Real Result');
+      expect(results[1].title).toBe('Second Real Result');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

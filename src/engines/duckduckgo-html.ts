@@ -73,6 +73,10 @@ function parseDdgHtml(html: string, limit: number): SearchResult[] {
     if (results.length >= limit) return false;
 
     const $el = $(el);
+
+    // Skip sponsored results (DDG marks ads with class "result--ad")
+    if ($el.hasClass('result--ad')) return;
+
     const titleLink = $el.find('.result__a').first();
     const rawUrl = titleLink.attr('href') || '';
     const title = titleLink.text().trim();
