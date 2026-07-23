@@ -1,5 +1,6 @@
 {
   "name": "agent-search-mcp",
+  "mcpName": "io.github.lennney/agent-search-mcp",
   "version": "3.1.2",
   "description": "Zero-config, 11-engine free MCP search server for AI agents. DuckDuckGo, Sogou, Bing, Baidu + 7 more. No API keys needed. Waterfall progressive search, multi-source verification, content extraction, news & CLI.",
   "type": "module",

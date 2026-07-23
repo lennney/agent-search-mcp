@@ -520,6 +520,33 @@ Copyright 2026 Agent Search MCP Contributors
 
 ---
 
+## 🔗 推荐搭配
+
+**🛡️ [mcp-slim-guard](https://github.com/lennney/mcp-slim-guard)** — 给你的 MCP 栈添加安全 + 压缩
+
+```bash
+npm install -g mcp-slim-guard
+mcp-slim-guard init
+mcp-slim-guard start
+```
+
+agent-search-mcp + mcp-slim-guard = 搜索 + 安全 + Token 节省三合一：
+
+| 功能 | 效果 |
+|------|------|
+| **Schema 压缩** | 节省 ~83% 上下文窗口 — 1,736 → 300 tokens |
+| **工具白名单** | Glob 模式控制哪些工具可调用 |
+| **SSRF 保护** | IP 黑名单 + 域名白名单，阻止内网请求 |
+| **注入检测** | 17 种启发式模式，防提示注入/SQL/Shell |
+| **速率限制** | 每工具 Token Bucket，默认 60 req/min |
+| **审计日志** | 结构化 JSON 日志，支持轮转 + gzip |
+
+```
+AI Agent → mcp-slim-guard (安全 + 压缩) → agent-search-mcp
+```
+
+---
+
 ## Contributing
 
 欢迎贡献！请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。

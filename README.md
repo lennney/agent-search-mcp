@@ -341,6 +341,33 @@ npm run dev:http  # HTTP mode (port 3000)
 
 ---
 
+## 🔗 Companion Tools
+
+**🛡️ [mcp-slim-guard](https://github.com/lennney/mcp-slim-guard)** — Add security + compression to your MCP stack
+
+```bash
+npm install -g mcp-slim-guard
+mcp-slim-guard init
+mcp-slim-guard start
+```
+
+Pair agent-search-mcp with mcp-slim-guard to get:
+
+| Feature | Benefit |
+|---------|---------|
+| **Schema compression** | Reclaim ~83% of context window — 1,736 → 300 tokens |
+| **Tool allow/deny** | Glob-based whitelist/blacklist for tool access control |
+| **SSRF protection** | IP blacklist + domain whitelist blocks internal network requests |
+| **Injection detection** | 17 heuristic patterns prevent prompt/shell/SQL injection |
+| **Rate limiting** | Token bucket per-tool, default 60 req/min |
+| **Audit logging** | Structured JSON audit log with rotation + gzip |
+
+```
+AI Agent → mcp-slim-guard (security + compression) → agent-search-mcp
+```
+
+---
+
 ## License
 
 [MIT](LICENSE)
