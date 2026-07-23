@@ -9,11 +9,25 @@
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![Tests](https://img.shields.io/badge/tests-448%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
-[![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
+|![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
 **Works with Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Codex, Hermes, and any MCP-compatible client.**
 
 > ⭐ **[Star on GitHub](https://github.com/lennney/agent-search-mcp)** — it helps others discover the project!
+
+## Project Snapshot
+
+| | |
+|---|---|
+| **Engines** | 11 (8 free, no API key) |
+| **MCP Tools** | 8 (search, news, extract, fetch) |
+| **Transports** | stdio + Streamable HTTP |
+| **Latest version** | [v3.1.3](https://www.npmjs.com/package/agent-search-mcp) |
+| **Tests** | 448 passing |
+| **Install** | `npx agent-search-mcp` |
+| **MCP Registry** | `io.github.lennney/agent-search-mcp` |
+
+[Benchmarks →](./benchmarks/) — 100% success rate across 30 queries, 100% waterfall efficiency.
 
 [English](#quick-start) · [中文](README_zh.md) · [Tools](#tools) · [CLI](#cli) · [Engines](#engines) · [Config](#configuration)
 
@@ -329,21 +343,22 @@ npm run dev       # stdio mode
 npm run dev:http  # HTTP mode (port 3000)
 ```
 
+## Benchmarks
+
+Agent Search MCP achieved **100% success rate** across 30 diverse queries (EN + ZH), with **every query satisfied at phase 1** of the waterfall (2 engines only — no fallthrough to phase 2 or 3 needed).
+
+| Metric | Result |
+|--------|--------|
+| Success rate | **30/30 (100%)** |
+| Waterfall efficiency | **100%** stopped at phase 1 |
+| Avg engines per query | **2.0** |
+| Avg confidence | 0.64 / 1.0 |
+
+→ [Full benchmark report & methodology](benchmarks/)
+
 ---
 
-## Stats
-
-| Metric | Value |
-|--------|-------|
-| Tests | 448 passing, 40 files |
-| Engines | 11 (8 free, 3 paid) |
-| MCP Tools | 8 |
-| Dependencies | 5 production |
-| Node.js | >= 18 |
-
----
-
-## 🔗 Companion Tools
+## Companion Tools
 
 **🛡️ [mcp-slim-guard](https://github.com/lennney/mcp-slim-guard)** — Add security + compression to your MCP stack
 
