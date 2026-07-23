@@ -1,6 +1,6 @@
 # Agent Search MCP
 
-> 🔍 **11 search engines (8 free), one MCP server.** Zero API keys. Chinese search. Multi-source verification. Waterfall progressive search, content extraction, news & CLI. `npm install` is enough.
+> 🔍 **12 search engines (8 free), one MCP server.** Zero API keys. Chinese search. Multi-source verification. Waterfall progressive search, content extraction, news & CLI. `npm install` is enough.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -230,6 +230,7 @@ Stops as soon as results are sufficient. Saves 50-75% engine calls.
 | `BRAVE_API_KEY` | — | Brave Search API key (2K free/month) |
 | `TAVILY_API_KEY` | — | Tavily API key (1K free/month) |
 | `EXA_API_KEY` | — | Exa API key (1K free/month) |
+| `YDC_API_KEY` | — | You.com API key (optional; improves authenticated access beyond the free tier) |
 | `LOG_LEVEL` | `info` | Log level: `info`, `debug` |
 | `MODE` | `stdio` | Transport: `stdio`, `http`, `both` |
 | `PORT` | `3000` | HTTP server port (MODE=http/both) |
@@ -275,7 +276,7 @@ DENIED_ENGINES=yandex,mojeek
 ```bash
 # Search
 fasm search "TypeScript MCP server"
-fasm search "query" --count 5 --engines bing,baidu --json
+fasm search "query" --count 5 --engines bing,baidu,youcom --json
 
 # Extract
 fasm extract "https://example.com"
@@ -304,9 +305,9 @@ MCP Server
   │   ├── Dedup (URL + title)
   │   ├── Content Enrichment (Jina Reader)
   │   └── Query Expansion (rule-based, 4 strategies)
-  ├── Engine Layer (11 engines)
+  ├── Engine Layer (12 engines)
   │   ├── Free: DDG, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek
-  │   └── Paid: Brave, Tavily, Exa
+  │   └── Paid/optional: Brave, Tavily, Exa, You.com
   └── Infrastructure
       ├── Health Tracker (per-engine circuit breaking)
       ├── Rate Limiter (adaptive concurrency)
@@ -336,7 +337,7 @@ npm run dev:http  # HTTP mode (port 3000)
 | Metric | Value |
 |--------|-------|
 | Tests | 448 passing, 40 files |
-| Engines | 11 (8 free, 3 paid) |
+| Engines | 12 (8 free, 4 paid/optional) |
 | MCP Tools | 8 |
 | Dependencies | 5 production |
 | Node.js | >= 18 |

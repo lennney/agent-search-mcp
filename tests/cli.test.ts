@@ -9,11 +9,11 @@ describe('parseArgs', () => {
   });
 
   it('parses search with options', () => {
-    const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--count', '5', '--engines', 'bing,baidu']);
+    const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--count', '5', '--engines', 'bing,baidu,youcom']);
     expect(args.command).toBe('search');
     expect(args.query).toBe('query');
     expect(args.count).toBe(5);
-    expect(args.engines).toEqual(['bing', 'baidu']);
+    expect(args.engines).toEqual(['bing', 'baidu', 'youcom']);
   });
 
   it('parses extract command', () => {
@@ -50,8 +50,8 @@ describe('parseArgs', () => {
   });
 
   it('filters invalid engines', () => {
-    const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--engines', 'bing,invalid,baidu']);
-    expect(args.engines).toEqual(['bing', 'baidu']);
+    const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--engines', 'bing,invalid,baidu,youcom']);
+    expect(args.engines).toEqual(['bing', 'baidu', 'youcom']);
   });
 
   it('parses --proxy flag', () => {
