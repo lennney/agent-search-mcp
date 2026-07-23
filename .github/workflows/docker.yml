@@ -42,7 +42,7 @@ jobs:
           echo "tags=${REPO_LOWERCASE}:latest,${REPO_LOWERCASE}:${VERSION_TAG}" >> $GITHUB_OUTPUT
 
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64,linux/arm/v7
