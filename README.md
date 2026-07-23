@@ -1,6 +1,6 @@
 # Agent Search MCP
 
-> 🔍 **11 search engines, 8 free, one MCP server.** Zero API keys. Chinese search. Multi-source verification. Streamable HTTP. `npm install` is enough.
+> 🔍 **11 search engines (8 free), one MCP server.** Zero API keys. Chinese search. Multi-source verification. Waterfall progressive search, content extraction, news & CLI. `npm install` is enough.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -198,6 +198,8 @@ mcp_servers:
 | `fetch_github_readme` | Fetch README from a GitHub repo | Quick project documentation |
 | `fetch_csdn_article` | Fetch content from CSDN blog | Chinese developer articles |
 | `fetch_juejin_article` | Fetch content from Juejin | Chinese developer articles |
+
+**Quick reference:** `free_search`, `free_search_advanced`, `free_search_news`, `search_with_synthesis`, `free_extract`, `fetch_github_readme`, `fetch_csdn_article`, `fetch_juejin_article`
 
 All tools are read-only and idempotent with MCP 2025 annotations.
 
