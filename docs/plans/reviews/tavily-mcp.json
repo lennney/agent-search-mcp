@@ -1,0 +1,43 @@
+{
+  "server": "tavily-mcp",
+  "display_name": "Tavily MCP",
+  "url": "https://github.com/tavily-ai/tavily-mcp",
+  "version": "latest",
+  "category": "search",
+  "tested_at": "2026-07-22",
+  "tested_by": "mcp-bench",
+  "overview": {
+    "tagline": "AI-optimized search API with extraction, crawling, and mapping tools",
+    "description": "Tavily MCP provides 4 tools (tavily-search, tavily-extract, tavily-map, tavily-crawl) optimized for AI agent workflows. Supports both remote HTTP (mcp.tavily.com/mcp) and stdio transports. 1K free searches/month. AIMultiple benchmark: 45% success rate, 41.3s average latency.",
+    "price": "1K free searches/month, paid tiers",
+    "transport": ["remote-http", "stdio"]
+  },
+  "scores": {
+    "installation": { "score": 7, "max": 10, "weight": 0.20, "details": "npx install works. Remote URL option is convenient (no local server needed). No Docker required. But API key is mandatory.", "pros": ["npx install works smoothly", "Remote URL mode = no local setup", "No Docker required"], "cons": ["API key required even for evaluation", "Free tier limited to 1K searches"] },
+    "documentation": { "score": 7, "max": 10, "weight": 0.15, "details": "Good README with multiple MCP client configs, video tutorials, and blog posts. Missing structured API docs (auto-generated reference).", "pros": ["Multiple client config examples", "Video tutorials available", "Blog posts with use cases"], "cons": ["No structured API documentation", "No troubleshooting FAQ", "Documentation scattered across resources"] },
+    "latency": { "score": 7, "max": 10, "weight": 0.15, "details": "Average 41.3s in AIMultiple benchmark for complex tasks. Simple search is much faster (expected sub-second). Extract/crawl operations naturally take longer.", "pros": ["Simple search is fast", "Remote HTTP mode reduces local overhead"], "cons": ["41.3s average in benchmark (complex tasks)", "Crawl and extract can be slow"] },
+    "security": { "score": 6, "max": 10, "weight": 0.15, "details": "OAuth support is a plus. But no injection protection mechanisms mentioned in the documentation. No readOnlyHint annotations on tools.", "pros": ["OAuth support available", "Remote service = less local attack surface"], "cons": ["No injection protection documented", "No readOnlyHint annotations", "No input sanitization mentioned"] },
+    "stability": { "score": 6, "max": 10, "weight": 0.15, "details": "AIMultiple benchmark shows 45% success rate, which is low. However, this includes complex extraction/crawl tasks. Basic search is more reliable. Still below competitors.", "pros": ["Basic search is stable day-to-day", "Active monitoring of API service"], "cons": ["45% success rate in benchmark", "Complex tasks prone to failure", "No offline/fallback mode"] },
+    "maintenance": { "score": 8, "max": 10, "weight": 0.10, "details": "Active development with 47 open issues. Regular releases and published tutorials. 2,242 stars shows good community adoption.", "pros": ["Active development and releases", "2,242 stars", "Regular tutorial publications"], "cons": ["47 open issues", "Documentation sometimes lags behind features"] },
+    "token_efficiency": { "score": 5, "max": 10, "weight": 0.10, "details": "4 separate tools with no readOnlyHint annotations. Tool descriptions are functional but not optimized for agent token budgets. Does not follow TDQS guidelines.", "pros": ["Only 4 tools (fairly compact)", "Tool functions are clearly separated"], "cons": ["No readOnlyHint annotations", "Descriptions not token-optimized", "No TDQS compliance"] },
+    "search_accuracy": { "score": 6, "max": 10, "weight": 0.25, "details": "AIMultiple benchmark 45% overall success rate is concerning. Designed for agent-optimized search which is different from general search. Results relevant to AI tasks but accuracy lags behind Exa and Brave.", "pros": ["Optimized for AI agent use cases", "Agent-specific result structuring"], "cons": ["45% benchmark success rate", "Lower accuracy than top competitors", "Inconsistent result quality"] },
+    "freshness": { "score": 6, "max": 10, "weight": 0.15, "details": "Has search_depth parameter (basic/advanced) and time_range. No specific freshness guarantees documented. Crawl tool can get fresh data but depends on target.", "pros": ["time_range parameter available", "Crawl tool can fetch live data"], "cons": ["No freshness SLA", "No specific freshness benchmarks", "time_range not available for all tools"] },
+    "chinese_search": { "score": 2, "max": 10, "weight": 0.10, "details": "No Chinese search support documented. English-focused search engine. Chinese query results are poor.", "pros": [], "cons": ["No Chinese language support", "English-focused engine", "No Chinese documentation or examples"] }
+  },
+  "overall": {
+    "weighted_score": 61,
+    "grade": "C",
+    "methodology": "Weighted average of dimension scores. Category-specific (search_accuracy 25%, freshness 15%, chinese_search 10%) + universal (installation 20%, latency 15%, security 15%, stability 15%, docs 15%, maintenance 10%, token_efficiency 10%). Renormalized to 0-100."
+  },
+  "verdict": {
+    "summary": "A capable search MCP server with convenient remote HTTP mode and extraction/crawl tools. But benchmark success rates and lack of injection protection are concerns. Best suited for AI agent prototyping where remote setup is preferred.",
+    "ideal_for": ["Quick prototyping with remote HTTP setup", "AI agent workflows needing search + extract", "Developers who want search + crawl in one server"],
+    "not_ideal_for": ["Production reliability requirements", "Chinese-language search", "Token-constrained agent contexts", "High-accuracy search needs"],
+    "value_rating": "C"
+  },
+  "competition": {
+    "vs_agent_search_mcp": "agent-search-mcp is free with no API key needed and higher factual accuracy. Tavily offers extract/crawl tools agent-search-mcp lacks. agent-search-mcp wins on Chinese search.",
+    "vs_exa_mcp": "Exa is premium ($50/mo) but has 91% factual accuracy vs Tavily's 45% benchmark rate. Tavily is more affordable for low-volume use.",
+    "vs_firecrawl_mcp": "Both offer search + crawl. Firecrawl has more tools (12 vs 4), higher benchmark success (64.8% vs 45%), and a keyless free tier. Firecrawl is the stronger competitor."
+  }
+}

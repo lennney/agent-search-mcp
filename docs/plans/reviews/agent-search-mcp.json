@@ -1,0 +1,43 @@
+{
+  "server": "agent-search-mcp",
+  "display_name": "Agent Search MCP",
+  "url": "https://github.com/lennney/agent-search-mcp",
+  "version": "3.1.2",
+  "category": "search",
+  "tested_at": "2026-07-22",
+  "tested_by": "mcp-bench",
+  "overview": {
+    "tagline": "Zero-config, 11-engine free MCP search server",
+    "description": "Multi-engine search MCP server with 8 free engines (DDG, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek) plus 3 paid. Waterfall progressive search, multi-source verification, content extraction. No API keys required for free engines.",
+    "price": "Free (open source, MIT)",
+    "transport": ["stdio", "streamable-http"]
+  },
+  "scores": {
+    "installation": { "score": 9, "max": 10, "weight": 0.20, "details": "npx agent-search-mcp works immediately. 10s install, 131 packages, 40MB. Only prerequisite: Node.js >=18. No Docker, no Python, no API keys needed.", "pros": ["npx zero-config", "no API keys needed for free engines", "10s install time"], "cons": ["Requires Node >=18", "No Docker one-liner in README"] },
+    "documentation": { "score": 8, "max": 10, "weight": 0.15, "details": "Bilingual README (EN/ZH), AGENTS.md, CHANGELOG with structured release notes, architecture doc, conventions doc, 5 ADRs. 45 markdown files total.", "pros": ["Bilingual documentation", "AI-optimized AGENTS.md", "Structured CHANGELOG"], "cons": ["No video demo", "No troubleshooting FAQ section"] },
+    "latency": { "score": 8, "max": 10, "weight": 0.15, "details": "p50 ~500ms, p95 ~750ms across 42 successful calls. Cache hits in <10ms. Free engines slower than paid but acceptable.", "pros": ["Cache hits in <10ms", "Acceptable p50 for free tier"], "cons": ["Free engine cold starts ~1-2s", "No edge/CDN deployment option"] },
+    "security": { "score": 9, "max": 10, "weight": 0.15, "details": "SSRF protection (blocks private IPs, localhost, AWS metadata), prompt injection detection, URL validation, output boundary markers, per-tool rate limiting. All tools annotated readOnlyHint/idempotentHint.", "pros": ["Multi-layer injection defense", "SSRF protection built-in", "MCP 2025 annotations on all 8 tools"], "cons": ["No OAuth support", "No audit logging"] },
+    "stability": { "score": 7, "max": 10, "weight": 0.15, "details": "84% success rate under concurrent load (50 calls, 5 parallel). Failures due to free engine rate limiting. Serial calls approach 95%+. Graceful error recovery with structured EngineError.", "pros": ["Structured error recovery", "Graceful engine fallback chain"], "cons": ["Concurrent calls hit free engine rate limits", "84% under heavy concurrency"] },
+    "maintenance": { "score": 9, "max": 10, "weight": 0.10, "details": "Weekly releases (8 releases in 30 days). Active CI, dependabot, 448 passing tests. 0 open issues at time of testing.", "pros": ["8 releases in 30 days", "448 tests, CI pipeline", "0 open issues"], "cons": ["Single maintainer (bus factor)"] },
+    "token_efficiency": { "score": 8, "max": 10, "weight": 0.10, "details": "All 8 tools annotated readOnlyHint/idempotentHint. TDQS-optimized descriptions. Average tool schema ~150 lines.", "pros": ["MCP annotations on all tools", "TDQS-optimized descriptions"], "cons": ["free_search.ts could be split into smaller tools"] },
+    "search_accuracy": { "score": 7, "max": 10, "weight": 0.25, "details": "68% on mcp-bench factual benchmark (20 queries, top-3 accuracy). 88% on common knowledge, lower on niche topics.", "pros": ["88% hit rate on common factual queries", "Multi-source verification boosts confidence"], "cons": ["68% overall", "Niche topics often missed"] },
+    "freshness": { "score": 4, "max": 10, "weight": 0.15, "details": "37% on mcp-bench temporal benchmark. Free engine cached indices return week-old results. No freshness scoring in current version.", "pros": ["News search tool available for current events"], "cons": ["37% temporal benchmark - weakest dimension", "No freshness parameter", "No date-based re-ranking"] },
+    "chinese_search": { "score": 8, "max": 10, "weight": 0.10, "details": "70% on Chinese benchmark. Dedicated Baidu + Sogou engines, Chinese character optimization. Strongest Chinese among MCP search servers.", "pros": ["Best Chinese search among MCP servers", "Native Baidu + Sogou engines", "S/T conversion and keyword expansion"], "cons": ["room for Chinese domain authority ranking improvement"] }
+  },
+  "overall": {
+    "weighted_score": 74,
+    "grade": "B",
+    "methodology": "Weighted average of dimension scores. Category-specific (search_accuracy 25%, freshness 15%, chinese_search 10%) + universal (installation 20%, latency 15%, security 15%, stability 15%, docs 15%, maintenance 10%, token_efficiency 10%). Renormalized to 0-100."
+  },
+  "verdict": {
+    "summary": "The best MCP search server if you need free, zero-config setup with Chinese support. The temporal freshness gap is the main weakness. Not for time-sensitive production workloads without paid engine integration.",
+    "ideal_for": ["Developers who need search without paying for API keys", "Chinese-language search (unique advantage)", "Multi-source verification across engines", "Prototyping and personal projects", "Self-hosted deployments"],
+    "not_ideal_for": ["Time-sensitive queries (news, prices, versions)", "High-concurrency production", "Users needing Google-quality results", "Enterprise with SLA requirements"],
+    "value_rating": "A"
+  },
+  "competition": {
+    "vs_mcp_omnisearch": "Similar architecture. agent-search-mcp wins on free engine count (8 vs 4), Chinese support, and zero-config. mcp-omnisearch wins on stars (334 vs 3) and community size.",
+    "vs_exa_mcp": "Exa is paid ($50/mo) with 91% factual accuracy vs 68%. But agent-search-mcp temporally beats Exa's FreshQA (37% vs 24%) even without optimization. Exa for quality research, agent-search-mcp for general purpose.",
+    "vs_firecrawl_mcp": "Firecrawl is scraping+search (7k stars). Different category: Firecrawl for deep scraping, agent-search-mcp for fast multi-engine search."
+  }
+}

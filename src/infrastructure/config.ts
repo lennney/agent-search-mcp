@@ -11,6 +11,8 @@ export interface Config {
   DENIED_ENGINES: string;
   enabledTools: string[];
   disabledTools: string[];
+  outputStyle: 'normal' | 'compact';
+  snippetLength: number;
 }
 
 export function loadConfig(): Config {
@@ -39,5 +41,7 @@ export function loadConfig(): Config {
     disabledTools: process.env.DISABLED_TOOLS
       ? process.env.DISABLED_TOOLS.split(',').map(t => t.trim()).filter(Boolean)
       : [],
+    outputStyle: process.env.OUTPUT_STYLE === 'compact' ? 'compact' : 'normal',
+    snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
   };
 }

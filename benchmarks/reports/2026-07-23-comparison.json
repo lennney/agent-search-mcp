@@ -1,0 +1,10 @@
+{
+  "date": "2026-07-23",
+  "queries": 30,
+  "normalModeAvgBytes": 5951,
+  "compactModeAvgBytes": 5554,
+  "totalBytesNormal": 178526,
+  "totalBytesCompact": 166619,
+  "savingsPercent": 6.7,
+  "queriesCompleted": 30
+}

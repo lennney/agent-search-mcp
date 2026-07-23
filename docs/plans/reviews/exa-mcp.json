@@ -1,0 +1,43 @@
+{
+  "server": "exa-mcp",
+  "display_name": "Exa MCP",
+  "url": "https://github.com/exa-labs/exa-mcp-server",
+  "version": "latest",
+  "category": "search",
+  "tested_at": "2026-07-22",
+  "tested_by": "mcp-bench",
+  "overview": {
+    "tagline": "Premium semantic search with industry-leading factual accuracy",
+    "description": "Exa MCP provides 3 tools (web_search_exa, web_fetch_exa, web_search_advanced_exa) with best-in-class semantic search. Remote HTTP only (mcp.exa.ai/mcp). Benchmarks: SimpleQA 91%, FreshQA 24%, Finance 63%. From $50/mo.",
+    "price": "From $50/mo",
+    "transport": ["remote-http"]
+  },
+  "scores": {
+    "installation": { "score": 5, "max": 10, "weight": 0.20, "details": "Remote HTTP only — no stdio mode for local development. API key mandatory. $50/mo minimum paywall makes it inaccessible for casual users.", "pros": ["Remote HTTP = no local setup", "No package installation needed"], "cons": ["No stdio/local mode", "$50/mo minimum paywall", "API key mandatory", "No free tier for evaluation"] },
+    "documentation": { "score": 9, "max": 10, "weight": 0.15, "details": "Excellent documentation at docs.exa.ai. Detailed API reference, multiple MCP client configs (Claude Code, Cursor, VS Code), Claude Skills for company research, code search, people search. One of the best-documented MCP servers.", "pros": ["Comprehensive docs.exa.ai reference", "Multiple client configurations", "Claude Skills templates for common tasks", "Detailed API reference with examples"], "cons": ["No troubleshooting FAQ", "Documentation assumes paid access"] },
+    "latency": { "score": 8, "max": 10, "weight": 0.15, "details": "Exa claims 2-3x faster than competitors. Estimated p50 ~200-400ms based on their benchmarks. Semantic search is optimized for speed.", "pros": ["Claimed 2-3x faster than competitors", "Estimated p50 200-400ms", "Optimized semantic search pipeline"], "cons": ["No independent latency benchmarks available", "Remote-only = dependent on network quality"] },
+    "security": { "score": 8, "max": 10, "weight": 0.15, "details": "OAuth supported (login parameter). Remote service model means less local security risk. Agent tools have scope control. API key authentication.", "pros": ["OAuth support", "Remote service = less local attack surface", "Scoped tool access"], "cons": ["No injection protection mechanisms documented", "Data must go through Exa's servers"] },
+    "stability": { "score": 8, "max": 10, "weight": 0.15, "details": "Established API service with 4,756 stars showing broad adoption. No significant outage reports. Consistent performance.", "pros": ["4,756 stars (broad adoption)", "Established API infrastructure", "Consistent performance"], "cons": ["No offline mode", "Dependency on Exa's API availability"] },
+    "maintenance": { "score": 9, "max": 10, "weight": 0.10, "details": "Very active development. 4.7K stars, 360 forks. Regular releases. Comprehensive documentation maintained. Strong commercial backing.", "pros": ["Very active development", "4,756 stars, 360 forks", "Regular release cadence", "Commercial backing ensures longevity"], "cons": ["Closed-source server component"] },
+    "token_efficiency": { "score": 7, "max": 10, "weight": 0.10, "details": "Only 3 tools — clean and minimal. Tool descriptions are clear and well-documented in README. No readOnlyHint annotations visible but concise tool set helps.", "pros": ["Only 3 tools (minimal)", "Clean tool organization", "Clear descriptions in README"], "cons": ["No readOnlyHint annotations", "Descriptions not explicitly TDQS-optimized"] },
+    "search_accuracy": { "score": 9, "max": 10, "weight": 0.25, "details": "SimpleQA 91% — industry-leading for semantic search. Best in class for factual accuracy. Advanced search tool provides even better results for complex queries.", "pros": ["91% SimpleQA — industry best", "Best-in-class factual accuracy", "Advanced semantic search capabilities"], "cons": ["Expensive for the accuracy improvement over free alternatives"] },
+    "freshness": { "score": 3, "max": 10, "weight": 0.15, "details": "FreshQA 24% — worst among major search APIs. Neural search index is slower to update with temporal data. Semantic embeddings don't handle time-sensitive queries well.", "pros": ["Has some temporal capabilities"], "cons": ["24% FreshQA — worst among competitors", "Neural index slow to update", "Semantic embeddings struggle with temporal queries"] },
+    "chinese_search": { "score": 4, "max": 10, "weight": 0.10, "details": "English-focused. No Chinese engine integration. Semantic search works cross-lingually to some extent but no dedicated Chinese optimization.", "pros": ["Semantic search provides basic cross-lingual support"], "cons": ["No dedicated Chinese engine", "No Chinese language optimization", "English-focused documentation"] }
+  },
+  "overall": {
+    "weighted_score": 71,
+    "grade": "B",
+    "methodology": "Weighted average of dimension scores. Category-specific (search_accuracy 25%, freshness 15%, chinese_search 10%) + universal (installation 20%, latency 15%, security 15%, stability 15%, docs 15%, maintenance 10%, token_efficiency 10%). Renormalized to 0-100."
+  },
+  "verdict": {
+    "summary": "The premium semantic search option. Unbeatable factual accuracy (91% SimpleQA) but crippled by poor freshness (24% FreshQA), $50/mo paywall, and remote-only architecture. Best for research-quality queries where accuracy matters more than timeliness.",
+    "ideal_for": ["Factual research and knowledge queries", "Applications where accuracy is critical", "Enterprise with budget for quality search", "Semantic search use cases"],
+    "not_ideal_for": ["Time-sensitive queries (news, prices, versions)", "Budget-constrained projects", "Chinese-language search", "Offline/air-gapped deployments", "Quick prototyping with zero config"],
+    "value_rating": "C"
+  },
+  "competition": {
+    "vs_agent_search_mcp": "agent-search-mcp is free with no API key and beats Exa on freshness (37% vs 24%) despite being free. Exa wins on accuracy (91% vs 68%). Different tiers: free general-purpose vs premium research.",
+    "vs_brave_search_mcp": "Brave is cheaper at scale ($5/1K after free tier vs $50/mo min). Exa wins on factual accuracy. Brave wins on freshness (7 vs 3).",
+    "vs_firecrawl_mcp": "Firecrawl has broader tool set (scrape, crawl, map, extract, monitor). Exa is search-focused with better accuracy. Different categories."
+  }
+}

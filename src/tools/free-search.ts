@@ -7,8 +7,10 @@ import { searchBaidu } from '../engines/baidu.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
+// ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
 import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage } from '../aggregation/index.js';
+import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
 const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
@@ -264,6 +266,7 @@ interface SearchResponse {
   detected_language?: string;
   rate_limits?: Record<string, { remaining: number; resetInMs: number }>;
   partialFailures?: EngineError[];
+  cache_hit?: boolean;
 }
 
 // ─── Request collapsing ───────────────────────────────────────────────
@@ -371,7 +374,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
-    return cached as SearchResponse;
+    return { ...(cached as SearchResponse), cache_hit: true } as SearchResponse;
   }
 
   logger.info({ query, count, engines: userEngines }, 'Starting search');
@@ -514,18 +517,26 @@ failures.push(
     }
   }
 
-  const formatted = formatResults(scored);
+  const fmtOptions: FormatOptions = {
+    style: config.outputStyle,
+    snippetMax: config.snippetLength,
+  };
+  const formatted = formatResults(scored, fmtOptions);
 
-  const response = {
+  const response: SearchResponse = {
     query,
     engines: userEngines,
-    ...formatted,
+    results: formatted.results as any,
+    meta: formatted.meta,
+    security_note: formatted.security_note,
     detected_language: detectedLang,
-    rate_limits: rateLimiter.getAllRateLimits(searchedEngines),
+    ...(config.outputStyle !== 'compact' ? {
+      rate_limits: rateLimiter.getAllRateLimits(searchedEngines),
+    } : {}),
     ...(failures.length > 0
-      ? { partialFailures: failures }
+      ? { partialFailures: failures as EngineError[] }
       : {}),
-  } as SearchResponse;
+  };
 
   // ── Step 8: Async cache write (from ddgs) ───────────────────────────
   // Don't block the response - write cache in background

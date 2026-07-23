@@ -3,6 +3,7 @@ export { scoreAndRank } from './scorer.js';
 export { checkConfidenceBasket } from './scorer.js';
 export type { ScoredResult, ConfidenceBasketResult, ConfidenceBasketOptions } from './scorer.js';
 export { formatResults } from './format.js';
+export type { FormatOptions } from './format.js';
 export { expandQuery } from './query-expander.js';
 export { hasChinese, toTraditional, toSimplified, generateChineseVariants } from './chinese-optimizer.js';
 export { enrichResults } from './enricher.js';
