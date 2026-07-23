@@ -520,6 +520,8 @@ failures.push(
   const fmtOptions: FormatOptions = {
     style: config.outputStyle,
     snippetMax: config.snippetLength,
+    maxFullResults: config.maxFullResults,
+    minConfidence: config.minConfidence,
   };
   const formatted = formatResults(scored, fmtOptions);
 
@@ -754,7 +756,12 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
     }
   }
 
-  const formatted = formatResults(scored);
+  const formatted = formatResults(scored, {
+    style: config.outputStyle,
+    snippetMax: config.snippetLength,
+    maxFullResults: config.maxFullResults,
+    minConfidence: config.minConfidence,
+  });
   const response = {
     query,
     engines: searchedEngines,

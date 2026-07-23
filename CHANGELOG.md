@@ -9,6 +9,21 @@ tags:
 ---
 # Changelog
 
+## v3.2.0 (2026-07-24)
+
+> **Headline: Progressive disclosure + confidence filtering. 36-58% fewer tokens in compact mode.**
+
+### 🆕 Features
+
+- **Progressive disclosure**: `MAX_FULL_RESULTS` (default 3) — first N results full (title+snippet+confidence), remaining compacted (title+url+`compacted:true`). Agent can expand via `free_extract`. Saves ~36% tokens.
+- **Confidence filtering**: `MIN_CONFIDENCE` (default 0=off) — filter out low-confidence results before formatting. Adds `filtered_count` to meta.
+- **Traceable**: `compacted:true` marker, `compacted_count`, `filtered_count` in meta — Agent knows what's truncated and can recover.
+- **New env vars**: `MAX_FULL_RESULTS` (1-20), `MIN_CONFIDENCE` (0.0-3.0)
+
+### 🔧 Fixes
+
+- `compact` mode now includes `compacted_count` and `filtered_count` in meta when respective options are active
+
 ## v3.1.2 (2026-07-22)
 
 > **Headline: Glama quality score B→A. CI, glama.json, TDQS tool descriptions optimized.**

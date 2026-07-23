@@ -8,7 +8,7 @@
 [![CI](https://github.com/lennney/agent-search-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/lennney/agent-search-mcp/actions)
 [![License](https://img.shields.io/github/license/lennney/agent-search-mcp)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
-[![Tests](https://img.shields.io/badge/tests-448%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
+[![Tests](https://img.shields.io/badge/tests-463%20passing-brightgreen)](https://github.com/lennney/agent-search-mcp)
 |![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
 **Works with Claude Code, Claude Desktop, Cursor, Windsurf, VS Code, Codex, Hermes, and any MCP-compatible client.**
@@ -23,7 +23,7 @@
 | **MCP Tools** | 8 (search, news, extract, fetch) |
 | **Transports** | stdio + Streamable HTTP |
 | **Latest version** | [v3.1.3](https://www.npmjs.com/package/agent-search-mcp) |
-| **Tests** | 448 passing |
+| **Tests** | 463 passing |
 | **Install** | `npx agent-search-mcp` |
 | **MCP Registry** | `io.github.lennney/agent-search-mcp` |
 
@@ -247,6 +247,10 @@ Stops as soon as results are sufficient. Saves 50-75% engine calls.
 | `LOG_LEVEL` | `info` | Log level: `info`, `debug` |
 | `MODE` | `stdio` | Transport: `stdio`, `http`, `both` |
 | `PORT` | `3000` | HTTP server port (MODE=http/both) |
+| `OUTPUT_STYLE` | `normal` | `compact` for token-optimized output |
+| `SNIPPET_LENGTH` | `200` | Max snippet chars (60-500) |
+| `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode, 0-20) |
+| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (compact mode, 0.0-3.0) |
 
 **Zero config works** — no API keys needed for the 8 free engines.
 

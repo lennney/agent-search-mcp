@@ -13,6 +13,8 @@ export interface Config {
   disabledTools: string[];
   outputStyle: 'normal' | 'compact';
   snippetLength: number;
+  maxFullResults: number;
+  minConfidence: number;
 }
 
 export function loadConfig(): Config {
@@ -43,5 +45,7 @@ export function loadConfig(): Config {
       : [],
     outputStyle: process.env.OUTPUT_STYLE === 'compact' ? 'compact' : 'normal',
     snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
+    maxFullResults: parseInt(process.env.MAX_FULL_RESULTS || '3', 10) || 3,
+    minConfidence: parseFloat(process.env.MIN_CONFIDENCE || '0') || 0,
   };
 }
