@@ -9,6 +9,49 @@ tags:
 ---
 # Changelog
 
+## v3.3.0 (2026-07-24)
+
+> **Headline: Semantic dedup + rerank via Model2Vec. <10ms latency. Optional, opt-in.**
+
+### 🆕 Features
+
+- **Semantic dedup** (`SEMANTIC_DEDUP=true`): Removes semantically duplicate results across engines using cosine similarity on Model2Vec embeddings. Keeps higher-confidence items. Adds `removedCount` feedback.
+- **Semantic rerank** (`SEMANTIC_RERANK=true`): Reorders results by semantic similarity to the query. Returns top-K most relevant results.
+- **Model2Vec bridge**: Persistent Python child process (`src/aggregation/semantic_bridge.py`) running `minishlab/M2V_base_output` (256-dim, 7.2MB model). Embedding speed ~35µs/text, dedup + rerank <5ms total latency.
+- **Zero dependency by default**: Semantic features are OFF by default. No Python/model2vec required unless explicitly enabled.
+- **Graceful degradation**: If the Python bridge is unavailable (no model2vec installed, process crash, etc.), results pass through unchanged — no broken searches.
+
+### 🔧 Env vars
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SEMANTIC_DEDUP` | `false` | Enable semantic dedup |
+| `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold |
+| `DEDUP_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for dedup |
+| `SEMANTIC_RERANK` | `false` | Enable semantic rerank |
+| `RERANK_TOP_K` | `5` | Results to keep after rerank |
+| `RERANK_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for rerank |
+
+### 📊 Stats
+
+- **Tests**: 480 passing (+17: 6 semantic + 11 config)
+- **Files**: 42 test files (+1: semantic.test.ts)
+
+## v3.2.0 (2026-07-24)
+
+> **Headline: Progressive disclosure + confidence filtering. 36-58% fewer tokens in compact mode.**
+
+### 🆕 Features
+
+- **Progressive disclosure**: `MAX_FULL_RESULTS` (default 3) — first N results full (title+snippet+confidence), remaining compacted (title+url+`compacted:true`). Agent can expand via `free_extract`. Saves ~36% tokens.
+- **Confidence filtering**: `MIN_CONFIDENCE` (default 0=off) — filter out low-confidence results before formatting. Adds `filtered_count` to meta.
+- **Traceable**: `compacted:true` marker, `compacted_count`, `filtered_count` in meta — Agent knows what's truncated and can recover.
+- **New env vars**: `MAX_FULL_RESULTS` (1-20), `MIN_CONFIDENCE` (0.0-3.0)
+
+### 🔧 Fixes
+
+- `compact` mode now includes `compacted_count` and `filtered_count` in meta when respective options are active
+
 ## v3.1.2 (2026-07-22)
 
 > **Headline: Glama quality score B→A. CI, glama.json, TDQS tool descriptions optimized.**

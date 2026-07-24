@@ -11,6 +11,16 @@ export interface Config {
   DENIED_ENGINES: string;
   enabledTools: string[];
   disabledTools: string[];
+  outputStyle: 'normal' | 'compact';
+  snippetLength: number;
+  maxFullResults: number;
+  minConfidence: number;
+  semanticDedup: boolean;
+  dedupThreshold: number;
+  dedupModel: string;
+  semanticRerank: boolean;
+  rerankTopK: number;
+  rerankModel: string;
 }
 
 export function loadConfig(): Config {
@@ -39,5 +49,15 @@ export function loadConfig(): Config {
     disabledTools: process.env.DISABLED_TOOLS
       ? process.env.DISABLED_TOOLS.split(',').map(t => t.trim()).filter(Boolean)
       : [],
+    outputStyle: process.env.OUTPUT_STYLE === 'compact' ? 'compact' : 'normal',
+    snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
+    maxFullResults: parseInt(process.env.MAX_FULL_RESULTS || '3', 10) || 3,
+    minConfidence: parseFloat(process.env.MIN_CONFIDENCE || '0') || 0,
+    semanticDedup: process.env.SEMANTIC_DEDUP === 'true',
+    dedupThreshold: parseFloat(process.env.DEDUP_THRESHOLD || '0.85') || 0.85,
+    dedupModel: process.env.DEDUP_MODEL || 'minishlab/M2V_base_output',
+    semanticRerank: process.env.SEMANTIC_RERANK === 'true',
+    rerankTopK: parseInt(process.env.RERANK_TOP_K || '5', 10) || 5,
+    rerankModel: process.env.RERANK_MODEL || 'minishlab/M2V_base_output',
   };
 }

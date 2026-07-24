@@ -1,0 +1,16 @@
+{
+  "date": "2026-07-23",
+  "queries": 30,
+  "successRate": "100%",
+  "avgLatency": "13937ms",
+  "p50": "13311ms",
+  "p95": "16926ms",
+  "avgResults": 10,
+  "avgEngines": 2,
+  "waterfallSavedQueries": "30/30",
+  "avgConfidence": 0.64,
+  "dedupRate": "0.0%",
+  "tokenSavings": "~-7.5%",
+  "queryCount": 30,
+  "successCount": 30
+}

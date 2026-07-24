@@ -1,0 +1,43 @@
+{
+  "server": "firecrawl-mcp",
+  "display_name": "Firecrawl MCP",
+  "url": "https://github.com/firecrawl/firecrawl-mcp-server",
+  "version": "v2",
+  "category": "search",
+  "tested_at": "2026-07-22",
+  "tested_by": "mcp-bench",
+  "overview": {
+    "tagline": "Full-stack web scraping platform with search — 12 tools, keyless free tier available",
+    "description": "Firecrawl MCP provides 12 tools (scrape, search, crawl, map, extract, agent, interact, research, monitor, parse). Web scraping platform that also does search. Remote HTTP + stdio transports. 500 credits free, keyless search-only tier available. AIMultiple benchmark: 64.8% success rate, 77.6s average.",
+    "price": "500 credits free, keyless search-only tier available",
+    "transport": ["remote-http", "stdio"]
+  },
+  "scores": {
+    "installation": { "score": 7, "max": 10, "weight": 0.20, "details": "npx install works. Keyless free tier for search is rare and appreciated. Full features need API key. Multiple config options (stdio, remote, env vars, CLI flags).", "pros": ["Keyless free search tier (rare!)", "Multiple configuration options", "npx install works out of box", "Self-hostable option"], "cons": ["Full features require API key", "Many config options can be confusing"] },
+    "documentation": { "score": 9, "max": 10, "weight": 0.15, "details": "Excellent README with tool selection guide, format selection guide, logging system docs, error handling docs. One of the best documented MCP servers. Comprehensive dev setup guide.", "pros": ["Tool selection guide (priceless for 12 tools)", "Format selection guide", "Logging system documentation", "Error handling documentation", "Dev setup guide"], "cons": ["No video tutorial", "Documentation volume can be overwhelming"] },
+    "latency": { "score": 6, "max": 10, "weight": 0.15, "details": "77.6s average in AIMultiple benchmark (complex tasks). Basic search is faster. Scraping naturally takes time. Automatic retries add latency on failures.", "pros": ["Basic search is reasonably fast", "Automatic retry mechanism built-in"], "cons": ["77.6s average for complex tasks", "Scraping is inherently slow", "Retries compound latency issues"] },
+    "security": { "score": 7, "max": 10, "weight": 0.15, "details": "OAuth options available. Feedback system for quality. No specific injection protection mechanisms mentioned. Self-hostable option is good for security-conscious deployments.", "pros": ["OAuth support", "Self-hostable (data stays on-prem)", "Feedback system for quality control"], "cons": ["No injection protection documented", "No readOnlyHint annotations", "12 tools = larger attack surface"] },
+    "stability": { "score": 7, "max": 10, "weight": 0.15, "details": "64.8% success rate in AIMultiple benchmark. 7K stars shows broad community trust. Built-in automatic retries and rate limiting help stability. Not search-focused so benchmark may underrepresent basic search stability.", "pros": ["Built-in retries and rate limiting", "7,020 stars (broad trust)", "Self-hostable for reliability control"], "cons": ["64.8% benchmark success rate", "Complex tool chain increases failure modes"] },
+    "maintenance": { "score": 10, "max": 10, "weight": 0.10, "details": "7K stars, very active development. Multiple tools updated regularly. Clear versioning. Comprehensive README including dev setup. Best-maintained MCP server in this comparison.", "pros": ["7,020 stars — largest community", "Very active release cadence", "Clear semantic versioning", "Comprehensive dev setup guide", "Rapid issue response"], "cons": [] },
+    "token_efficiency": { "score": 5, "max": 10, "weight": 0.10, "details": "12 tools is a lot — agents may struggle to select the right one. Tool descriptions are well-written but long. No readOnlyHint annotations. The tool selection guide helps but adds cognitive load.", "pros": ["Well-written tool descriptions", "Tool selection guide available"], "cons": ["12 tools = token overhead", "No readOnlyHint annotations", "Agents may choose wrong tool", "Not TDQS-optimized"] },
+    "search_accuracy": { "score": 7, "max": 10, "weight": 0.25, "details": "64.8% AIMultiple benchmark. Not primarily a search engine — it's a scraping platform that also searches. Search quality is adequate but not best-in-class.", "pros": ["Decent search for a scraping platform", "Agent tool can answer specific questions"], "cons": ["64.8% benchmark — not search-focused", "Search accuracy lags behind pure search engines"] },
+    "freshness": { "score": 6, "max": 10, "weight": 0.15, "details": "Live crawling means results can be very fresh when using scrape/crawl tools. Search results depend on underlying index. No freshness guarantees documented.", "pros": ["Live crawling = fresh data possible", "Scrape tool gets current page content"], "cons": ["Search index freshness unclear", "No temporal benchmark data", "No freshness parameter in search"] },
+    "chinese_search": { "score": 3, "max": 10, "weight": 0.10, "details": "No Chinese-specific features. General web scraping can cover Chinese sites but no optimization for Chinese language queries or results.", "pros": ["Can scrape any website including Chinese sites"], "cons": ["No Chinese language optimization", "No Chinese engine integration", "No Chinese documentation"] }
+  },
+  "overall": {
+    "weighted_score": 68,
+    "grade": "C",
+    "methodology": "Weighted average of dimension scores. Category-specific (search_accuracy 25%, freshness 15%, chinese_search 10%) + universal (installation 20%, latency 15%, security 15%, stability 15%, docs 15%, maintenance 10%, token_efficiency 10%). Renormalized to 0-100."
+  },
+  "verdict": {
+    "summary": "The most full-featured scraping+search MCP server with 12 tools and a keyless free tier. Excellent documentation and maintenance. But 12 tools hurt token efficiency, and latency for complex tasks is high. Best when you need scraping capabilities alongside search.",
+    "ideal_for": ["Projects needing both search and web scraping", "Users who want a keyless-free tier to try", "Deep content extraction workflows", "Self-hosted scraping infrastructure"],
+    "not_ideal_for": ["Token-constrained agent contexts", "Pure search (overkill with 12 tools)", "Chinese-language search", "Low-latency requirements", "Time-sensitive production search"],
+    "value_rating": "B"
+  },
+  "competition": {
+    "vs_agent_search_mcp": "agent-search-mcp is free, zero-config, and focused on search. Firecrawl adds scraping, crawling, monitoring. Different categories: search-first vs scrape-first. agent-search-mcp wins on Chinese search and token efficiency.",
+    "vs_brave_search_mcp": "Brave is pure search with better index quality. Firecrawl is broader (search + scrape). Different toolsets for different needs.",
+    "vs_exa_mcp": "Exa is premium semantic search (91% factual accuracy). Firecrawl is broader but less accurate. Exa for research quality, Firecrawl for data extraction."
+  }
+}

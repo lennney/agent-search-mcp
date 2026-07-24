@@ -1,0 +1,43 @@
+{
+  "server": "brave-search-mcp",
+  "display_name": "Brave Search MCP",
+  "url": "https://github.com/brave/brave-search-mcp-server",
+  "version": "2.x",
+  "category": "search",
+  "tested_at": "2026-07-22",
+  "tested_by": "mcp-bench",
+  "overview": {
+    "tagline": "Official Brave Search API via MCP — fast, privacy-focused, multi-modal search",
+    "description": "Official Brave Search MCP server. Provides 7 tools (web_search, local_search, image_search, video_search, news_search) using Brave's own search index. v2 streamlined from 36 to 7 tools. Supports stdio and HTTP transports. Free tier: 2K queries/month, then $5/1K.",
+    "price": "Free tier: 2K queries/month, then $5/1K",
+    "transport": ["stdio", "streamable-http"]
+  },
+  "scores": {
+    "installation": { "score": 6, "max": 10, "weight": 0.20, "details": "Quick npx install, but BRAVE_API_KEY is mandatory even for evaluation. Free tier limited to 2K queries/month. No Docker one-liner.", "pros": ["npx install works instantly", "Lightweight dependency footprint"], "cons": ["API key mandatory even for trying", "Free tier only 2K queries/month", "No Docker setup in README"] },
+    "documentation": { "score": 8, "max": 10, "weight": 0.15, "details": "Official Brave documentation, clear examples with multiple MCP client configs (Claude, VS Code, Cursor, etc.). README well-structured. Missing troubleshooting FAQ section.", "pros": ["Official Brave docs integration", "Multi-client configuration examples", "Clear v2 changelog"], "cons": ["No troubleshooting FAQ", "No video demo or architecture diagram"] },
+    "latency": { "score": 8, "max": 10, "weight": 0.15, "details": "Brave's own search index is fast. Expected p50 ~300-500ms. API adds some latency versus direct Brave Search access but still competitive.", "pros": ["Brave index is well-optimized", "p50 ~300-500ms typical"], "cons": ["API proxy adds overhead vs direct search", "Paid tier may have rate shaping"] },
+    "security": { "score": 7, "max": 10, "weight": 0.15, "details": "Official server from Brave — trusted publisher. API key auth limits access. No readOnlyHint annotations visible on tools. No injection protection mechanisms mentioned.", "pros": ["Official Brave-maintained server", "API key gating prevents abuse"], "cons": ["No readOnlyHint annotations", "No injection protection mentioned", "No input validation documented"] },
+    "stability": { "score": 8, "max": 10, "weight": 0.15, "details": "Brave Search API is reliable with documented rate limits. 2K free quota is reasonable for evaluation. Rate limit errors are gracefully handled.", "pros": ["Reliable Brave API infrastructure", "Rate limits documented", "Graceful error responses"], "cons": ["Free quota can exhaust quickly in production", "No offline fallback mode"] },
+    "maintenance": { "score": 7, "max": 10, "weight": 0.10, "details": "v2 was a major improvement — removed base64 images from results, cut tools from 36 to 7. Updated approximately monthly. 1,317 stars shows community trust. 47 open issues.", "pros": ["v2 big UX improvement", "Monthly update cadence", "1,317 stars"], "cons": ["47 open issues", "v1 to v2 migration may break existing configs"] },
+    "token_efficiency": { "score": 6, "max": 10, "weight": 0.10, "details": "v1 had 36 tools which was terrible for token efficiency. v2 streamlined to 7, much better. Tool descriptions are functional but not TDQS-optimized. No readOnly annotations.", "pros": ["v2 cut from 36 to 7 tools", "Clean tool organization"], "cons": ["No readOnlyHint annotations", "Descriptions not token-optimized"] },
+    "search_accuracy": { "score": 7, "max": 10, "weight": 0.25, "details": "Brave uses its own search index (not Google). Results quality is solid but not industry-leading. Privacy-focused ranking means less personalization, which is a trade-off.", "pros": ["Privacy-first search ranking", "Solid general web results"], "cons": ["Not Google-level accuracy", "Less personalized results due to privacy focus"] },
+    "freshness": { "score": 7, "max": 10, "weight": 0.15, "details": "v2 added freshness controls and pagination. Brave's index updates quickly. Freshness is decent but not best-in-class.", "pros": ["Freshness controls in v2", "Brave index updates rapidly"], "cons": ["No dedicated temporal benchmark data", "Freshness not emphasized as feature"] },
+    "chinese_search": { "score": 3, "max": 10, "weight": 0.10, "details": "No Chinese language support mentioned. Brave's index is English-focused. Chinese query results are poor compared to Baidu/Sogou.", "pros": [], "cons": ["No Chinese language support", "English-focused index", "Poor results for Chinese queries"] }
+  },
+  "overall": {
+    "weighted_score": 68,
+    "grade": "C",
+    "methodology": "Weighted average of dimension scores. Category-specific (search_accuracy 25%, freshness 15%, chinese_search 10%) + universal (installation 20%, latency 15%, security 15%, stability 15%, docs 15%, maintenance 10%, token_efficiency 10%). Renormalized to 0-100."
+  },
+  "verdict": {
+    "summary": "Solid official MCP server from Brave. Fast, privacy-focused, but the mandatory API key and lack of Chinese support limit its reach. v2's streamlining was a good move. Best for English-language search with privacy requirements.",
+    "ideal_for": ["Privacy-conscious users who want non-Google search", "English-language web search", "Multi-modal search (web, news, images, video, local)", "Production deployments with paid quota"],
+    "not_ideal_for": ["Chinese-language search", "Zero-config / try-before-signup scenarios", "Token-constrained agent contexts (no annotations)", "Users needing Google-level accuracy"],
+    "value_rating": "B"
+  },
+  "competition": {
+    "vs_agent_search_mcp": "agent-search-mcp is free with 8 engines and no API key needed. Brave Search wins on index quality and freshness. agent-search-mcp wins on Chinese search and zero-config.",
+    "vs_exa_mcp": "Exa is premium ($50/mo) with higher factual accuracy (91% SimpleQA). Brave is cheaper for high volume ($5/1K after free tier). Different price segments.",
+    "vs_firecrawl_mcp": "Firecrawl is scraping+search platform. Brave is pure search. Different categories unless you need both."
+  }
+}

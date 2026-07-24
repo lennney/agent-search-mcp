@@ -1,0 +1,32 @@
+{
+  "version": "2.0",
+  "category": "chinese",
+  "description": "Chinese language search queries. Tests Chinese engine routing, authority domain coverage, and result relevance.",
+  "questions": [
+    { "id": "CHN-001", "query": "DeepSeek 最新版本", "expected": "", "authority_domains": ["csdn.net", "zhihu.com", "baike.baidu.com"] },
+    { "id": "CHN-002", "query": "中国人口数量 2025", "expected": "", "authority_domains": ["baike.baidu.com", "gov.cn", "stats.gov.cn"] },
+    { "id": "CHN-003", "query": "MCP 协议介绍", "expected": "", "authority_domains": ["csdn.net", "zhihu.com", "juejin.cn"] },
+    { "id": "CHN-004", "query": "人工智能发展趋势 2026", "expected": "", "authority_domains": ["csdn.net", "36kr.com", "huxiu.com"] },
+    { "id": "CHN-005", "query": "Python 入门教程", "expected": "", "authority_domains": ["csdn.net", "runoob.com", "zhihu.com"] },
+    { "id": "CHN-006", "query": "上海迪士尼乐园门票价格", "expected": "上海", "authority_domains": ["baike.baidu.com", "shanghai.gov.cn"] },
+    { "id": "CHN-007", "query": "清华大学世界排名 2026", "expected": "", "authority_domains": ["tsinghua.edu.cn", "baike.baidu.com"] },
+    { "id": "CHN-008", "query": "微信小程序开发文档", "expected": "小程序", "authority_domains": ["developers.weixin.qq.com", "cloud.tencent.com"] },
+    { "id": "CHN-009", "query": "新能源汽车销量排行榜 2025", "expected": "", "authority_domains": ["36kr.com", "huxiu.com", "sohu.com"] },
+    { "id": "CHN-010", "query": "如何学习机器学习", "expected": "机器", "authority_domains": ["csdn.net", "zhihu.com", "jianshu.com"] },
+    { "id": "CHN-011", "query": "2026 年世界杯举办地", "expected": "", "authority_domains": ["baike.baidu.com", "sina.com.cn"] },
+    { "id": "CHN-012", "query": "Vue.js 和 React 区别对比", "expected": "", "authority_domains": ["csdn.net", "zhihu.com", "juejin.cn"] },
+    { "id": "CHN-013", "query": "2026 年端午节放假安排", "expected": "", "authority_domains": ["gov.cn", "baike.baidu.com"] },
+    { "id": "CHN-014", "query": "阿里云服务器价格表 2026", "expected": "阿里云", "authority_domains": ["aliyun.com"] },
+    { "id": "CHN-015", "query": "ChatGPT 中文版怎么用", "expected": "", "authority_domains": ["csdn.net", "zhihu.com", "juejin.cn"] },
+    { "id": "CHN-016", "query": "中国高铁最高时速", "expected": "公里", "authority_domains": ["baike.baidu.com", "gov.cn"] },
+    { "id": "CHN-017", "query": "比特币最新价格 2026 人民币", "expected": "", "authority_domains": ["zhihu.com", "36kr.com"] },
+    { "id": "CHN-018", "query": "Docker 中文教程", "expected": "", "authority_domains": ["csdn.net", "runoob.com", "zhihu.com"] },
+    { "id": "CHN-019", "query": "中国 GDP 增长率 2025", "expected": "", "authority_domains": ["gov.cn", "baike.baidu.com", "stats.gov.cn"] },
+    { "id": "CHN-020", "query": "微信支付 API 接入文档", "expected": "", "authority_domains": ["pay.weixin.qq.com", "developers.weixin.qq.com"] },
+    { "id": "CHN-021", "query": "淘宝双十一 2025 销售额", "expected": "", "authority_domains": ["36kr.com", "huxiu.com", "sohu.com"] },
+    { "id": "CHN-022", "query": "考研英语复习计划", "expected": "", "authority_domains": ["zhihu.com", "csdn.net", "kaoyan.com"] },
+    { "id": "CHN-023", "query": "华为 Mate 70 参数配置", "expected": "", "authority_domains": ["huawei.com", "ithome.com", "sohu.com"] },
+    { "id": "CHN-024", "query": "MySQL 性能优化最佳实践", "expected": "", "authority_domains": ["csdn.net", "zhihu.com"] },
+    { "id": "CHN-025", "query": "中国空间站最新消息 2026", "expected": "", "authority_domains": ["gov.cn", "baike.baidu.com", "sina.com.cn"] }
+  ]
+}

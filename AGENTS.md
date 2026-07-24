@@ -55,64 +55,7 @@ fasm extract "https://..."                  # CLI 提取
 
 ## 架构
 
-```
-src/
-├── index.ts                       # 入口 + 工具注册编排
-├── types.ts                       # 核心类型 (SearchResult, SearchProvider)
-├── cli.ts                         # CLI 入口 (fasm)
-│
-├── tools/                         # MCP 工具定义
-│   ├── free-search.ts             #   基础搜索 + 瀑布流程 + 编排
-│   ├── free-search-advanced.ts    #   高级搜索（过滤 + 瀑布 + 丰富）
-│   ├── free-search-news.ts        #   新闻搜索
-│   ├── search-with-synthesis.ts   #   深度搜索 + prompt_hint
-│   ├── free-extract.ts            #   页面提取 (Jina Reader)
-│   ├── fetch-tools.ts             #   GitHub/CSDN/Juejin 提取
-│   ├── capabilities.ts            #   能力披露资源
-│   └── health.ts                  #   健康检查 + 指标
-│
-├── engines/                       # 搜索引擎适配（每引擎独立文件）
-│   ├── duckduckgo.ts              #   免费 — Python ddgs 首选 / cheerio 回退
-│   ├── duckduckgo-html.ts         #   免费 — cheerio HTML 引擎（自动回退）
-│   ├── sogou.ts                   #   免费
-│   ├── bing.ts                    #   免费
-│   ├── baidu.ts                   #   免费
-│   ├── wikipedia.ts               #   免费
-│   ├── startpage.ts               #   免费
-│   ├── yandex.ts                  #   免费
-│   ├── mojeek.ts                  #   免费
-│   ├── brave.ts                   #   付费
-│   ├── tavily.ts                  #   付费
-│   ├── exa.ts                     #   付费
-│   └── index.ts                   #   引擎桶导出
-│
-├── aggregation/                   # 搜索聚合层
-│   ├── scorer.ts                  #   评分 + 置信度 + 域名权威
-│   ├── dedup.ts                   #   去重 (URL + 标题)
-│   ├── format.ts                  #   格式化输出
-│   ├── enricher.ts                #   内容提取丰富 (Jina Reader)
-│   ├── query-expander.ts          #   查询扩展
-│   ├── language-detector.ts       #   语言自动检测
-│   ├── chinese-optimizer.ts       #   中文优化（繁简转换、停用词）
-│   └── index.ts                   #   桶导出
-│
-├── synthesis/                     # 搜索结果合成
-│   ├── index.ts                   #   合成编排
-│   └── prompt-builder.ts          #   prompt_hint 构建
-│
-├── infrastructure/                # 基础设施
-│   ├── config.ts                  #   配置读取 (env vars)
-│   ├── cache.ts                   #   LRU 缓存
-│   ├── rate-limiter.ts            #   逐引擎限速
-│   ├── health.ts                  #   健康追踪 + 指标
-│   ├── security.ts                #   注入检测 + 边界标记
-│   ├── url-validator.ts           #   SSRF 保护
-│   ├── tool-policy.ts             #   工具可见性控制 (allow/deny)
-│   ├── version-check.ts           #   npm 版本检查
-│   ├── html-utils.ts              #   HTML 解析工具
-│   ├── http.ts                    #   HTTP 服务 (HTTP+SSE mode)
-│   └── logger.ts                  #   日志 (pino)
-```
+`src/` 下按职责分层：`tools/`（MCP 工具定义）、`engines/`（11 引擎适配）、`aggregation/`（评分/去重/丰富）、`synthesis/`（结果合成）、`infrastructure/`（安全/缓存/限速）。Agent 自己探索 `src/` 目录获取最新结构。
 
 ## 编码规范
 
