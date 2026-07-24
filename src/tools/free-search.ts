@@ -9,7 +9,7 @@ import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 // ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
-import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage } from '../aggregation/index.js';
+import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank } from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
@@ -478,6 +478,23 @@ failures.push(
   // 5d. Score and rank with frequency bonus
   let scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
 
+  // ── Step 5e: Semantic dedup (optional, compact mode) ───────────────
+  if (config.semanticDedup || config.semanticRerank) {
+    try {
+      if (config.semanticDedup) {
+        const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
+        scored = dedupResult.results as typeof scored;
+        logger.info({ removed: dedupResult.removedCount, kept: scored.length }, 'Semantic dedup applied');
+      }
+      if (config.semanticRerank) {
+        scored = await semanticRerank(query, scored, config.rerankTopK, config.rerankModel);
+        logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
+      }
+    } catch (err) {
+      logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
+    }
+  }
+
   // ── Step 6: Post-search filters ─────────────────────────────────────
   if (minConfidence > 1) {
     scored = scored.filter(r => r.confidence >= minConfidence);
@@ -720,6 +737,23 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
   const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
   const titleDeduped = dedupByTitle(urlDeduped);
   let scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
+
+  // ── Step 5e: Semantic dedup (optional, compact mode) ───────────────
+  if (config.semanticDedup || config.semanticRerank) {
+    try {
+      if (config.semanticDedup) {
+        const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
+        scored = dedupResult.results as typeof scored;
+        logger.info({ removed: dedupResult.removedCount, kept: scored.length }, 'Semantic dedup applied');
+      }
+      if (config.semanticRerank) {
+        scored = await semanticRerank(query, scored, config.rerankTopK, config.rerankModel);
+        logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
+      }
+    } catch (err) {
+      logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
+    }
+  }
 
   if (minConfidence > 1) {
     scored = scored.filter((r) => r.confidence >= minConfidence);

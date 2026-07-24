@@ -11,19 +11,18 @@ tags:
 
 ## 项目状态
 
-**版本**: v3.1.1（已发布 npm + GitHub Release）
+**版本**: v3.3.0（P2 语义层已完成，待发布）
 **引擎**: 11 个（ddg/sogou/bing/baidu/brave/tavily/exa/yandex/mojeek/wikipedia/startpage）
-**测试**: vitest — 448 passed, 40 test files
-**最后更新**: 2026-07-22
+**测试**: vitest — 480 passed, 42 test files
+**最后更新**: 2026-07-24
 **npm**: https://www.npmjs.com/package/agent-search-mcp
-**Python 依赖**: 可选（DDG 自动回退到 cheerio HTML 引擎）
+**Python 依赖**: 可选（DDG 自动回退到 cheerio HTML 引擎；语义层需 `pip install model2vec`）
 
 ## 最近活动
 
-- [2026-07-22] ✅ v3.1.1: Streamable HTTP + Capabilities 声明 + MCP annotations + EngineError + DDG News HTML 回退 + E2E 集成测试 (4 tests)
-- [2026-07-22] ✅ setupFetchTools 拆分：3 个 fetch 工具可独立注册/禁用
-- [2026-07-22] ✅ v3.1.0 发布：DDGS 独立化 + 工具可见性控制 + CLI 版本检查 + npm 生态优化
-- [2026-07-22] ✅ DDGS 独立化重构：Python 可选 + cheerio HTML 引擎 + Docker 去 Python
+- [2026-07-24] ✅ P2 语义层：Model2Vec 语义去重 + 语义重排（SEMANTIC_DEDUP/SEMANTIC_RERANK，默认 off）
+- [2026-07-24] ✅ P0 渐进披露 + 置信度过滤（MAX_FULL_RESULTS/MIN_CONFIDENCE，compact 模式）
+- [2026-07-22] ✅ v3.1.1: Streamable HTTP + Capabilities 声明 + MCP annotations + EngineError + DDG News HTML 回退
 
 ## 技术决策
 

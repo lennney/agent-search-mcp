@@ -114,4 +114,66 @@ describe('loadConfig', () => {
     const config = loadConfig();
     expect(config.disabledTools).toEqual([]);
   });
+
+  // ── Semantic layer (P2) ─────────────────────────────────────────────
+
+  it('defaults semanticDedup to false', () => {
+    const config = loadConfig();
+    expect(config.semanticDedup).toBe(false);
+  });
+
+  it('parses SEMANTIC_DEDUP=true as boolean', () => {
+    process.env.SEMANTIC_DEDUP = 'true';
+    const config = loadConfig();
+    expect(config.semanticDedup).toBe(true);
+  });
+
+  it('defaults dedupThreshold to 0.85', () => {
+    const config = loadConfig();
+    expect(config.dedupThreshold).toBe(0.85);
+  });
+
+  it('parses DEDUP_THRESHOLD=0.9', () => {
+    process.env.DEDUP_THRESHOLD = '0.9';
+    const config = loadConfig();
+    expect(config.dedupThreshold).toBe(0.9);
+  });
+
+  it('defaults dedupModel to minishlab/M2V_base_output', () => {
+    const config = loadConfig();
+    expect(config.dedupModel).toBe('minishlab/M2V_base_output');
+  });
+
+  it('parses custom DEDUP_MODEL', () => {
+    process.env.DEDUP_MODEL = 'custom/model-v2';
+    const config = loadConfig();
+    expect(config.dedupModel).toBe('custom/model-v2');
+  });
+
+  it('defaults semanticRerank to false', () => {
+    const config = loadConfig();
+    expect(config.semanticRerank).toBe(false);
+  });
+
+  it('parses SEMANTIC_RERANK=true as boolean', () => {
+    process.env.SEMANTIC_RERANK = 'true';
+    const config = loadConfig();
+    expect(config.semanticRerank).toBe(true);
+  });
+
+  it('defaults rerankTopK to 5', () => {
+    const config = loadConfig();
+    expect(config.rerankTopK).toBe(5);
+  });
+
+  it('parses RERANK_TOP_K=10', () => {
+    process.env.RERANK_TOP_K = '10';
+    const config = loadConfig();
+    expect(config.rerankTopK).toBe(10);
+  });
+
+  it('defaults rerankModel to minishlab/M2V_base_output', () => {
+    const config = loadConfig();
+    expect(config.rerankModel).toBe('minishlab/M2V_base_output');
+  });
 });

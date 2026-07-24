@@ -263,6 +263,12 @@ Stops as soon as results are sufficient. Saves 50-75% engine calls.
 | `SNIPPET_LENGTH` | `200` | Max snippet chars (60-500) |
 | `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode, 0-20) |
 | `MIN_CONFIDENCE` | `0` | Confidence threshold filter (compact mode, 0.0-3.0) |
+| `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (<5ms, requires `pip install model2vec`) |
+| `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
+| `DEDUP_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for dedup |
+| `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec (<5ms, requires `pip install model2vec`) |
+| `RERANK_TOP_K` | `5` | Results to keep after semantic rerank |
+| `RERANK_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for rerank |
 
 **Zero config works** — no API keys needed for the 8 free engines.
 

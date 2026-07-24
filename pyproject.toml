@@ -1,0 +1,9 @@
+[project]
+name = "agent-search-mcp-semantic"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["model2vec>=0.8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

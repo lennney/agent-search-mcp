@@ -10,3 +10,5 @@ export { enrichResults } from './enricher.js';
 export type { EnrichOptions, EnrichResult } from './enricher.js';
 export { detectLanguage } from './language-detector.js';
 export type { DetectedLanguage } from './language-detector.js';
+export { semanticDedup, semanticRerank, isSemanticAvailable } from './semantic.js';
+export type { SemanticOptions } from './semantic.js';
