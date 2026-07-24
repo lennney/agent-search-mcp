@@ -52,3 +52,4 @@ tags:
 - **路由未完全统一**：12 个适配器中，Wikipedia/Startpage/Yandex/Mojeek 尚不能从所有 MCP/CLI 入口选择
 - **Benchmark 仅作探索**：历史 engine/token 节省比例缺少真实调用遥测与同源 fixture，不应作为发布保证
 - **HTTP 暴露面**：HTTP 模式尚未提供认证/Origin 校验；仅应绑定到受信网络或置于认证代理之后
+- **依赖审计**：`npm audit` 当前报告 4 项（1 high/1 low 均在 Vitest/Vite 开发链；2 moderate 来自 MCP SDK 的 Hono 传递依赖）。MCP SDK 项暂无非破坏性上游修复，不要为清零审计而降级协议栈。
