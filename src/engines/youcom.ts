@@ -55,6 +55,10 @@ export async function searchYouCom(query: string, count: number = 10): Promise<S
   });
 
   if (!res.ok) {
+    if (res.status >= 400 && res.status < 500) {
+      console.warn(`You.com: HTTP ${res.status}`);
+      return [];
+    }
     throw new Error(`You.com HTTP ${res.status}`);
   }
 

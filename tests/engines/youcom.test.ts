@@ -79,7 +79,7 @@ describe('You.com engine', () => {
     });
   });
 
-  it('searchYouCom throws on HTTP error', async () => {
+  it('searchYouCom throws on HTTP 500 (server error)', async () => {
     mockFetch.mockResolvedValue({
       ok: false,
       status: 500,
@@ -87,4 +87,127 @@ describe('You.com engine', () => {
 
     await expect(searchYouCom('test query', 5)).rejects.toThrow('You.com HTTP 500');
   });
+
+  it('searchYouCom returns empty array when results are missing', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toEqual([]);
+  });
+
+  it('searchYouCom returns empty array when web and news are both null', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: { web: null, news: null } }),
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toEqual([]);
+  });
+
+  it('searchYouCom filters out items without title', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: {
+          web: [
+            { title: '', url: 'https://example.com/no-title', description: 'No title' },
+            { title: 'Good', url: 'https://example.com/good', description: 'Has title' },
+          ],
+        },
+      }),
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toHaveLength(1);
+    expect(results[0].title).toBe('Good');
+  });
+
+  it('searchYouCom filters out items without url', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: {
+          web: [
+            { title: 'No URL', url: '', description: 'No URL' },
+            { title: 'Good', url: 'https://example.com/good', description: 'Has URL' },
+          ],
+        },
+      }),
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe('https://example.com/good');
+  });
+
+  it('searchYouCom uses snippets fallback when description is empty', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: {
+          web: [
+            {
+              title: 'Snippet Only',
+              url: 'https://example.com/snippet',
+              description: '',
+              snippets: ['This is from snippets'],
+            },
+          ],
+        },
+      }),
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toHaveLength(1);
+    expect(results[0].snippet).toBe('This is from snippets');
+  });
+
+  it('searchYouCom respects count parameter', async () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      title: `Result ${i}`,
+      url: `https://example.com/${i}`,
+      description: `Snippet ${i}`,
+    }));
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: { web: items } }),
+    });
+
+    const results = await searchYouCom('test query', 3);
+    expect(results).toHaveLength(3);
+  });
+
+  it('searchYouCom returns empty array on 4xx (client error)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toEqual([]);
+  });
+
+  it('searchYouCom returns empty array on 429 (rate limit)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 429,
+    });
+
+    const results = await searchYouCom('test query', 5);
+    expect(results).toEqual([]);
+  });
+
+  it('searchYouCom throws on 5xx (server error)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 503,
+    });
+
+    await expect(searchYouCom('test query', 5)).rejects.toThrow('You.com HTTP 503');
+  });
+
 });

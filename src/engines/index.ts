@@ -16,7 +16,7 @@ export { searchYouCom, youcomProvider } from './youcom.js';
 /**
  * All registered engine providers with metadata.
  * Free engines: DDG, Sogou, Bing, Baidu
- * Paid engines: Brave, Tavily, Exa, You.com (require or optionally use API keys)
+ * Paid engines: Brave, Tavily, Exa, You.com (require API keys)
  */
 export const engines: Record<SearchProvider, SearchProviderInfo> = {
   duckduckgo: { id: 'duckduckgo', name: 'DuckDuckGo', isFree: true, languages: ['en'] },

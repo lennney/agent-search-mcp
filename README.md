@@ -230,7 +230,7 @@ Stops as soon as results are sufficient. Saves 50-75% engine calls.
 | `BRAVE_API_KEY` | — | Brave Search API key (2K free/month) |
 | `TAVILY_API_KEY` | — | Tavily API key (1K free/month) |
 | `EXA_API_KEY` | — | Exa API key (1K free/month) |
-| `YDC_API_KEY` | — | You.com API key (optional; improves authenticated access beyond the free tier) |
+| `YDC_API_KEY` | — | You.com API key ($5/1K queries; sign up at you.com for free credits) |
 | `LOG_LEVEL` | `info` | Log level: `info`, `debug` |
 | `MODE` | `stdio` | Transport: `stdio`, `http`, `both` |
 | `PORT` | `3000` | HTTP server port (MODE=http/both) |
@@ -307,7 +307,7 @@ MCP Server
   │   └── Query Expansion (rule-based, 4 strategies)
   ├── Engine Layer (12 engines)
   │   ├── Free: DDG, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek
-  │   └── Paid/optional: Brave, Tavily, Exa, You.com
+  │   └── Paid (API key required): Brave, Tavily, Exa, You.com
   └── Infrastructure
       ├── Health Tracker (per-engine circuit breaking)
       ├── Rate Limiter (adaptive concurrency)
@@ -337,7 +337,7 @@ npm run dev:http  # HTTP mode (port 3000)
 | Metric | Value |
 |--------|-------|
 | Tests | 448 passing, 40 files |
-| Engines | 12 (8 free, 4 paid/optional) |
+| Engines | 12 (8 free, 4 paid) |
 | MCP Tools | 8 |
 | Dependencies | 5 production |
 | Node.js | >= 18 |

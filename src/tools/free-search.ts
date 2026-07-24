@@ -127,6 +127,7 @@ async function searchEngine(
           results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY || '' });
           break;
         case 'youcom':
+      return !!process.env.YDC_API_KEY;
           results = await searchYouCom(query, limit);
           break;
         default:
@@ -223,7 +224,7 @@ function hasApiKey(engine: SearchProvider): boolean {
     case 'exa':
       return !!process.env.EXA_API_KEY;
     case 'youcom':
-      return true;
+      return !!process.env.YDC_API_KEY;
     default:
       return true; // free engines always available
   }
@@ -799,7 +800,7 @@ export function setupFreeSearchTool(server: McpServer): void {
           .min(1)
           .default(['duckduckgo', 'sogou'])
           .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +
-            'Paid engines (brave/tavily/exa) require corresponding env vars. You.com works without a key and can use YDC_API_KEY for authenticated access. ' +
+            'Paid engines (brave/tavily/exa) require corresponding env vars. You.com requires YDC_API_KEY ($5/1K queries; free credits at signup). ' +
             'For Chinese results, include sogou or baidu.'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
