@@ -11,11 +11,12 @@ export { searchWikipedia, wikipediaProvider } from './wikipedia.js';
 export { searchStartpage, startpageProvider } from './startpage.js';
 export { searchYandex, yandexProvider } from './yandex.js';
 export { searchMojeek, mojeekProvider } from './mojeek.js';
+export { searchYouCom, youcomProvider } from './youcom.js';
 
 /**
  * All registered engine providers with metadata.
  * Free engines: DDG, Sogou, Bing, Baidu
- * Paid engines: Brave, Tavily, Exa (require API keys)
+ * Paid engines: Brave, Tavily, Exa, You.com (require API keys)
  */
 export const engines: Record<SearchProvider, SearchProviderInfo> = {
   duckduckgo: { id: 'duckduckgo', name: 'DuckDuckGo', isFree: true, languages: ['en'] },
@@ -29,10 +30,11 @@ export const engines: Record<SearchProvider, SearchProviderInfo> = {
   brave: { id: 'brave', name: 'Brave Search', isFree: false, languages: ['en', 'zh'] },
   tavily: { id: 'tavily', name: 'Tavily Search', isFree: false, languages: ['en', 'zh'] },
   exa: { id: 'exa', name: 'Exa Search', isFree: false, languages: ['en', 'zh'] },
+  youcom: { id: 'youcom', name: 'You.com Search', isFree: false, languages: ['en', 'zh'] },
 };
 
 /** Free engines that always work without API keys */
 export const freeEngines: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
 
 /** Paid engines that require API keys */
-export const paidEngines: SearchProvider[] = ['brave', 'tavily', 'exa'];
+export const paidEngines: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];

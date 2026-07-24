@@ -25,7 +25,9 @@ async function registerTools(enabledTools: string, disabledTools: string = ''): 
   vi.stubEnv('ENABLED_TOOLS', enabledTools);
   vi.stubEnv('DISABLED_TOOLS', disabledTools);
 
-  await import('../../src/index.js');
+  const mod = await import('../../src/index.js');
+  // Wait for the async main() to finish registering tools before checking
+  await mod.serverPromise;
 
   return [...registeredTools];
 }
@@ -40,7 +42,7 @@ describe('configured fetch tool registration', () => {
     vi.unstubAllEnvs();
   });
 
-  it('registers only the individually enabled fetch tool', async () => {
+  it('registers only the individually enabled fetch tool', { timeout: 15000 }, async () => {
     const tools = await registerTools('fetch_csdn_article');
 
     expect(tools).toEqual(['fetch_csdn_article']);

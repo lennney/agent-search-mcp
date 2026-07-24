@@ -26,7 +26,7 @@ export interface CliArgs {
 }
 
 const VALID_COMMANDS = ['search', 'extract', 'serve'];
-const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
+const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom'];
 
 export function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2); // skip node and script path
@@ -98,7 +98,7 @@ Usage:
 
 Search Options:
   --count <n>          Number of results (1-50, default: 10)
-  --engines <list>     Comma-separated engines (duckduckgo,sogou,bing,baidu,brave,tavily,exa)
+  --engines <list>     Comma-separated engines (duckduckgo,sogou,bing,baidu,brave,tavily,exa,youcom)
   --json               Output as JSON
   --proxy <url>        HTTP proxy URL (e.g., http://127.0.0.1:7890)
 
@@ -111,7 +111,7 @@ Serve Options:
 
 Examples:
   fasm search "TypeScript MCP server"
-  fasm search "query" --count 5 --engines bing,baidu
+  fasm search "query" --count 5 --engines bing,baidu,youcom
   fasm extract "https://example.com" --json
   fasm serve --port 8080
   fasm search "query" --proxy http://127.0.0.1:7890
