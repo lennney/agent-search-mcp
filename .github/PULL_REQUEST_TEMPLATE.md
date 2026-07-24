@@ -1,38 +1,35 @@
-## Summary
+## Description
 
-<!-- One-paragraph description of what this PR does and why. -->
+<!-- What does this PR do? Why is it needed? -->
 
-## Problem
+## Related Issue
 
-<!-- What problem does this solve? Link to issue if applicable. -->
+<!-- Closes #NNN, or "N/A" if none. -->
 
-## Solution
+## Type of Change
 
-<!-- How does this PR solve the problem? -->
+- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] New feature (non-breaking change that adds functionality)
+- [ ] Breaking change (fix or feature that causes existing functionality to break)
+- [ ] Documentation update
+- [ ] Performance improvement
+- [ ] Code refactoring (no functional changes)
+- [ ] Build/CI change
 
-## Changes
+## How Has This Been Tested?
 
-<!-- Key files changed and what changed in each. -->
+<!-- Include exact commands and output. -->
 
-| File | Change |
-|------|--------|
-| `path/to/file.ts` | Description of change |
+```text
 
-## Verification
-
-- `npm run build` ✅
-- `npm test` ✅
-- `npx tsc --noEmit` ✅
-
-<!-- Add specific test commands or results if relevant. -->
-
-```bash
-# Example verification command
 ```
 
 ## Checklist
 
 - [ ] Branch is based on latest `main`
-- [ ] Only target files changed (no workspace/AGENTS/HANDOVER files)
+- [ ] Only target files changed (no workspace files: AGENTS.md, HANDOVER.md, .hermes/, docs/plans/)
+- [ ] `npm run build` passes
+- [ ] `npm test` passes (all tests)
+- [ ] `npx tsc --noEmit` passes
 - [ ] CHANGELOG.md updated (if user-facing change)
 - [ ] README updated (if API/CLI/config change)
