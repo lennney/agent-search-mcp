@@ -127,7 +127,6 @@ async function searchEngine(
           results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY || '' });
           break;
         case 'youcom':
-      return !!process.env.YDC_API_KEY;
           results = await searchYouCom(query, limit);
           break;
         default:
@@ -224,7 +223,6 @@ function hasApiKey(engine: SearchProvider): boolean {
     case 'exa':
       return !!process.env.EXA_API_KEY;
     case 'youcom':
-      return !!process.env.YDC_API_KEY;
     default:
       return true; // free engines always available
   }
