@@ -2,7 +2,7 @@
   "name": "agent-search-mcp",
   "mcpName": "io.github.lennney/agent-search-mcp",
   "version": "3.1.3",
-  "description": "Zero-config MCP web search for AI agents: 11 engines (8 free, no API key), Chinese search, waterfall multi-source verification, content extraction, news search & Streamable HTTP. Works with Claude Code, Cursor, Codex.",
+  "description": "Zero-config MCP web search for AI agents: 12 engines (8 free, no API key), Chinese search, waterfall multi-source verification, content extraction, news search & Streamable HTTP. Works with Claude Code, Cursor, Codex.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -27,7 +27,7 @@
   "bugs": {
     "url": "https://github.com/lennney/agent-search-mcp/issues"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "mcp",
     "mcp-server",
@@ -59,7 +59,10 @@
     "content-extraction",
     "open-source",
     "self-hosted",
-    "chinese-search"
+    "chinese-search",
+    "youcom",
+    "semantic-dedup",
+    "semantic-rerank"
   ],
   "scripts": {
     "build": "tsc && mkdir -p dist/aggregation && cp src/aggregation/semantic_bridge.py dist/aggregation/semantic_bridge.py && node -e \"require('fs').chmodSync('dist/index.js', '755')\"",

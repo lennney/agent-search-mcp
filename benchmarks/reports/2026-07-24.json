@@ -1,0 +1,40 @@
+{
+  "date": "2026-07-24",
+  "queries": 30,
+  "tokenCounter": "estimate",
+  "scenarios": {
+    "Normal (waterfall, default)": {
+      "successRate": "100.0%",
+      "avgEngines": "2.0",
+      "waterfallPhase1Rate": "100%",
+      "avgTokens": 1582,
+      "avgDuration": "15153ms",
+      "p50": "14801ms",
+      "p95": "18351ms",
+      "avgConfidence": "0.64"
+    },
+    "Compact (progressive disclosure)": {
+      "successRate": "100.0%",
+      "avgEngines": "2.0",
+      "waterfallPhase1Rate": "100%",
+      "avgTokens": 1128,
+      "avgDuration": "16569ms",
+      "p50": "16310ms",
+      "p95": "19919ms",
+      "avgConfidence": "0.64"
+    },
+    "Compact Aggressive (short snippets)": {
+      "successRate": "96.7%",
+      "avgEngines": "2.0",
+      "waterfallPhase1Rate": "100%",
+      "avgTokens": 1020,
+      "avgDuration": "16249ms",
+      "p50": "15948ms",
+      "p95": "19326ms",
+      "avgConfidence": "0.63"
+    }
+  },
+  "compactTokenSavings": "28.7%",
+  "compactAggressiveTokenSavings": "35.5%",
+  "waterfallEngineSavings": "75%"
+}
