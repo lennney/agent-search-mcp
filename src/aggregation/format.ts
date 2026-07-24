@@ -7,9 +7,6 @@ const DEFAULT_SNIPPET_MAX = 200;
 const DEFAULT_SNIPPET_MAX_CN = 300;
 
 const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/;
-/** Sentence-ending punctuation: . ! ? 。！？ followed by space or end */
-const SENTENCE_END_RE = /[.!?！？。](?=\s|$)/g;
-
 export function isChinese(text: string): boolean {
   return CJK_RE.test(text);
 }
@@ -32,10 +29,10 @@ export function truncateAtSentence(text: string, maxChars: number): string {
   const candidate = text.slice(0, maxChars);
 
   // Find the last sentence boundary within the candidate
+  // Use matchAll to avoid shared regex state (lastIndex) races
   let lastBoundary = -1;
-  let match;
-  SENTENCE_END_RE.lastIndex = 0;
-  while ((match = SENTENCE_END_RE.exec(candidate)) !== null) {
+  const allMatches = [...candidate.matchAll(/[.!?！？。](?=\s|$)/g)];
+  for (const match of allMatches) {
     // Include the punctuation mark itself
     lastBoundary = match.index + match[0].length;
   }
@@ -88,6 +85,7 @@ interface FormattedResponse {
     engines: string[];
     compacted_count?: number;
     filtered_count?: number;
+    filtered_total?: number;
   };
   security_note: string;
 }
@@ -157,6 +155,7 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     engines: string[];
     compacted_count?: number;
     filtered_count?: number;
+    filtered_total?: number;
   } = {
     total: results.length,
     high_confidence: results.filter(r => r.confidence >= 2).length,
@@ -168,9 +167,10 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     meta.compacted_count = compactedCount;
   }
 
-  // Add filtered_count when minConfidence is explicitly set in compact mode
+  // Add filtered_count and filtered_total when minConfidence is explicitly set
   if (style === 'compact' && minConfidence !== undefined) {
     meta.filtered_count = filteredCount;
+    meta.filtered_total = filteredResults.length;
   }
 
   return {
@@ -187,6 +187,8 @@ function clampSnippet(userVal: number | undefined): { en: number; cn: number } {
   const clamped = Math.max(60, Math.min(500, raw));
   return {
     en: clamped,
+    // Chinese text uses ~1.5x the characters to convey equivalent meaning,
+    // so the snippet limit is scaled accordingly (capped at 600 chars).
     cn: Math.max(80, Math.min(600, clamped * 1.5)),
   };
 }

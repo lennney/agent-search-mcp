@@ -7,6 +7,7 @@ import { searchBaidu } from '../engines/baidu.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
+import { getSecurityNote } from '../infrastructure/security.js';
 // ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
 import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank } from '../aggregation/index.js';
@@ -393,7 +394,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
   const BATCH_SIZE = calculateAdaptiveConcurrency(phase1Engines, count);
   const allResults: SearchResult[] = [];
-  const failures: { engine: string; message: string }[] = [];
+  const failures: EngineError[] = [];
   const searchedEngines: string[] = [];
 
   // Batch 1: Free engines
@@ -409,13 +410,13 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       })
     );
 
-    for (let i = 0; i < batchResults.length; i++) {
-      const result = batchResults[i];
+    for (let idx = 0; idx < batchResults.length; idx++) {
+      const result = batchResults[idx];
       if (result.status === 'fulfilled') {
         allResults.push(...result.value.results);
       } else {
         failures.push(
-            classifyEngineError(batch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
+            classifyEngineError(batch[idx], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
           );
       }
     }
@@ -476,71 +477,14 @@ failures.push(
   const titleDeduped = dedupByTitle(urlDeduped);
   
   // 5d. Score and rank with frequency bonus
-  let scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
+  const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
 
-  // ── Step 5e: Semantic dedup (optional, compact mode) ───────────────
-  if (config.semanticDedup || config.semanticRerank) {
-    try {
-      if (config.semanticDedup) {
-        const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
-        scored = dedupResult.results as typeof scored;
-        logger.info({ removed: dedupResult.removedCount, kept: scored.length }, 'Semantic dedup applied');
-      }
-      if (config.semanticRerank) {
-        scored = await semanticRerank(query, scored, config.rerankTopK, config.rerankModel);
-        logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
-      }
-    } catch (err) {
-      logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
-    }
-  }
-
-  // ── Step 6: Post-search filters ─────────────────────────────────────
-  if (minConfidence > 1) {
-    scored = scored.filter(r => r.confidence >= minConfidence);
-  }
-
-  if (includeDomains && includeDomains.length > 0) {
-    scored = scored.filter(r => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return includeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return false;
-      }
-    });
-  }
-
-  if (excludeDomains && excludeDomains.length > 0) {
-    scored = scored.filter(r => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return !excludeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return true;
-      }
-    });
-  }
-
-  // ── Step 7: Format output with security processing ──────────────────
-  if (options.enrich) {
-    const enriched = await enrichResults(scored, {
-      maxEnrich: options.enrichMax,
-      minConfidence: options.enrichMinConfidence,
-    });
-    scored = enriched.results;
-    if (enriched.enriched > 0) {
-      logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
-    }
-  }
-
-  const fmtOptions: FormatOptions = {
-    style: config.outputStyle,
-    snippetMax: config.snippetLength,
-    maxFullResults: config.maxFullResults,
-    minConfidence: config.minConfidence,
-  };
-  const formatted = formatResults(scored, fmtOptions);
+  // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
+  const { formatted } = await applyPostProcessing(
+    scored, query, minConfidence,
+    includeDomains, excludeDomains,
+    options.enrich, options.enrichMax, options.enrichMinConfidence,
+  );
 
   const response: SearchResponse = {
     query,
@@ -571,13 +515,109 @@ failures.push(
   return response;
 }
 
+/**
+ * Shared post-processing pipeline for both parallel and waterfall search.
+ * Handles semantic dedup/rerank, confidence + domain filtering, enrichment,
+ * and final formatting. Used by both executeParallelSearch and
+ * executeWaterfallSearch to avoid duplication.
+ */
+async function applyPostProcessing(
+  scored: ScoredResult[],
+  query: string,
+  minConfidence: number,
+  includeDomains: string[] | undefined,
+  excludeDomains: string[] | undefined,
+  enrich: boolean | undefined,
+  enrichMax: number | undefined,
+  enrichMinConfidence: number | undefined,
+): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
+  // Semantic dedup (optional)
+  if (config.semanticDedup || config.semanticRerank) {
+    try {
+      if (config.semanticDedup) {
+        const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
+        scored = dedupResult.results;
+        logger.info({ removed: dedupResult.removedCount, kept: scored.length }, 'Semantic dedup applied');
+      }
+      if (config.semanticRerank) {
+        scored = await semanticRerank(query, scored, config.rerankTopK, config.rerankModel);
+        logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
+      }
+    } catch (err) {
+      logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
+    }
+  }
+
+  // Post-search filters
+  if (minConfidence > 1) {
+    scored = scored.filter(r => r.confidence >= minConfidence);
+  }
+
+  if (includeDomains && includeDomains.length > 0) {
+    scored = scored.filter(r => {
+      try {
+        const hostname = new URL(r.url).hostname;
+        return includeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  if (excludeDomains && excludeDomains.length > 0) {
+    scored = scored.filter(r => {
+      try {
+        const hostname = new URL(r.url).hostname;
+        return !excludeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
+      } catch {
+        return true;
+      }
+    });
+  }
+
+  // Content enrichment (optional)
+  if (enrich) {
+    const enriched = await enrichResults(scored, {
+      maxEnrich: enrichMax,
+      minConfidence: enrichMinConfidence,
+    });
+    scored = enriched.results;
+    if (enriched.enriched > 0) {
+      logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
+    }
+  }
+
+  // Format output
+  const fmtOptions: FormatOptions = {
+    style: config.outputStyle,
+    snippetMax: config.snippetLength,
+    maxFullResults: config.maxFullResults,
+    minConfidence: config.minConfidence,
+  };
+  const formatted = formatResults(scored, fmtOptions);
+
+  return { scored, formatted };
+}
+
 const WATERFALL_PHASES = {
   phase1a: ["duckduckgo", "sogou"],
   phase1b: ["bing", "baidu"],
   phase2: ["brave", "tavily", "exa"],
 } as const;
 
-async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth: number = 0): Promise<SearchResponse> {
+  // Guard against infinite recursion from query expansion
+  if (depth > 2) {
+    logger.warn({ query: options.query, depth }, 'Waterfall recursion depth exceeded, returning empty');
+    return {
+      query: options.query,
+      engines: [],
+      results: [],
+      meta: { total: 0, high_confidence: 0, engines: [] },
+      security_note: getSecurityNote(),
+    } as SearchResponse;
+  }
+
   const {
     query,
     count = 10,
@@ -593,7 +633,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
 
   const allResults: SearchResult[] = [];
-  const allFailures: { engine: string; message: string }[] = [];
+  const allFailures: EngineError[] = [];
   const searchedEngines: string[] = [];
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
@@ -609,13 +649,13 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
         })
       );
 
-      for (let i = 0; i < batchResults.length; i++) {
-        const result = batchResults[i];
+      for (let idx = 0; idx < batchResults.length; idx++) {
+        const result = batchResults[idx];
         if (result.status === "fulfilled") {
           allResults.push(...result.value.results);
         } else {
           allFailures.push(
-            classifyEngineError(batch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
+            classifyEngineError(batch[idx], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
           );
         }
       }
@@ -628,7 +668,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
 
     let basketScored = scored;
     if (includeDomains && includeDomains.length > 0) {
-      basketScored = scored.filter((r) => {
+      basketScored = basketScored.filter((r) => {
         try {
           const hostname = new URL(r.url).hostname;
           return includeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
@@ -636,7 +676,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
       });
     }
     if (excludeDomains && excludeDomains.length > 0) {
-      basketScored = scored.filter((r) => {
+      basketScored = basketScored.filter((r) => {
         try {
           const hostname = new URL(r.url).hostname;
           return !excludeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
@@ -716,7 +756,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
           query: altQuery,
           waterfall: true,
           enrich: false,
-        });
+        }, depth + 1);
         if (altSearch.results && altSearch.results.length > 0) {
           for (const r of altSearch.results) {
             allResults.push({
@@ -736,72 +776,21 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions): Promi
   const filtered = filterLowQuality(allResults);
   const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
   const titleDeduped = dedupByTitle(urlDeduped);
-  let scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
+  const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
 
-  // ── Step 5e: Semantic dedup (optional, compact mode) ───────────────
-  if (config.semanticDedup || config.semanticRerank) {
-    try {
-      if (config.semanticDedup) {
-        const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
-        scored = dedupResult.results as typeof scored;
-        logger.info({ removed: dedupResult.removedCount, kept: scored.length }, 'Semantic dedup applied');
-      }
-      if (config.semanticRerank) {
-        scored = await semanticRerank(query, scored, config.rerankTopK, config.rerankModel);
-        logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
-      }
-    } catch (err) {
-      logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
-    }
-  }
+  // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
+  const { formatted } = await applyPostProcessing(
+    scored, query, minConfidence,
+    includeDomains, excludeDomains,
+    options.enrich, options.enrichMax, options.enrichMinConfidence,
+  );
 
-  if (minConfidence > 1) {
-    scored = scored.filter((r) => r.confidence >= minConfidence);
-  }
-  if (includeDomains && includeDomains.length > 0) {
-    scored = scored.filter((r) => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return includeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return false;
-      }
-    });
-  }
-  if (excludeDomains && excludeDomains.length > 0) {
-    scored = scored.filter((r) => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return !excludeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return true;
-      }
-    });
-  }
-
-  if (options.enrich) {
-    const enriched = await enrichResults(scored, {
-      maxEnrich: options.enrichMax,
-      minConfidence: options.enrichMinConfidence,
-    });
-    scored = enriched.results;
-    if (enriched.enriched > 0) {
-      logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
-    }
-  }
-
-  const formatted = formatResults(scored, {
-    style: config.outputStyle,
-    snippetMax: config.snippetLength,
-    maxFullResults: config.maxFullResults,
-    minConfidence: config.minConfidence,
-  });
   const response = {
     query,
     engines: searchedEngines,
     ...formatted,
     detected_language: detectedLang,
-    rate_limits: rateLimiter.getAllRateLimits(searchedEngines),
+    ...(config.outputStyle !== 'compact' ? { rate_limits: rateLimiter.getAllRateLimits(searchedEngines) } : {}),
     ...(allFailures.length > 0 ? { partialFailures: allFailures } : {}),
   } as SearchResponse;
 

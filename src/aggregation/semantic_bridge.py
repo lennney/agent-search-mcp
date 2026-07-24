@@ -81,6 +81,9 @@ def handle_dedup(cmd: dict[str, Any]) -> dict[str, Any]:
 
     For every pair with cosine similarity above *threshold*, the item with
     the lower confidence value is pruned.
+
+    Items are sorted by confidence descending before dedup to make the
+    outcome deterministic when confidences are equal.
     """
     texts: list[str] = cmd["texts"]
     confidences: list[float] = cmd.get("confidences", [1.0] * len(texts))
@@ -90,23 +93,27 @@ def handle_dedup(cmd: dict[str, Any]) -> dict[str, Any]:
     if len(texts) == 0:
         return {"keep_indices": [], "removed_count": 0}
 
+    # Sort by confidence descending for deterministic dedup.
+    # We track original indices so we can map back after pruning.
+    n = len(texts)
+    sorted_order = sorted(range(n), key=lambda i: confidences[i], reverse=True)
+    texts_sorted = [texts[i] for i in sorted_order]
+
     model = _get_model(model_name)
-    emb = model.encode(texts)
+    emb = model.encode(texts_sorted)
     sim_matrix = _cosine_similarity_matrix(emb)
 
-    n = len(texts)
-    keep = set(range(n))
+    keep_sorted = set(range(n))
 
+    # Only walk the upper triangle (i < j) since the matrix is symmetric.
     for i in range(n):
         for j in range(i + 1, n):
             if sim_matrix[i, j] > threshold:
-                # Keep the one with higher confidence.
-                if confidences[i] >= confidences[j]:
-                    keep.discard(j)
-                else:
-                    keep.discard(i)
+                # Higher confidence always comes first after sorting.
+                keep_sorted.discard(j)
 
-    keep_indices = sorted(keep)
+    # Map back to original indices.
+    keep_indices = sorted(sorted_order[i] for i in keep_sorted)
     removed_count = n - len(keep_indices)
     return {"keep_indices": keep_indices, "removed_count": removed_count}
 
@@ -166,6 +173,9 @@ def main() -> None:
         except Exception as exc:
             response = {"error": str(exc)}
 
+        # Echo the request id for correlation. If absent (e.g. malformed
+        # command), the TS side will drop the response via _pending.get(undefined).
+        response["id"] = cmd.get("id")
         sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
         sys.stdout.flush()
 

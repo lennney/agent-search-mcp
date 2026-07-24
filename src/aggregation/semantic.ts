@@ -26,6 +26,7 @@ let _process: ChildProcess | null = null;
 let _pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
 let _requestId = 0;
 let _availability: boolean | null = null; // null = unchecked
+let _spawnLock = false; // prevents concurrent spawn attempts
 
 const LOAD_TIMEOUT = 30_000; // 30s for first-load model download
 const CMD_TIMEOUT = 5_000;  // 5s for subsequent commands
@@ -44,14 +45,20 @@ function spawnBridge(): void {
 
   child.on('exit', (code, signal) => {
     logger.warn({ code, signal }, 'Semantic bridge process exited');
-    _process = null;
+    // Guard: only run cleanup if this is still the current child (not a respawn).
+    // When ensureBridge() spawns a replacement, the old child's queued exit
+    // event must not corrupt the new bridge's state (availability, pending requests).
+    if (_process === child) {
+      _process = null;
+      _availability = null;
 
-    // Reject all pending requests
-    for (const [, p] of _pending) {
-      clearTimeout(p.timer);
-      p.reject(new Error(`Bridge process exited (code=${code}, signal=${signal})`));
+      // Reject all pending requests
+      for (const [, p] of _pending) {
+        clearTimeout(p.timer);
+        p.reject(new Error(`Bridge process exited (code=${code}, signal=${signal})`));
+      }
+      _pending.clear();
     }
-    _pending.clear();
   });
 
   child.on('error', (err) => {
@@ -99,11 +106,31 @@ function ensureBridge(): void {
   if (!_process || _process.killed || _process.exitCode !== null) {
     // Clean up old state
     if (_process) {
+      // Kill the old process before removing listeners to prevent zombies
+      try {
+        _process.kill();
+      } catch {
+        // ignore kill errors on already-dead process
+      }
       _process.removeAllListeners();
       _process = null;
     }
+    _availability = null; // force re-probe on next availability check
+    // Reject all pending promises before clearing (same pattern as closeBridge)
+    for (const [, p] of _pending) {
+      clearTimeout(p.timer);
+      p.reject(new Error('Bridge process restarted'));
+    }
     _pending.clear();
-    spawnBridge();
+    // Guard against concurrent spawn — only one caller spawns
+    if (!_spawnLock) {
+      _spawnLock = true;
+      try {
+        spawnBridge();
+      } finally {
+        _spawnLock = false;
+      }
+    }
   }
 
   if (!_process?.stdin?.writable) {
