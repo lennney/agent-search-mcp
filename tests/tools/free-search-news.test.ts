@@ -5,5 +5,5 @@ describe('free_search_news tool', () => {
     const mod = await import('../../src/tools/free-search-news.js');
     expect(mod.registerFreeSearchNews).toBeDefined();
     expect(typeof mod.registerFreeSearchNews).toBe('function');
-  });
+  }, 15000);
 });

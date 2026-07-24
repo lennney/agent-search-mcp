@@ -15,7 +15,7 @@ export interface RateLimiterOptions {
  * Per-engine rate limiter for lightweight VPS.
  *
  * Free engines (DDG, Sogou, Baidu) need longer intervals to avoid anti-bot;
- * paid engines (Brave, Tavily, Exa) can be called more aggressively.
+ * paid engines (Brave, Tavily, Exa, You.com) can be called more aggressively.
  *
  * All state is in-memory — no persistence, no background sweeps.
  */
@@ -24,7 +24,7 @@ export class RateLimiter {
   private engineRates: Record<string, number>;
   private defaultIntervalMs: number;
 
-  // Sensible defaults for 11 engines on a lightweight VPS
+  // Sensible defaults for 12 engines on a lightweight VPS
   static readonly DEFAULT_ENGINE_RATES: Record<string, number> = {
     // Free engines — respectful intervals to avoid rate-limiting
     ddg: 1_200,
@@ -37,6 +37,7 @@ export class RateLimiter {
     brave: 400,
     tavily: 300,
     exa: 300,
+    youcom: 500,
     yandex: 600,
     mojeek: 600,
   };

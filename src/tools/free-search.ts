@@ -7,6 +7,7 @@ import { searchBaidu } from '../engines/baidu.js';
 import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
+import { searchYouCom } from '../engines/youcom.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 // ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
@@ -14,9 +15,9 @@ import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults
 import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
-const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa'];
+const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom'];
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
-const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa'];
+const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
 
 // Engine weights (higher = more trusted)
 const ENGINE_WEIGHTS: Record<string, number> = {
@@ -27,6 +28,7 @@ const ENGINE_WEIGHTS: Record<string, number> = {
   brave: 0.95,
   tavily: 0.9,
   exa: 0.92,
+  youcom: 0.91,
 };
 
 // Infrastructure singletons
@@ -47,6 +49,7 @@ const PROVIDER_MAP: Record<string, string> = {
   brave: 'brave',
   tavily: 'tavily',
   exa: 'exa',
+  youcom: 'youcom',
 };
 
 /**
@@ -125,6 +128,9 @@ async function searchEngine(
           break;
         case 'exa':
           results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY || '' });
+          break;
+        case 'youcom':
+          results = await searchYouCom(query, limit);
           break;
         default:
           return [];
@@ -219,6 +225,7 @@ function hasApiKey(engine: SearchProvider): boolean {
       return !!process.env.TAVILY_API_KEY;
     case 'exa':
       return !!process.env.EXA_API_KEY;
+    case 'youcom':
     default:
       return true; // free engines always available
   }
@@ -828,11 +835,11 @@ export function setupFreeSearchTool(server: McpServer): void {
         query: z.string().min(1, 'Search query must not be empty')
           .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese queries, Sogou and Baidu are used automatically.'),
         limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
-        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa']))
+        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom']))
           .min(1)
           .default(['duckduckgo', 'sogou'])
           .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +
-            'Paid engines (brave/tavily/exa) require corresponding env vars. ' +
+            'Paid engines (brave/tavily/exa) require corresponding env vars. You.com requires YDC_API_KEY ($5/1K queries; free credits at signup). ' +
             'For Chinese results, include sogou or baidu.'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
