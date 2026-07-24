@@ -73,6 +73,8 @@ describe('You.com engine', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [, init] = mockFetch.mock.calls[0];
+    const [urlArg] = mockFetch.mock.calls[0];
+    expect(urlArg).toBe('https://ydc-index.io/v1/search?query=test+query&count=5');
     expect(init?.headers).toMatchObject({
       Accept: 'application/json',
       'X-API-Key': 'test-key',

@@ -36,7 +36,7 @@ function mapResult(result: YouComSearchItem): SearchResult | null {
 }
 
 export async function searchYouCom(query: string, count: number = 10): Promise<SearchResult[]> {
-  const url = new URL('https://api.you.com/v1/agents/search');
+  const url = new URL('https://ydc-index.io/v1/search');
   url.searchParams.set('query', query);
   url.searchParams.set('count', String(count));
 
