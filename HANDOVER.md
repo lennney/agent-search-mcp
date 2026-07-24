@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: agent-search-mcp HANDOVER
-timestamp: '2026-07-22T10:45:00+08:00'
+timestamp: '2026-07-24T09:10:00+08:00'
 description: 会话日志和项目状态
 tags:
 - agent-search-mcp
@@ -16,72 +16,31 @@ tags:
 **测试**: vitest — 448 passed, 40 test files
 **最后更新**: 2026-07-22
 **npm**: https://www.npmjs.com/package/agent-search-mcp
-**Python 依赖**: 可选（ddgs 不再是硬依赖，DDG 自动回退到 cheerio HTML 引擎）
+**Python 依赖**: 可选（DDG 自动回退到 cheerio HTML 引擎）
 
 ## 最近活动
 
-- [2026-07-22] ✅ done: v3.1.1 — MCP 2025 合规 + DDG News 回退 + 结构化错误
-  - **B1: Streamable HTTP** — `http.ts` 重写为 `StreamableHTTPServerTransport`（MCP 2025-11-25 标准）
-  - **B2: Capabilities 声明** — 启动时显式声明 `tools` + `resources` capabilities
-  - **A2: MCP annotations** — 全部 8 工具升级到 `registerTool` + `readOnlyHint`/`idempotentHint`
-  - **A3: EngineError** — 结构化错误类型（timeout/rate_limited/permission_denied...）+ 建议
-  - **C1: DDG News HTML 回退** — `searchDuckduckgoNews()` 无 Python 时用 cheerio HTML 引擎
-  - **D3: E2E 集成测试** — 4 个端到端测试（spawn 子进程 → initialize → list tools → tool calls）
-  - 测试: 448 passed, 40 files（+4 tests, +2 files）
-
-- [2026-07-22] ✅ done: Phase A1 `setupFetchTools` 拆分
-  - `fetch_github_readme` / `fetch_csdn_article` / `fetch_juejin_article` 现可独立注册
-  - `ENABLED_TOOLS` / `DISABLED_TOOLS` 可细粒度控制三个 fetch 工具
-  - 保留 `setupFetchTools()` 的原有批量注册行为，保证向后兼容
-  - 修复 MCP server、HTTP health 与 capabilities 中滞后的版本元数据
-
-- [2026-07-22] ✅ done: v3.1.0 发布 — npm + GitHub Release
-  - DDGS 独立化（Python 可选 + cheerio HTML 回退）
-  - 工具可见性控制（ENABLED_TOOLS/DISABLED_TOOLS + ToolPolicy）
-  - CLI 版本检查（`fasm --version` + 后台自动检测更新）
-  - npm 生态优化（23 keywords, llms.txt, Smithery 配置, badges）
-
-- [2026-07-22] ✅ done: DDGS 独立化重构 — 8 个 commit，消除 Python 硬依赖
-  - 惰性 Python 检测 + `isDdgsAvailable()` 导出
-  - 健康报告含 `ddgs_available` 字段
-  - `partialFailures` 正确显示引擎名（修复 "unknown" bug）
-  - cheerio 原生 DDG HTML 引擎（`src/engines/duckduckgo-html.ts`）
-  - Python→HTML 自动回退（`searchDuckDuckGo` 首选 Python，不可用时走 HTML）
-  - Dockerfile 去掉 python3 + pip + ddgs
-  - 文档全面更新（README/README_zh/AGENTS.md/CHANGELOG.md）
+- [2026-07-22] ✅ v3.1.1: Streamable HTTP + Capabilities 声明 + MCP annotations + EngineError + DDG News HTML 回退 + E2E 集成测试 (4 tests)
+- [2026-07-22] ✅ setupFetchTools 拆分：3 个 fetch 工具可独立注册/禁用
+- [2026-07-22] ✅ v3.1.0 发布：DDGS 独立化 + 工具可见性控制 + CLI 版本检查 + npm 生态优化
+- [2026-07-22] ✅ DDGS 独立化重构：Python 可选 + cheerio HTML 引擎 + Docker 去 Python
 
 ## 技术决策
 
-- **Python 首选 + HTML 回退**：ddgs 对接 DDG 内部 API（更稳定），HTML 解析易受前端改版影响。保留 Python 路径作为首选，HTML 仅在 Python 不可用时回退
-- **cheerio 而非 regex**：DDG HTML 结构比 Bing/Sogou 复杂（嵌套结构 + redirect URL），cheerio 更健壮。cheerio ≈ 3 个纯 JS 依赖，比 Python+ddgs 轻得多
-- **POST 而非 GET**：DDG 自己的搜索表单用 POST，ddgs/searxng/gajae-code 均用 POST。GET 方式更容易被限流
+- **Python 首选 + HTML 回退**：ddgs 对接 DDG 内部 API 更稳定，HTML 仅在 Python 不可用时回退
+- **cheerio 而非 regex**：DDG HTML 结构复杂，cheerio 更健壮，3 个纯 JS 依赖
+- **POST 而非 GET**：DDG 搜索表单用 POST，GET 更容易被限流
 
 ## 下一步方向
 
-详见完整路线图: [docs/superpowers/plans/2026-07-22-iteration-roadmap.md](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
+详见路线图: [docs/superpowers/plans/2026-07-22-iteration-roadmap.md](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-### 已完成 (v3.1.1)
-- ✅ A1: setupFetchTools 拆分
-- ✅ A2: MCP Tool annotations (registerTool + readOnlyHint/idempotentHint)
-- ✅ A3: 错误区分度提升 (EngineError + classifyEngineError)
-- ✅ C1: DDG News HTML 回退
-- ✅ D1: Brave/Tavily/Exa Mock 测试 (已存在)
-- ✅ D2: free-extract SSRF 安全测试 (已存在)
-- ✅ B1: Streamable HTTP 升级
-- ✅ B2: Capabilities 显式声明
-- ✅ D3: E2E 集成测试 (4 tests)
+**已完成 (v3.1.1)**: A1/A2/A3 + C1 + D1/D2/D3 + B1/B2 — 全部绿色 ✅
 
-### 下一阶段 (v3.2.0+)
-- 📋 C2: lite.duckduckgo.com 第三层回退 — 当 html.ddg 限流时的救火队
-- 📋 C3: 引擎惰性加载 — 启动时只 import 配置的引擎
-- 📋 O1: awesome-mcp-servers PR — 最大 MCP 目录站收录
-- 📋 O2: 掘金文章 — 中文开发者社区推广
-
-### On-going
-9. **分发推广** — 掘金文章、V2EX、reddit r/mcp
+**下一阶段 (v3.2.0+)**: C2 第三层回退 / C3 引擎惰性加载 / O1 awesome-mcp-servers PR / O2 掘金文章
 
 ## 已知限制
 
-- **DDG HTML 限流**：POST 方式在短时间内大量请求会触发 HTTP 202（限流）。UA 轮换有帮助但无法完全避免。Python 路径不受此限制
+- **DDG HTML 限流**：POST 大量请求触发 HTTP 202，Python 路径不受此限制
 - **DDG News 无 HTML 回退**：News 搜索仅支持 Python 路径
 - **无分页**：所有引擎目前只返回第一页结果

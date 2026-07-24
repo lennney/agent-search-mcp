@@ -1,3 +1,15 @@
+---
+type: Readme
+title: Agent Search MCP — 11 引擎统一搜索 MCP Server
+timestamp: '2026-07-24T09:30:00+08:00'
+description: 11 搜索引擎（8 免费），MCP 协议接入，零 API key，中文搜索，多源验证
+tags:
+- agent-search-mcp
+- readme
+- mcp
+- search
+---
+
 # Agent Search MCP
 
 > 🔍 **11 search engines (8 free), one MCP server.** Zero API keys. Chinese search. Multi-source verification. Waterfall progressive search, content extraction, news & CLI. `npm install` is enough.
