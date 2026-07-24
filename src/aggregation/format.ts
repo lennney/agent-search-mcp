@@ -136,6 +136,14 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     title: truncateAtSentence(r.title, isChinese(r.title) ? TITLE_MAX_CN : TITLE_MAX),
     url: r.url,
     compacted: true as const,
+    ...(r.security.injectionDetected || !r.security.urlSafe ? {
+      security: {
+        injection_detected: r.security.injectionDetected,
+        url_safe: r.security.urlSafe,
+        threats: r.security.threats,
+        warnings: r.security.warnings,
+      },
+    } : {}),
   });
 
   let displayResults: FormattedResult[];
