@@ -20,6 +20,7 @@ tags:
 
 ## 最近活动
 
+- [2026-07-25] ✅ CI 分层：Node 18/20/22 各自 build/test；Node 22 独立执行 lint/typecheck，矩阵不再 fail-fast
 - [2026-07-25] ✅ 产品加固：DDG HTML fallback、stdio 日志隔离、CSDN SSRF 防护、Windows 构建
 - [2026-07-25] ✅ 市场口径校准：竞品对比改为能力矩阵，历史 benchmark 标为探索性，新增推广素材包
 - [2026-07-24] ✅ P2 语义层：Model2Vec 语义去重 + 语义重排（SEMANTIC_DEDUP/SEMANTIC_RERANK，默认 off）
