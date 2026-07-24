@@ -10,7 +10,7 @@ import { searchExa } from '../engines/exa.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 // ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
-import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank } from '../aggregation/index.js';
+import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank, type ScoredResult } from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
