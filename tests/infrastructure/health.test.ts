@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ServerMetrics, HealthTracker } from '../../src/infrastructure/health.js';
 import { SearchCache } from '../../src/infrastructure/cache.js';
 
@@ -128,6 +128,7 @@ describe('ServerMetrics edge cases', () => {
 
 describe('HealthTracker', () => {
   it('tracks provider health with circuit breaker', () => {
+    const stdoutSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const health = new HealthTracker();
     expect(health.isHealthy('test-provider')).toBe(true);
 
@@ -144,5 +145,7 @@ describe('HealthTracker', () => {
     expect(tp).toBeDefined();
     expect(tp!.circuitState).toBe('open');
     expect(tp!.errorCount).toBe(5);
+    expect(stdoutSpy).not.toHaveBeenCalled();
+    stdoutSpy.mockRestore();
   });
 });

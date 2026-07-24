@@ -23,7 +23,7 @@ async function main() {
   const server = new McpServer(
     {
       name: 'agent-search-mcp',
-      version: '3.1.1',
+      version: '3.1.3',
     },
     {
       capabilities: {

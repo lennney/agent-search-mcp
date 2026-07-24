@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { searchDuckDuckGo, isDdgsAvailable } from '../engines/duckduckgo.js';
+import { searchDuckDuckGo } from '../engines/duckduckgo.js';
 import { searchSogou } from '../engines/sogou.js';
 import { searchBing } from '../engines/bing.js';
 import { searchBaidu } from '../engines/baidu.js';
@@ -94,12 +94,6 @@ async function searchEngine(
 
   // Rate limit before making the request
   await rateLimiter.waitForSlot(engine);
-
-  // DDG-specific: throw early if ddgs is not available, so Promise.allSettled
-  // records it as a rejection → partialFailures gets the correct engine name
-  if (engine === 'duckduckgo' && !isDdgsAvailable()) {
-    throw new Error('DuckDuckGo unavailable: Python ddgs library not installed. Install with: pip install ddgs');
-  }
 
   let lastError: Error | null = null;
 

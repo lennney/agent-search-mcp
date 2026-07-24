@@ -21,6 +21,21 @@ tags:
 - **Zero dependency by default**: Semantic features are OFF by default. No Python/model2vec required unless explicitly enabled.
 - **Graceful degradation**: If the Python bridge is unavailable (no model2vec installed, process crash, etc.), results pass through unchanged — no broken searches.
 
+### 🔧 Fixes
+
+- **Restored zero-Python DDG fallback**: The search orchestrator no longer rejects DuckDuckGo before its Node.js HTML fallback can run.
+- **Protected stdio JSON-RPC**: Circuit-breaker transitions now use the stderr logger instead of writing to stdout.
+- **Closed CSDN SSRF path**: `fetch_csdn_article` now accepts only HTTPS `blog.csdn.net` URLs and rejects redirects.
+- **Cross-platform build**: Replaced POSIX-only `mkdir`/`cp` commands with a Node.js build helper; `npm run build` now works on Windows.
+- **CI coverage**: Restored Node.js 18/20/22 coverage, added lint, and added a Windows build job.
+- **Runtime metadata**: MCP initialization, HTTP health, and capabilities now report v3.1.3 / Apache-2.0 consistently with the published package.
+
+### 📚 Documentation
+
+- Replaced volatile competitor pricing claims with a capability-based comparison linked to official repositories.
+- Marked historical benchmark percentages as exploratory until engine-call telemetry and frozen fixtures are implemented.
+- Added a reusable English/Chinese promotion kit and rewrote the Juejin draft around verified capabilities.
+
 ### 🔧 Env vars
 
 | Variable | Default | Description |
@@ -34,8 +49,8 @@ tags:
 
 ### 📊 Stats
 
-- **Tests**: 480 passing (+17: 6 semantic + 11 config)
-- **Files**: 42 test files (+1: semantic.test.ts)
+- **Tests**: 498 passing
+- **Files**: 43 test files
 
 ## v3.2.0 (2026-07-24)
 

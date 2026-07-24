@@ -2,6 +2,26 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { logger } from '../infrastructure/index.js';
 
+function parseCsdnArticleUrl(url: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error('Invalid CSDN article URL: expected an HTTPS blog.csdn.net URL');
+  }
+
+  const isAllowed =
+    parsed.protocol === 'https:' &&
+    parsed.hostname === 'blog.csdn.net' &&
+    (parsed.port === '' || parsed.port === '443');
+
+  if (!isAllowed) {
+    throw new Error('Invalid CSDN article URL: expected an HTTPS blog.csdn.net URL');
+  }
+
+  return parsed;
+}
+
 /**
  * Extract GitHub README content from a repository URL.
  */
@@ -60,10 +80,12 @@ export async function fetchGithubReadme(url: string): Promise<string> {
  */
 export async function fetchCsdnArticle(url: string): Promise<string> {
   try {
-    const response = await fetch(url, {
+    const safeUrl = parseCsdnArticleUrl(url);
+    const response = await fetch(safeUrl.href, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       },
+      redirect: 'error',
       signal: AbortSignal.timeout(10000),
     });
 
@@ -186,7 +208,7 @@ export function setupFetchCsdnArticle(server: McpServer): void {
         'Not recommended for: Other Chinese sites — use free_extract instead.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to the CSDN article URL.',
       inputSchema: {
-        url: z.string().url('Must be a valid URL').describe('CSDN article URL'),
+        url: z.string().url('Must be a valid URL').describe('HTTPS article URL on blog.csdn.net'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },

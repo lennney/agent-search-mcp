@@ -59,7 +59,7 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
     // Health check
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', version: '3.1.1' }));
+      res.end(JSON.stringify({ status: 'ok', version: '3.1.3' }));
       return;
     }
 

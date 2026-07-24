@@ -1,6 +1,8 @@
 # Benchmarks
 
-Reproducible benchmarks measuring search quality, engine efficiency, and token optimization.
+Exploratory performance snapshots for Agent Search MCP.
+
+> **Status:** the current runner is useful for smoke tests and latency snapshots, but it is not yet a release-grade quality or token benchmark. It does not record actual per-engine calls, the three output scenarios run against different live result sets, and the default token counter is a character estimate. Historical percentages below are preserved for reproducibility, not presented as guaranteed savings.
 
 ## Latest Results (2026-07-24)
 
@@ -19,11 +21,7 @@ Reproducible benchmarks measuring search quality, engine efficiency, and token o
 
 → [Full report](./reports/2026-07-24.md) · [JSON data](./reports/2026-07-24.json)
 
-Key findings:
-- **100% waterfall efficiency** — every query satisfied at phase 1 (2 engines). Saves 75% vs naive 8-engine search.
-- **28.7% token reduction** with compact mode (progressive disclosure + metadata stripping)
-- **35.5% token reduction** with aggressive settings (compact + 120-char snippets)
-- **0% URL overlap** between DDG and Sogou — genuine multi-source diversity
+Do not use `Avg engines`, `Waterfall phase 1`, or the savings percentages as product claims until the runner records actual engine-call telemetry and formats the same captured result fixtures in every scenario.
 
 ### Historical
 
@@ -60,7 +58,7 @@ pip install tiktoken
 
 | File | Description |
 |------|-------------|
-| [`queries.json`](./queries.json) | 30 test queries (15 EN + 15 ZH, tech/news/general) |
+| [`queries.json`](./queries.json) | 30 test queries (15 EN + 15 ZH; 29 tech, 1 news) |
 | [`run.cjs`](./run.cjs) | Benchmark runner with optional tiktoken support |
 | [`methodology.md`](./methodology.md) | Testing methodology |
 | [`reports/`](./reports) | Published benchmark reports |

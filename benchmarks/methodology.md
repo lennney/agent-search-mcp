@@ -2,14 +2,13 @@
 
 ## Overview
 
-This benchmark measures Agent Search MCP's real-world performance across four dimensions:
-**search quality, engine efficiency, token optimization, and deduplication effectiveness.**
+The current benchmark runner measures live-query completion, wall-clock latency, and approximate serialized output size. Engine efficiency, search quality, token savings, and deduplication effectiveness require additional telemetry or labeled fixtures and are not yet validated by this runner.
 
 ## Query Set
 
 - **30 queries** (15 English, 15 Chinese)
-- Mix of: technical queries, news queries, general knowledge
-- Designed to represent real AI agent usage patterns
+- 29 technical queries and 1 news query
+- Useful as a bilingual developer-search smoke set; not representative of general AI-agent traffic
 
 ## Metrics
 
@@ -17,39 +16,25 @@ This benchmark measures Agent Search MCP's real-world performance across four di
 |--------|-----------|
 | **Success rate** | % of queries returning ≥1 result |
 | **Latency (P50/P95)** | Total wall-clock time per query |
-| **Avg engines/query** | Number of engines queried before waterfall stopped |
-| **Waterfall saved** | Queries that stopped at phase 1 (≤2 engines) |
-| **Avg confidence** | Mean confidence score across all results (0-1 scale) |
-| **Dedup rate** | % of duplicate URLs removed |
-| **Token savings** | % reduction vs estimated raw SERP text |
-
-## Waterfall Search
-
-Agent Search MCP uses a 3-phase waterfall:
-1. Phase 1: DDG + Sogou (parallel)
-2. Phase 2: Bing + Baidu (only if phase 1 insufficient)
-3. Phase 3: Brave + Tavily + Exa (paid, only if needed)
-
-Early stopping at phase 1 means the waterfall works as designed.
+| **Approx output size** | Serialized JSON characters divided by 3 unless optional Python tiktoken is available |
 
 ## Token Savings Estimation
 
-"Raw SERP" is estimated per result as:
-```
-raw_chars = title_length + url_length + 300 (estimated snippet)
-```
-
-"Compressed" is the actual JSON output size. This is a conservative estimate since raw SERP pages typically return much more content (full abstracts, dates, source metadata).
+The fallback estimate (`characters / 3`) is intentionally rough and is especially unreliable for a 50/50 English-Chinese corpus. Normal, compact, and aggressive scenarios currently perform separate live searches, so differences may reflect different search results rather than formatting alone.
 
 ## Environment
 
 - Node.js v20.x
 - Default config (no Brave/Tavily/Exa API keys)
-- All 8 free engines enabled
+- No paid API keys
 - Network: standard internet connection (no proxy)
 
 ## Limitations
 
 - Latency varies by network conditions
 - No paid engines tested (requires API keys)
-- Quality is measured by confidence scores, not human relevance judging
+- No human relevance labels or answer-key scoring
+- No actual attempted/successful engine-call telemetry
+- The CLI path used by the runner does not explicitly enable waterfall mode
+- Scenarios do not reuse a frozen raw-result fixture
+- Historical token percentages are estimates, not production guarantees

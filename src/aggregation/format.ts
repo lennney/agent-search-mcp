@@ -4,7 +4,6 @@ import type { SecurityProcessedResult } from '../infrastructure/security.js';
 const TITLE_MAX = 100;
 const TITLE_MAX_CN = 150;
 const DEFAULT_SNIPPET_MAX = 200;
-const DEFAULT_SNIPPET_MAX_CN = 300;
 
 const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/;
 export function isChinese(text: string): boolean {

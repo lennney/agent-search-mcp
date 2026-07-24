@@ -21,7 +21,7 @@ describe('createHttpServer', () => {
       
       const body = await res.json();
       expect(body.status).toBe('ok');
-      expect(body.version).toBe('3.1.1');
+      expect(body.version).toBe('3.1.3');
     } finally {
       await server.close();
     }

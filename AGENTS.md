@@ -9,19 +9,19 @@ tags:
 ---
 # Agent Search MCP — 多引擎统一搜索 MCP Server
 
-一句话：11 引擎搜索（ddg/sogou/bing/baidu/brave/tavily/exa/wikipedia/startpage/yandex/mojeek），MCP 协议接入，**免费 + 多源验证 + Token 优化**。
+一句话：12 个搜索适配器（8 个零密钥 + 4 个可选 API），MCP 协议接入，**中文原生 + 多源聚合 + Token 可控**。
 
 ## 当前阶段
 
 **版本**: v3.1.0（已发布 npm + GitHub Release）— [查看完整路线图](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-**测试**: 438 passed, 38 files | **引擎**: 11 (8 免费, 3 付费) | **Python**: 可选（DDG 自动 HTML 回退）
+**测试**: 498 passed, 43 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
 
 当前优先事项：
-1. **Phase A: Agent UX** — `setupFetchTools` 拆分、MCP annotations、错误区分度
-2. **Phase C: 性能** — DDG News HTML 回退、lite.ddg 第三层回退
-3. **Phase D: 测试** — brave/tavily mock、E2E 集成测试、SSRF 安全测试
-4. **分发推广** — awesome-mcp-servers PR、掘金文章（持续）
+1. **可信能力面** — 统一 12 个适配器在 MCP / CLI / 瀑布模式中的路由
+2. **Benchmark v3** — 真实引擎遥测、冻结 fixture、可靠 tokenizer、相关性标签
+3. **置信度契约** — 拆分 relevance/confidence 与独立来源数
+4. **分发推广** — 发布已校准口径的掘金/Reddit/V2EX 素材（持续）
 
 ## 常用命令
 
@@ -55,7 +55,7 @@ fasm extract "https://..."                  # CLI 提取
 
 ## 架构
 
-`src/` 下按职责分层：`tools/`（MCP 工具定义）、`engines/`（11 引擎适配）、`aggregation/`（评分/去重/丰富）、`synthesis/`（结果合成）、`infrastructure/`（安全/缓存/限速）。Agent 自己探索 `src/` 目录获取最新结构。
+`src/` 下按职责分层：`tools/`（MCP 工具定义）、`engines/`（12 个引擎适配器）、`aggregation/`（评分/去重/丰富）、`synthesis/`（结果合成）、`infrastructure/`（安全/缓存/限速）。Agent 自己探索 `src/` 目录获取最新结构。
 
 ## 编码规范
 
@@ -98,6 +98,9 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 - **Env 变量**: API key 通过环境变量传入，不走配置文件
 - **npm publish**: 当前 registry 是腾讯镜像（mirrors.tencentyun.com），publish 前必须切到 registry.npmjs.org
 - **工具可见性**: `ENABLED_TOOLS` / `DISABLED_TOOLS` 环境变量控制 MCP 工具注册。`DISABLED_TOOLS` 优先级高于 `ENABLED_TOOLS`。默认全部启用。资源（capabilities/health）不受此策略影响。
+- **适配器数不等于可达路由数**: 包内有 12 个适配器，但当前 `free_search`/CLI 只统一路由 8 个。文档和推广必须明确区分，扩展 MCP enum 前先确认向后兼容方案。
+- **Benchmark 口径**: `benchmarks/` 当前是探索性基线。未实现真实 engine-call telemetry 和冻结 fixture 前，不宣传精确的瀑布/Token 节省百分比。
+- **stdio 日志**: stdout 只用于 MCP JSON-RPC。运行日志必须走 `logger`（stderr）或 `console.error`，禁止在服务路径使用 `console.log`。
 
 ## 文档索引
 

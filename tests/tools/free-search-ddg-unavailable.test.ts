@@ -2,8 +2,14 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 
 // Mock all engines
 vi.mock('../../src/engines/duckduckgo.js', () => ({
-  searchDuckDuckGo: vi.fn(),
-  isDdgsAvailable: vi.fn(() => false),
+  searchDuckDuckGo: vi.fn(async () => [
+    {
+      title: 'DuckDuckGo HTML Result',
+      url: 'https://duckduckgo.example/1',
+      snippet: 'HTML fallback result',
+      source: 'duckduckgo',
+    },
+  ]),
   duckduckgoProvider: { id: 'duckduckgo', name: 'DuckDuckGo', isFree: true, languages: ['en'] },
 }));
 vi.mock('../../src/engines/sogou.js', () => ({
@@ -63,23 +69,23 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
   };
 });
 
+import { searchDuckDuckGo } from '../../src/engines/duckduckgo.js';
 import { searchWithFallback } from '../../src/tools/free-search.js';
 
-describe('DDG unavailable partialFailures', () => {
-  it('includes DDG unavailability in partialFailures', async () => {
+describe('DDG without Python ddgs', () => {
+  it('lets the DDG adapter use its HTML fallback', async () => {
     const response = await searchWithFallback({
       query: 'test query',
       count: 5,
       engines: ['duckduckgo', 'sogou'],
     });
 
-    expect(response.partialFailures).toBeDefined();
-    expect(response.partialFailures!.length).toBeGreaterThan(0);
-    const ddgFailure = response.partialFailures!.find(
+    expect(searchDuckDuckGo).toHaveBeenCalledWith('test query', 5);
+    const ddgFailure = response.partialFailures?.find(
       (f) => f.engine === 'duckduckgo'
     );
-    expect(ddgFailure).toBeDefined();
-    expect(ddgFailure!.message).toContain('ddgs');
+    expect(ddgFailure).toBeUndefined();
+    expect(response.results.some((result) => result.title === 'DuckDuckGo HTML Result')).toBe(true);
   });
 
   it('uses correct engine name in failures (not "unknown")', async () => {
