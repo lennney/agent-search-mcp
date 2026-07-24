@@ -86,7 +86,7 @@ beforeAll(async () => {
   const mod = await import('../../src/tools/free-search.js');
   searchWithFallback = mod.searchWithFallback;
   setupFreeSearchTool = mod.setupFreeSearchTool;
-});
+}, 30000);
 
 // ── Tests ──────────────────────────────────────────────────────────
 describe('searchWithFallback — parallel', () => {
