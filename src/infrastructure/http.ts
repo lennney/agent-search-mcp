@@ -116,6 +116,8 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
           if (err) reject(err);
           else resolve();
         });
+        // Node.js 18 otherwise waits for the keep-alive timeout before closing.
+        httpServer.closeIdleConnections();
       });
     },
     getPort: () => actualPort,

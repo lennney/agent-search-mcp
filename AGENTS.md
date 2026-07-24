@@ -92,7 +92,7 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 
 - **Bing/Baidu 测试**: 实际搜索需要网络，单测用 mock 模拟 HTTP 响应
 - **ddgs 依赖**: Python 库 `ddgs` 为可选依赖。未安装时 DDG 引擎自动回退到 Node.js HTML 引擎（cheerio 解析）。Docker 镜像不含 Python，仅使用 HTML 引擎。`isDdgsAvailable()` 检测可用性，结果缓存在进程生命周期内
-- **cheerio 依赖**: DuckDuckGo HTML 引擎依赖 cheerio（纯 JS，无 native binding），npm install 自动安装
+- **cheerio 依赖**: DuckDuckGo HTML 引擎依赖 cheerio（纯 JS，无 native binding）。必须固定在 `1.0.0` 以维持 Node 18 支持；Cheerio 1.2+ 要求 Node 20.18.1+
 - **中文搜索**: Sogou + Baidu 专供中文搜索，不要用 Google Translate 翻译替代
 - **请求合并**: 相同查询在 100ms 内自动合并，避免并发重复请求
 - **Env 变量**: API key 通过环境变量传入，不走配置文件
