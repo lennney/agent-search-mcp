@@ -96,20 +96,17 @@ function spawnBridge(): void {
  * Ensure the bridge process is running and ready.
  */
 function ensureBridge(): void {
-  if (_process && !_process.killed && _process.exitCode === null) {
-    return;
+  if (!_process || _process.killed || _process.exitCode !== null) {
+    // Clean up old state
+    if (_process) {
+      _process.removeAllListeners();
+      _process = null;
+    }
+    _pending.clear();
+    spawnBridge();
   }
 
-  // Clean up old state
-  if (_process) {
-    _process.removeAllListeners();
-    _process = null;
-  }
-  _pending.clear();
-
-  spawnBridge();
-
-  if (!_process || !_process.stdin || !_process.stdin.writable) {
+  if (!_process?.stdin?.writable) {
     throw new Error('Failed to spawn bridge process');
   }
 }
@@ -120,7 +117,8 @@ function ensureBridge(): void {
  */
 function sendCommand(payload: Record<string, unknown>, timeout: number = CMD_TIMEOUT): Promise<any> {
   return new Promise((resolve, reject) => {
-    if (!_process || !_process.stdin || !_process.stdin.writable) {
+    const proc = _process;
+    if (!proc?.stdin?.writable) {
       reject(new Error('Bridge process not available'));
       return;
     }
@@ -136,7 +134,7 @@ function sendCommand(payload: Record<string, unknown>, timeout: number = CMD_TIM
     _pending.set(id, { resolve, reject, timer });
 
     try {
-      _process.stdin.write(request);
+      proc.stdin.write(request);
     } catch (err) {
       clearTimeout(timer);
       _pending.delete(id);
