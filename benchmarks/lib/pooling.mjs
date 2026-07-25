@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 
+import {
+  AI_REVIEW_PROMPT_SHA256,
+  AI_REVIEW_PROMPT_VERSION,
+} from './ai-review.mjs';
+
 const SYSTEM_ID = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const SAMPLE_METADATA = [
   'query',
@@ -222,13 +227,27 @@ export function prepareReviewAdjudication(pool, packets) {
     poolError('reviewer slots must be unique');
   }
   sortedPackets.forEach(packet => validateCompletedPacket(packet, pool, poolHash));
-  const reviewers = sortedPackets.map(packet => ({
-    id: packet.reviewer.id,
-    kind: 'human',
-    reviewer_slot: packet.reviewer_slot,
-  }));
+  const reviewModes = new Set(sortedPackets.map(packet => packet.reviewer.kind));
+  if (reviewModes.size !== 1) {
+    poolError('completed reviews must use the same review mode');
+  }
+  const reviewMode = sortedPackets[0].reviewer.kind;
+  const reviewers = sortedPackets.map(packet => reviewMode === 'human'
+    ? {
+        id: packet.reviewer.id,
+        kind: 'human',
+        reviewer_slot: packet.reviewer_slot,
+      }
+    : {
+        ...packet.reviewer,
+        reviewer_slot: packet.reviewer_slot,
+      });
   if (new Set(reviewers.map(reviewer => reviewer.id)).size !== reviewers.length) {
-    poolError('completed reviews require distinct human reviewer IDs');
+    poolError('completed reviews require distinct reviewer IDs');
+  }
+  if (reviewMode === 'ai'
+    && new Set(reviewers.map(reviewer => reviewer.model_family)).size !== reviewers.length) {
+    poolError('completed AI reviews require distinct model families');
   }
 
   let agreements = 0;
@@ -246,11 +265,16 @@ export function prepareReviewAdjudication(pool, packets) {
         const judgments = packetSamples.map((sample, index) => {
           const reviewed = sample.candidates
             .find(item => item.candidate_id === candidate.candidate_id);
-          return {
+          const judgment = {
             reviewer_id: reviewers[index].id,
             relevance: reviewed.relevance,
             citation_supported: reviewed.citation_supported,
           };
+          if (reviewMode === 'ai') {
+            judgment.rationale = reviewed.rationale;
+            judgment.judge_evidence = reviewed.judge_evidence;
+          }
+          return judgment;
         });
         const agreement = judgments.every(judgment =>
           judgment.relevance === judgments[0].relevance
@@ -278,6 +302,7 @@ export function prepareReviewAdjudication(pool, packets) {
     kind: 'search-review-adjudication',
     source_pool_sha256: poolHash,
     reviewers,
+    review_mode: reviewMode,
     status: 'pending-adjudication',
     summary: {
       candidates: agreements + disagreements,
@@ -295,17 +320,22 @@ export function validateCompletedAdjudication(adjudication) {
     || adjudication.status !== 'completed') {
     poolError('adjudication status must be completed');
   }
-  if (!isRecord(adjudication.adjudicator)
-    || adjudication.adjudicator.kind !== 'human'
-    || typeof adjudication.adjudicator.id !== 'string'
-    || adjudication.adjudicator.id.length === 0
-    || !Number.isFinite(Date.parse(adjudication.adjudicator.completed_at))) {
-    poolError('completed adjudication requires a human adjudicator and timestamp');
-  }
   if (!Array.isArray(adjudication.reviewers)
     || adjudication.reviewers.length < 2
     || !Array.isArray(adjudication.samples)) {
     poolError('completed adjudication must retain two reviewers and samples');
+  }
+  const reviewMode = adjudication.review_mode
+    ?? (adjudication.reviewers.every(reviewer => reviewer?.kind === 'human')
+      ? 'human'
+      : null);
+  if (!['human', 'ai'].includes(reviewMode)
+    || !isRecord(adjudication.adjudicator)
+    || adjudication.adjudicator.kind !== reviewMode
+    || typeof adjudication.adjudicator.id !== 'string'
+    || adjudication.adjudicator.id.length === 0
+    || !Number.isFinite(Date.parse(adjudication.adjudicator.completed_at))) {
+    poolError('completed adjudication requires a matching reviewer mode and timestamp');
   }
   const sampleIds = adjudication.samples.map(sample => sample?.id);
   if (sampleIds.some(id => typeof id !== 'string' || id.length === 0)
@@ -315,8 +345,18 @@ export function validateCompletedAdjudication(adjudication) {
   const reviewerIds = adjudication.reviewers.map(reviewer => reviewer?.id);
   if (reviewerIds.some(id => typeof id !== 'string' || id.length === 0)
     || new Set(reviewerIds).size !== reviewerIds.length
-    || adjudication.reviewers.some(reviewer => reviewer?.kind !== 'human')) {
-    poolError('completed adjudication must retain distinct human reviewers');
+    || adjudication.reviewers.some(reviewer => reviewer?.kind !== reviewMode)) {
+    poolError('completed adjudication must retain distinct same-mode reviewers');
+  }
+  if (reviewMode === 'ai') {
+    adjudication.reviewers.forEach((reviewer, index) =>
+      validateAiActor(reviewer, `reviewer ${index + 1}`));
+    validateAiActor(adjudication.adjudicator, 'adjudicator');
+    const reviewerFamilies = adjudication.reviewers.map(reviewer => reviewer.model_family);
+    if (new Set(reviewerFamilies).size !== reviewerFamilies.length
+      || reviewerFamilies.includes(adjudication.adjudicator.model_family)) {
+      poolError('completed AI adjudication requires independent model families');
+    }
   }
   for (const sample of adjudication.samples) {
     if (!Array.isArray(sample?.candidates)) poolError('adjudication sample is invalid');
@@ -337,8 +377,32 @@ export function validateCompletedAdjudication(adjudication) {
       const judgmentIds = new Set(candidate.judgments.map(judgment => judgment?.reviewer_id));
       if (judgmentIds.size !== reviewerIds.length
         || reviewerIds.some(id => !judgmentIds.has(id))
-        || candidate.judgments.some(judgment => !isLabel(judgment))) {
+        || candidate.judgments.some(judgment =>
+          !isLabel(judgment)
+          || (reviewMode === 'ai' && !isAiVerdictEvidence(
+            judgment,
+            adjudication.reviewers.find(reviewer => reviewer.id === judgment.reviewer_id),
+          )))) {
         poolError('completed adjudication contains invalid reviewer judgments');
+      }
+      if (candidate.agreement) {
+        const agreed = candidate.judgments[0];
+        if (candidate.final.relevance !== agreed.relevance
+          || candidate.final.citation_supported !== agreed.citation_supported) {
+          poolError('agreed candidate final judgment drifted');
+        }
+      } else if (reviewMode === 'ai'
+        && (!isRecord(candidate.adjudication_evidence)
+          || typeof candidate.adjudication_rationale !== 'string'
+          || candidate.adjudication_evidence.provider_model !== adjudication.adjudicator.model
+          || typeof candidate.adjudication_evidence.provider_response_id !== 'string'
+          || candidate.adjudication_evidence.provider_response_id.length === 0
+          || candidate.adjudication_evidence.verdict_sha256 !== sha256({
+            relevance: candidate.final.relevance,
+            citation_supported: candidate.final.citation_supported,
+            rationale: candidate.adjudication_rationale,
+          }))) {
+        poolError('AI adjudication evidence does not match the final judgment');
       }
     }
   }
@@ -488,11 +552,14 @@ function validateCompletedPacket(packet, pool, poolHash) {
     || packet.kind !== 'blinded-search-review'
     || packet.source_fixture_sha256 !== poolHash
     || !isRecord(packet.reviewer)
-    || packet.reviewer.kind !== 'human'
+    || !['human', 'ai'].includes(packet.reviewer.kind)
     || typeof packet.reviewer.id !== 'string'
     || packet.reviewer.id.length === 0
     || !Number.isFinite(Date.parse(packet.reviewer.completed_at))) {
     poolError('review packet is incomplete or references a different source pool');
+  }
+  if (packet.reviewer.kind === 'ai') {
+    validateAiActor(packet.reviewer, 'reviewer');
   }
   if (!Array.isArray(packet.samples) || packet.samples.length !== pool.samples.length) {
     poolError('review packet samples do not match the source pool');
@@ -510,7 +577,9 @@ function validateCompletedPacket(packet, pool, poolHash) {
       const pooled = poolCandidates.get(candidate?.candidate_id);
       if (!pooled
         || candidate.url !== pooled.url
-        || !isLabel(candidate)) {
+        || !isLabel(candidate)
+        || (packet.reviewer.kind === 'ai'
+          && !isAiVerdictEvidence(candidate, packet.reviewer))) {
         poolError(`review packet candidate ${candidate?.candidate_id ?? 'unknown'} is incomplete`);
       }
       poolCandidates.delete(candidate.candidate_id);
@@ -519,6 +588,44 @@ function validateCompletedPacket(packet, pool, poolHash) {
       poolError(`review packet sample ${poolSample.id} omits candidates`);
     }
   }
+}
+
+function validateAiActor(actor, role) {
+  const derivedFamily = typeof actor?.model === 'string'
+    ? actor.model.replace(/-\d{4}-\d{2}-\d{2}$/u, '')
+    : null;
+  if (!isRecord(actor)
+    || actor.kind !== 'ai'
+    || typeof actor.provider !== 'string'
+    || actor.provider.length === 0
+    || typeof actor.model !== 'string'
+    || actor.model.length === 0
+    || typeof actor.model_family !== 'string'
+    || actor.model_family.length === 0
+    || actor.model_family !== derivedFamily
+    || actor.id !== `ai:${actor.provider}:${actor.model}`
+    || actor.temperature !== 0
+    || actor.prompt_version !== AI_REVIEW_PROMPT_VERSION
+    || actor.prompt_sha256 !== AI_REVIEW_PROMPT_SHA256) {
+    poolError(`completed AI ${role} metadata is invalid`);
+  }
+}
+
+function isAiVerdictEvidence(value, actor) {
+  return isRecord(value)
+    && typeof value.rationale === 'string'
+    && value.rationale.length > 0
+    && isRecord(value.judge_evidence)
+    && value.judge_evidence.provider_model === actor?.model
+    && typeof value.judge_evidence.provider_response_id === 'string'
+    && value.judge_evidence.provider_response_id.length > 0
+    && /^[a-f0-9]{64}$/.test(value.judge_evidence.request_sha256)
+    && /^[a-f0-9]{64}$/.test(value.judge_evidence.provider_response_sha256)
+    && value.judge_evidence.verdict_sha256 === sha256({
+      relevance: value.relevance,
+      citation_supported: value.citation_supported,
+      rationale: value.rationale,
+    });
 }
 
 function isLabel(value) {

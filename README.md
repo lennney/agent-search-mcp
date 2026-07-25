@@ -282,30 +282,32 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 
 ## Benchmark
 
-The benchmark has three evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. The frozen formatting replay verifies the evidence-packet summary (currently 28.4% / 30.4%). A new human-gated pipeline preserves raw response hashes and engine outcomes, then reports graded retrieval, citation support, tokens per correct answer, latency, and failure transparency separately. Bootstrap labels are explicitly ineligible for public quality claims; the checked-in real pilot is still pending human review. None of these tracks is a universal production guarantee.
+The benchmark has three evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. The frozen formatting replay verifies the evidence-packet summary (currently 28.4% / 30.4%). A new review-gated pipeline preserves raw response hashes and engine outcomes, then reports graded retrieval, citation support, tokens per correct answer, latency, and failure transparency separately. Bootstrap labels are explicitly ineligible for public quality claims; the checked-in real pilot has not yet completed AI review. None of these tracks is a universal production guarantee.
 
 A second real-network qualification capture now returns 10 Wikipedia
 candidates for each of two bilingual questions and generates two blinded
 reviewer packets. It validates the reviewer workflow only: it is single-engine,
-not yet a multi-system pool, and contains no human judgments.
+not yet a multi-system pool, and contains no completed judgments.
 
 The benchmark toolchain can now combine two or more traced system captures
 into a deterministic URL pool, create provenance-blinded reviewer packets, and
-validate completed human review/adjudication artifacts. This is infrastructure,
+validate completed AI or human review/adjudication artifacts. The default
+automated path uses two blinded pointwise judges from different model families
+and a third family for disagreement adjudication. This is infrastructure,
 not a quality result: no public comparison is eligible until a real
-multi-system capture has two independent human reviews and completed
-adjudication.
+multi-system capture has completed review and adjudication.
 
 Once that gate is satisfied, the same toolchain reconstructs each system's
 protected ranking and emits per-system pooled-qrels metrics. Reported Recall is
 candidate-pool-relative; answer accuracy is not inferred from result relevance.
 Reviewer raw agreement and pairwise kappa remain attached to the comparison so
 adjudication does not erase evidence about labeling difficulty.
-Small human-reviewed pilots remain ineligible for headline comparisons:
+Small reviewed pilots remain ineligible for headline comparisons:
 overall reports require 30 adjudicated rows with 30 distinct queries; slices
 require 10 rows with 10 distinct queries. Eligible multi-system reports also
 include deterministic paired-bootstrap 95% confidence intervals for every
-system pair instead of presenting point estimates alone.
+system pair instead of presenting point estimates alone. AI-produced reports
+are permanently labeled `ai-reviewed` with claim scope `ai-judged`.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

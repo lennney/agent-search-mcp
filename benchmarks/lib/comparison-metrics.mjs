@@ -247,6 +247,9 @@ export function evaluatePooledComparison(pool, adjudication) {
     comparisonError('source must be a non-empty multi-system pool');
   }
   validateCompletedAdjudication(adjudication);
+  const reviewMode = adjudication.review_mode ?? 'human';
+  const labelStatus = reviewMode === 'ai' ? 'ai-reviewed' : 'human-verified';
+  const claimScope = reviewMode === 'ai' ? 'ai-judged' : 'human-reviewed';
   const poolHash = sha256(pool);
   if (adjudication.source_pool_sha256 !== poolHash) {
     comparisonError('adjudication references a different source pool');
@@ -402,7 +405,12 @@ export function evaluatePooledComparison(pool, adjudication) {
   const reportedPairs = Object.values(pairwiseComparisons)
     .filter(comparison => comparison.status === 'reported').length;
   const claimChecks = {
-    human_verified: { passed: true },
+    review_evidence: {
+      passed: true,
+      mode: reviewMode,
+      reviewers: adjudication.reviewers.length,
+      adjudicator_kind: adjudication.adjudicator.kind,
+    },
     multi_system: {
       passed: systemIds.length >= 2,
       actual: systemIds.length,
@@ -430,7 +438,8 @@ export function evaluatePooledComparison(pool, adjudication) {
   return {
     schema_version: 1,
     kind: 'pooled-search-comparison',
-    label_status: 'human-verified',
+    label_status: labelStatus,
+    claim_scope: claimScope,
     quality_claim_eligible: qualityClaimEligible,
     claim_readiness: {
       status: qualityClaimEligible ? 'eligible' : 'insufficient-sample',

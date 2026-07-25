@@ -44,6 +44,10 @@ tags:
 - Added deterministic 2,000-resample paired-bootstrap 95% confidence intervals
   for per-system retrieval and latency deltas. Public-claim readiness now
   requires uncertainty reporting for every system pair.
+- Added an auditable AI-as-judge path: two blinded pointwise reviewers from
+  different model families, third-family disagreement adjudication, strict
+  structured output, checkpointed verdict hashes, and explicit
+  `ai-reviewed`/`ai-judged` report labels.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the

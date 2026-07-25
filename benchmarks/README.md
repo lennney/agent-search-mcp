@@ -1,7 +1,7 @@
 # Benchmarks
 
 Agent Search MCP keeps three evidence tracks: historical live measurements,
-deterministic formatting regression, and a human-gated search-quality pipeline.
+deterministic formatting regression, and a review-gated search-quality pipeline.
 
 ## Historical live result (2026-07-24)
 
@@ -71,8 +71,9 @@ node benchmarks/quality.mjs \
   --output benchmarks/fixtures/live-latest-labels.pending.json
 ```
 
-Two people must review a non-empty pooled capture before its status can become
-`human-verified`. The evaluator reports graded nDCG@5, Precision@5, reciprocal
+The default automated path requires two pointwise AI judges from different
+model families plus a third-family adjudicator. Its status is `ai-reviewed`;
+legacy human review remains supported as `human-verified`. The evaluator reports graded nDCG@5, Precision@5, reciprocal
 rank@5, Success@5, answer correctness, citation support, tokens per correct
 answer, latency, trace coverage, and failure disclosure. Language, category,
 and freshness slices are emitted in JSON reports.
@@ -98,19 +99,54 @@ node benchmarks/quality.mjs \
   --output benchmarks/reviews/search-pool.reviewer-b.pending.json
 ```
 
-Each person must fill `reviewer.id`, keep `reviewer.kind` as `human`, fill
-`reviewer.completed_at`, and judge every candidate. Reviewer slots are packet
-labels, not proof of a human identity. Create the disagreement artifact only
-after both reviews are complete:
+For automated judging, set `OPENAI_API_KEY` outside command history and run two
+different model families. The driver evaluates one blinded candidate per
+request, uses strict JSON Schema, disables tools, sends `store: false`, and
+checkpoints the artifact after every verdict:
+
+```bash
+npm run benchmark:ai-review -- \
+  --review benchmarks/fixtures/search-pool.json \
+  --provider openai \
+  --model MODEL_A_SNAPSHOT \
+  --model-family FAMILY_A \
+  --reviewer-slot judge-a \
+  --output benchmarks/reviews/search-pool.judge-a.completed.json
+
+npm run benchmark:ai-review -- \
+  --review benchmarks/fixtures/search-pool.json \
+  --provider openai \
+  --model MODEL_B_SNAPSHOT \
+  --model-family FAMILY_B \
+  --reviewer-slot judge-b \
+  --output benchmarks/reviews/search-pool.judge-b.completed.json
+```
+
+`reviewer-slot` controls only deterministic candidate permutation. AI
+independence is enforced through distinct `model_family` values, and every
+verdict retains prompt/request/response/verdict hashes plus a short rationale.
+For snapshot IDs ending in `-YYYY-MM-DD`, `model_family` must be exactly the
+model ID with that trailing date removed; aliases without a date use the full
+model ID as their family. Use pinned snapshots for auditable runs.
+Create the disagreement artifact after both reviews complete:
 
 ```bash
 node benchmarks/pool.mjs \
   --prepare-adjudication benchmarks/fixtures/search-pool.json \
-  --review benchmarks/reviews/search-pool.reviewer-a.completed.json \
-  --review benchmarks/reviews/search-pool.reviewer-b.completed.json \
+  --review benchmarks/reviews/search-pool.judge-a.completed.json \
+  --review benchmarks/reviews/search-pool.judge-b.completed.json \
   --output benchmarks/reviews/search-pool.adjudication.pending.json
 
-# After a human resolves every final judgment and records the adjudicator:
+# Use a third model family to resolve only disagreements:
+npm run benchmark:ai-review -- \
+  --adjudicate benchmarks/reviews/search-pool.adjudication.pending.json \
+  --pool benchmarks/fixtures/search-pool.json \
+  --provider openai \
+  --model MODEL_C_SNAPSHOT \
+  --model-family FAMILY_C \
+  --reviewer-slot adjudicator \
+  --output benchmarks/reviews/search-pool.adjudication.completed.json
+
 node benchmarks/pool.mjs \
   --verify-adjudication benchmarks/reviews/search-pool.adjudication.completed.json
 
@@ -130,8 +166,10 @@ fewer results cannot inflate the score. Because the search tool returns evidence
 synthesized answer, answer accuracy and tokens per correct answer are marked
 unmeasured instead of inferred from retrieval relevance.
 
-`human-verified` means the judgments and adjudication passed the evidence
-contract; it does not automatically authorize a public quality headline.
+`ai-reviewed` or `human-verified` means the corresponding judgments and
+adjudication passed the evidence contract; neither automatically authorizes a
+public quality headline. AI reports always carry `claim_scope: ai-judged` and
+must not be described as human ground truth.
 `quality_claim_eligible` remains false until at least 30 adjudicated queries
 and 30 distinct normalized query texts are present; duplicating a query cannot
 satisfy the floor. Each language/category/freshness slice carries its own readiness
@@ -203,7 +241,9 @@ headline number.
 | [`queries.json`](./queries.json) | 30 bilingual live-search queries |
 | [`run.mjs`](./run.mjs) | Current capture/replay runner |
 | [`quality.mjs`](./quality.mjs) | Label preparation and quality evaluator |
-| [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and human adjudication gate |
+| [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and same-mode adjudication gate |
+| [`ai-review.mjs`](./ai-review.mjs) | OpenAI Responses executor for two-model review and third-model adjudication |
+| [`lib/ai-review.mjs`](./lib/ai-review.mjs) | Provider-neutral pointwise judge contract and evidence hashing |
 | [`lib/pooling.mjs`](./lib/pooling.mjs) | Pool URL normalization, trace preservation, and completed-review validation |
 | [`lib/comparison-metrics.mjs`](./lib/comparison-metrics.mjs) | Per-system pooled-qrels comparison metrics and evidence gates |
 | [`lib/quality-metrics.mjs`](./lib/quality-metrics.mjs) | Trace, validation, and independent metrics |

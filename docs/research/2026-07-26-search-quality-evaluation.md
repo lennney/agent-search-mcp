@@ -47,9 +47,10 @@ votes. Its analysis found that citation count can increase preference even when
 the citations do not support the attributed claims.
 
 Implication: paired preference is a secondary product metric. It cannot replace
-blind relevance and citation-support judgments. Human-verified releases should
-use at least two independent reviewers plus adjudication, with engine identity
-hidden during labeling.
+blind relevance and citation-support judgments. Automated releases should use
+pointwise rather than pairwise candidate judgments, hide engine identity,
+disclose that the result is AI-judged, and retain multiple independent judge
+configurations plus adjudication.
 
 ### 5. Production search adds online experiments
 
@@ -76,8 +77,28 @@ The benchmark is split into four tracks:
    navigational, comparison, multi-hop, and adversarial.
 
 Bootstrap labels may test metric code but are never eligible for a public
-quality claim. A fixture becomes claim-eligible only after explicit
-`human-verified` metadata and review evidence.
+quality claim. AI-reviewed fixtures require two different reviewer model
+families and a third-family adjudicator; reports remain explicitly
+`ai-reviewed` / `ai-judged`.
+
+## AI judge implementation decision
+
+LLM judges scale relevance labeling, but the evidence does not support
+silently treating them as people. G-Eval reports improved human correlation
+from rubric-driven structured judgments while noting evaluator bias.
+JudgeBench finds that judge quality must itself be evaluated, and position-bias
+studies show that output order can change verdicts.
+
+Agent Search therefore:
+
+1. judges one candidate at a time instead of asking for an A/B winner;
+2. uses a fixed 0-3 relevance and citation-support rubric;
+3. requires two distinct reviewer model families and a third family only for
+   disagreements;
+4. records model, family, prompt hash, request/response/verdict hashes,
+   rationale, usage, and timestamps;
+5. uses strict structured output with no tools and never labels AI evidence as
+   `human-verified`.
 
 ## Primary references
 
@@ -88,6 +109,10 @@ quality claim. A fixture becomes claim-eligible only after explicit
 - [FreshLLMs / FreshQA](https://arxiv.org/abs/2310.03214)
 - [Comprehensive RAG Benchmark](https://arxiv.org/abs/2406.04744)
 - [Search Arena](https://arxiv.org/abs/2506.05334)
+- [G-Eval](https://arxiv.org/abs/2303.16634)
+- [JudgeBench](https://openreview.net/forum?id=G0dksFayVq)
+- [Position bias in LLM-as-a-Judge](https://arxiv.org/abs/2406.07791)
+- [OpenAI Responses structured outputs](https://platform.openai.com/docs/api-reference/responses)
 - [Ragas faithfulness metric](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/)
 - [Correctness is not Faithfulness in RAG Attributions](https://arxiv.org/abs/2412.18004)
 - [Google overlapping experiment infrastructure](https://research.google/pubs/overlapping-experiment-infrastructure-more-better-faster-experimentation/)

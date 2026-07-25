@@ -19,8 +19,9 @@ This design prevents network variance or different search results from being mis
 - `quality-bootstrap.json`: synthetic metric-code regression with
   `quality_claim_eligible: false`.
 - Live captures: environment-specific snapshots created with `--capture`; results with zero returned documents are excluded from savings summaries.
-- Human quality fixtures: prepared from a traced live capture, independently
-  reviewed by two people, adjudicated, and marked `human-verified`.
+- Reviewed quality fixtures: prepared from traced live captures, independently
+  judged by two different AI model families and adjudicated by a third family.
+  Legacy human review remains supported, but AI output is marked `ai-reviewed`.
 - Pooled captures: two or more systems run the identical sample IDs and query
   metadata. Pool generation rejects invalid response hashes, duplicate system
   IDs, or query-set drift.
@@ -34,7 +35,7 @@ This design prevents network variance or different search results from being mis
 | Engine calls | Actual adapter attempts reported by the production orchestrator |
 | Early stop | Whether waterfall routing stopped before exhausting its eligible phase |
 | Success | Query returned at least one result |
-| nDCG@5 | Rank-aware gain from 0-3 human relevance labels |
+| nDCG@5 | Rank-aware gain from adjudicated 0-3 relevance labels |
 | Precision@5 | Fraction of judged top-five results with relevance at least 2 |
 | Reciprocal rank@5 | Reciprocal position of the first relevant top-five result |
 | Citation support | Fraction of relevant results judged to support the expected answer |
@@ -61,7 +62,7 @@ exists.
 
 ## Claim readiness
 
-Human verification and public-claim readiness are separate states. A completed
+Review completion and public-claim readiness are separate states. A completed
 two-reviewer adjudication establishes label provenance, but the default report
 keeps `quality_claim_eligible: false` below 30 adjudicated queries. Individual
 reports also require 30 distinct normalized query texts, so repeated copies
@@ -96,14 +97,16 @@ crosses zero shows that the observed direction is uncertain; an interval that
 does not cross zero still does not establish causality, universal superiority,
 query-population coverage, or practical significance.
 
-## Human labeling protocol
+## AI review protocol
 
 1. Pool results from the systems/configurations being compared.
 2. Hide engine identity and ranking source.
-3. Use two independent reviewers and the 0-3 relevance scale.
-4. Judge answer correctness and citation support separately.
-5. Retain both reviewers' per-result judgments, adjudicate disagreements, and
-   retain reviewer IDs and timestamp.
+3. Judge one candidate at a time with the fixed 0-3 rubric, so candidate order
+   cannot become an A/B preference signal.
+4. Use two different model families at temperature zero, then a third family
+   to judge disagreements from scratch without seeing the earlier verdicts.
+5. Retain provider/model family, prompt/version hashes, structured verdict
+   hashes, short rationales, usage, and timestamps.
 6. Publish language, category, and freshness slices before any overall average.
 
 Pooling canonicalizes HTTP(S) URLs by lowercasing the hostname, removing the
@@ -113,12 +116,22 @@ result hash in the protected pool, selects one deterministic display variant,
 and assigns a URL-derived opaque candidate ID. Reviewer packets remove system
 identity, original rank, internal scores, and traces.
 
-`reviewer_slot` only controls deterministic packet permutation. A completed
-packet additionally requires a non-empty human `reviewer.id` and parseable
-completion timestamp. The import step requires two distinct human IDs, retains
-both judgments, and marks disagreements for human adjudication. A completed
-adjudication must retain all source judgments and provide a final label for
-every candidate plus a named human adjudicator and timestamp.
+`reviewer_slot` only controls deterministic packet permutation. It is not an
+independent judge identity. AI packets require distinct model families,
+temperature zero, a fixed prompt hash, per-verdict request/response hashes, and
+a parseable completion timestamp. For dated snapshot IDs, the family is
+derived by removing the trailing `-YYYY-MM-DD`, rather than trusting an
+arbitrary operator label. The adjudicator must use a third model family. Human
+packets remain accepted for backward compatibility, but review modes cannot be
+mixed within one adjudication.
+
+Candidate text is untrusted input and is sent as data, not instructions.
+Oversized fields are rejected rather than silently truncated. The OpenAI
+Responses driver uses strict JSON Schema, disables tools, and sends
+`store: false`. URLs sent to the judge retain only origin and pathname; user
+info, query parameters, and fragments are removed. Users must still review
+their provider and organization data-retention policy. API keys are read only
+from environment variables and are never written into review artifacts.
 
 Reviewer reliability is calculated before adjudication. Relevance uses the
 mean pairwise quadratic-weighted Cohen's kappa because the 0-3 grades are
@@ -136,10 +149,12 @@ The 2026-07-24 30-query report measured 28.7% Compact savings, 35.5% Compact+ sa
 ## Limitations
 
 - The deterministic fixture validates formatting, not retrieval quality.
-- The live query set has no human relevance labels and is weighted toward technical topics.
+- The live query set has no completed relevance labels and is weighted toward technical topics.
 - The checked-in quality fixture is bootstrap-only. The checked-in non-empty
-  reviewer pilot is single-system and pending human review; it is not a pooled
+  reviewer pilot is single-system and has no completed AI review; it is not a pooled
   quality comparison.
+- LLM judges can be consistent while still biased. `ai-reviewed` results must
+  not be described as human ground truth, and same-family judges are rejected.
 - Engine availability, rate limits, latency, and returned pages vary with network, geography, and time.
 - Paid adapters require their API keys and are omitted when unavailable.
 - Historical and current replay percentages describe different fixtures and token counters; neither is a production guarantee.

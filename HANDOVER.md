@@ -10,23 +10,33 @@ tags:
 
 ## 2026-07-26 multi-system review-pool handover
 
+- The primary automated review path now uses two pointwise AI judges from
+  different model families and a third family for disagreements. It preserves
+  prompt/request/response/verdict hashes, rationale, usage, and timestamps.
+- AI reports use `label_status: ai-reviewed` and `claim_scope: ai-judged`;
+  they must never be presented as human ground truth. Legacy human review
+  remains valid, but review modes cannot be mixed.
+- `benchmarks/ai-review.mjs` currently executes OpenAI Responses calls with
+  strict JSON Schema, no tools, `store: false`, environment-only credentials,
+  bounded untrusted fields, and per-candidate checkpoints.
 - Added a deterministic pool contract for two or more traced captures of the
   same query set. It rejects trace tampering, duplicate system IDs, and query
   metadata drift.
 - Canonical URL deduplication keeps protected per-system ranks and result
   hashes while reviewer packets hide system/rank/internal provenance.
-- A reviewer slot is no longer treated as human identity. Completed packets
-  require distinct human reviewer IDs and timestamps.
+- A reviewer slot is not an identity. Completed human packets require distinct
+  reviewer IDs; completed AI packets require distinct model families. Both
+  retain timestamps.
 - Review import retains both judgments, exposes agreements/disagreements, and
   refuses completed status until every candidate has a final judgment and a
-  named human adjudicator.
+  same-mode adjudicator.
 - Completed adjudication can now produce a per-system comparison that
   reconstructs protected original rankings. Recall is pool-relative; answer
   accuracy and tokens per correct answer stay explicitly unmeasured.
 - Adjudication now records reviewer reliability before final labels: raw
   agreement, ordinal weighted kappa, binary citation kappa, and defined-pair
   counts. The validator recomputes these values from retained judgments.
-- Human verification no longer implies headline eligibility. The comparison
+- Completed review no longer implies headline eligibility. The comparison
   report requires 30 adjudicated rows and 30 distinct queries overall, plus 10
   rows and 10 distinct queries per reported slice; these are minimum
   guardrails, not a substitute for power/coverage analysis.
@@ -37,7 +47,8 @@ tags:
 - CLI: `node benchmarks/pool.mjs`; workflow and limitations are documented in
   `benchmarks/README.md`.
 - This closes the tooling portion only. Still required: capture a genuinely
-  independent second system, obtain two human reviews, and adjudicate.
+  independent second system, run two different AI model families, and
+  adjudicate disagreements with a third family.
 - Evidence: `docs/evidence/2026-07-26-search-pooling-contract.md`.
 
 ## 2026-07-26 non-empty reviewer-pipeline handover
@@ -56,7 +67,8 @@ tags:
 - CI verifies raw-response/source hashes, candidate coverage, data-license
   metadata, opaque IDs, rank hiding, and the `pending-human` gate.
 - This is a single-engine pipeline qualification, not a public quality result.
-  Remaining gate: multi-system pool, two real human reviews, adjudication.
+  Remaining gate: multi-system pool, two distinct AI reviewer families, and
+  third-family adjudication.
 - Evidence: `docs/evidence/2026-07-26-reviewer-pilot.md`.
 
 ## 2026-07-26 P2 MCP HTTP behavior handover
@@ -95,8 +107,9 @@ tags:
 
 - Live captures now preserve raw response hashes, latency, requested-engine
   outcomes, and disclosed failures.
-- Added a pending-human label workflow and strict `human-verified` gate with
-  two distinct human reviewers.
+- Added the original pending-human label workflow and strict
+  `human-verified` gate. The newer automated path preserves it for
+  compatibility while producing separately labeled `ai-reviewed` evidence.
 - Quality reports separate graded retrieval, answer correctness, citation
   support, token efficiency, latency, trace coverage, and failure transparency;
   they also include language/category/freshness slices.
@@ -225,7 +238,7 @@ tags:
 
 **下一阶段**:
 
-1. 在稳定网络 runner 上捕获非空真实 fixture，并补人工相关性标签
+1. 在稳定网络 runner 上捕获非空真实 pooled fixture，并运行双模型 AI 盲评与第三模型裁决
 2. 在真实反向代理环境验收 Bearer 密钥轮换、Origin 策略和限流
 3. 合并加固分支后，按“Agent 搜索路由器”独特路线发布掘金文章和短帖素材
 
@@ -233,7 +246,7 @@ tags:
 
 - **DDG HTML 限流**：POST 大量请求触发 HTTP 202，Python 路径不受此限制
 - **无分页**：所有引擎目前只返回第一页结果
-- **Benchmark 边界**：冻结 fixture 只验证格式和 token 回归，暂无人工相关性标签；历史精确数字必须带当时查询集/环境限定
+- **Benchmark 边界**：冻结 fixture 只验证格式和 token 回归，暂无完成的 adjudicated relevance labels；历史精确数字必须带当时查询集/环境限定
 - **HTTP 部署**：已有 Bearer/Origin 防护，但生产环境仍需 TLS、密钥轮换和反向代理限流
 - **依赖审计**：本次安装报告 5 项（1 low / 2 moderate / 2 high）；当前 runner 访问 npm audit endpoint 被 EACCES 拦截，未能刷新 advisory 明细。不要为清零审计而盲目降级 MCP/测试协议栈。
 

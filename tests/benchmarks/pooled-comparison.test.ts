@@ -136,6 +136,7 @@ describe('pooled search comparison metrics', () => {
       schema_version: 1,
       kind: 'pooled-search-comparison',
       label_status: 'human-verified',
+      claim_scope: 'human-reviewed',
       quality_claim_eligible: false,
       claim_readiness: {
         status: 'insufficient-sample',
@@ -144,7 +145,12 @@ describe('pooled search comparison metrics', () => {
           minimum_slice_queries: 10,
         },
         checks: {
-          human_verified: { passed: true },
+          review_evidence: {
+            passed: true,
+            mode: 'human',
+            reviewers: 2,
+            adjudicator_kind: 'human',
+          },
           multi_system: { passed: true, actual: 2, required: 2 },
           adjudicated_queries: { passed: false, actual: 1, required: 30 },
           distinct_queries: { passed: false, actual: 1, required: 30 },

@@ -6,10 +6,10 @@ Date: 2026-07-26
 
 Agent Search now has an executable, deterministic contract for creating a
 candidate pool from two or more search-system captures and carrying that pool
-through blinded independent review and human adjudication.
+through blinded independent review and adjudication.
 
 This is workflow evidence, not search-quality evidence. No independent
-comparison-system capture or human judgment was created as part of this
+comparison-system capture or completed AI judgment was created as part of this
 change.
 
 ## Protected pool
@@ -37,14 +37,18 @@ system identity, original rank, engine outcomes, internal scores, source
 counts, and execution traces. Each reviewer receives a deterministic
 reviewer-specific permutation.
 
-The pending packet contains an explicit unfilled human reviewer record.
-`reviewer_slot` is not accepted as evidence of a person.
+The original pending packet contains an explicit unfilled human reviewer
+record. The automated path replaces it with audited AI metadata;
+`reviewer_slot` is only a permutation key and is not accepted as an identity.
 
 ## Import and adjudication
 
-The pool importer requires at least two completed packets with:
+The pool importer requires at least two completed same-mode packets. For AI
+review, they must use different model families and retain fixed prompt and
+per-verdict evidence hashes. Human packets remain supported. Every mode still
+requires:
 
-- distinct non-empty human reviewer IDs;
+- distinct non-empty reviewer IDs;
 - parseable completion timestamps;
 - a judgment for every pooled candidate;
 - unchanged candidate URLs and source-pool hash.
@@ -52,13 +56,15 @@ The pool importer requires at least two completed packets with:
 It retains both judgments and emits agreement/disagreement counts. A completed
 adjudication passes validation only when every candidate has a final relevance
 and citation-support judgment, all original reviewer judgments remain present,
-and a human adjudicator ID and completion timestamp are recorded.
+and a matching-mode adjudicator ID and completion timestamp are recorded. AI
+disagreements require a third model family and hashed adjudication evidence.
 
 ## Verification
 
 The contract has unit coverage for deterministic pooling, URL deduplication,
 input-order invariance, metadata/identity rejection, blind-packet provenance
-removal, disagreement import, and completed-adjudication validation.
+removal, disagreement import, completed-adjudication validation, pointwise AI
+review evidence, distinct-family enforcement, and third-family adjudication.
 
 ## Comparison report
 
@@ -85,7 +91,7 @@ support. The completed-artifact validator recomputes these values from the
 retained judgments, so they cannot be edited independently. Undefined
 no-variance pairs remain `null` and are counted separately.
 
-Human verification and public-claim readiness are separate. Reports require
+Completed review and public-claim readiness are separate. Reports require
 30 adjudicated rows and 30 distinct normalized queries before
 `quality_claim_eligible` can become true; individual slices require 10 rows
 and 10 distinct queries. At the overall floor, every system pair also receives
@@ -100,7 +106,7 @@ replace statistical-power, practical-significance, or query-coverage analysis.
 
 1. Capture Agent Search and a genuinely independent comparison system against
    the same versioned query set.
-2. Obtain two independent human reviews.
-3. Adjudicate disagreements.
-4. Convert the completed adjudication into a `human-verified` quality fixture
-   before reporting Recall or comparative quality.
+2. Run two distinct AI model families over the blinded pointwise candidates.
+3. Adjudicate disagreements with a third model family.
+4. Publish the completed comparison only with its `ai-reviewed` and
+   `ai-judged` scope visible.

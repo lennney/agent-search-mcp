@@ -7,9 +7,13 @@
     "schema_version",
     "kind",
     "label_status",
+    "claim_scope",
     "quality_claim_eligible",
     "source_pool_sha256",
     "source_adjudication_sha256",
+    "source_captures",
+    "reviewers",
+    "adjudicator",
     "claim_readiness",
     "metric_scope",
     "reviewer_agreement",
@@ -25,7 +29,16 @@
       "const": "pooled-search-comparison"
     },
     "label_status": {
-      "const": "human-verified"
+      "enum": [
+        "human-verified",
+        "ai-reviewed"
+      ]
+    },
+    "claim_scope": {
+      "enum": [
+        "human-reviewed",
+        "ai-judged"
+      ]
     },
     "quality_claim_eligible": {
       "type": "boolean"
@@ -70,13 +83,43 @@
         "checks": {
           "type": "object",
           "required": [
-            "human_verified",
+            "review_evidence",
             "multi_system",
             "adjudicated_queries",
             "distinct_queries",
             "paired_uncertainty"
           ],
           "properties": {
+            "review_evidence": {
+              "type": "object",
+              "required": [
+                "passed",
+                "mode",
+                "reviewers",
+                "adjudicator_kind"
+              ],
+              "properties": {
+                "passed": {
+                  "const": true
+                },
+                "mode": {
+                  "enum": [
+                    "human",
+                    "ai"
+                  ]
+                },
+                "reviewers": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "adjudicator_kind": {
+                  "enum": [
+                    "human",
+                    "ai"
+                  ]
+                }
+              }
+            },
             "paired_uncertainty": {
               "type": "object",
               "required": [
@@ -168,6 +211,30 @@
         }
       }
     },
+    "reviewers": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/humanActor"
+          },
+          {
+            "$ref": "#/$defs/aiActor"
+          }
+        ]
+      }
+    },
+    "adjudicator": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/humanActor"
+        },
+        {
+          "$ref": "#/$defs/aiActor"
+        }
+      ]
+    },
     "systems": {
       "type": "object",
       "minProperties": 2,
@@ -206,7 +273,113 @@
       ]
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "label_status": {
+            "const": "ai-reviewed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "claim_scope": {
+            "const": "ai-judged"
+          },
+          "reviewers": {
+            "items": {
+              "$ref": "#/$defs/aiActor"
+            }
+          },
+          "adjudicator": {
+            "$ref": "#/$defs/aiActor"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "claim_scope": {
+            "const": "human-reviewed"
+          },
+          "reviewers": {
+            "items": {
+              "$ref": "#/$defs/humanActor"
+            }
+          },
+          "adjudicator": {
+            "$ref": "#/$defs/humanActor"
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
+    "humanActor": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "human"
+        }
+      }
+    },
+    "aiActor": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "provider",
+        "model",
+        "model_family",
+        "temperature",
+        "prompt_version",
+        "prompt_sha256",
+        "completed_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "ai"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "const": 0
+        },
+        "prompt_version": {
+          "const": "search-relevance-v1"
+        },
+        "prompt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "pairwiseBase": {
       "type": "object",
       "required": [

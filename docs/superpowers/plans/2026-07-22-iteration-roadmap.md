@@ -666,7 +666,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 
 ### P2 - measurable ecosystem contract
 
-- [ ] Add benchmark datasets with human relevance labels and raw traces.
+- [ ] Add benchmark datasets with adjudicated relevance labels and raw traces.
   - [x] Capture raw response hashes, engine outcomes, latency, and failures.
   - [x] Generate a pending label template without synthetic human claims.
   - [x] Add deterministic multi-system URL pooling, provenance-blinded packets,
@@ -675,11 +675,14 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
         adjudication without inferring unmeasured answer correctness.
   - [x] Report pre-adjudication reviewer reliability with raw agreement and
         pairwise kappa without hiding low-agreement queries.
-  - [x] Separate human-verified evidence from public-claim readiness with
+  - [x] Separate completed review evidence from public-claim readiness with
         minimum distinct-query gates overall and per slice.
   - [x] Add deterministic query-paired bootstrap intervals for every system
         pair and require uncertainty reporting for public-claim readiness.
-  - [ ] Complete two-reviewer human labels on a non-empty pooled capture.
+  - [x] Add blinded pointwise AI judging with two independent model families,
+        a third-family disagreement adjudicator, and hashed verdict evidence.
+  - [ ] Complete two-model AI review and third-model adjudication on a non-empty
+        pooled capture.
 - [x] Measure quality, citation support, tokens per correct answer, latency, and
       failure transparency as separate dimensions.
 - [x] Define an optional Slim Guard integration contract without making direct
