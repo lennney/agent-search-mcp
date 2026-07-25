@@ -20,6 +20,9 @@ tags:
 - Review import retains both judgments, exposes agreements/disagreements, and
   refuses completed status until every candidate has a final judgment and a
   named human adjudicator.
+- Completed adjudication can now produce a per-system comparison that
+  reconstructs protected original rankings. Recall is pool-relative; answer
+  accuracy and tokens per correct answer stay explicitly unmeasured.
 - CLI: `node benchmarks/pool.mjs`; workflow and limitations are documented in
   `benchmarks/README.md`.
 - This closes the tooling portion only. Still required: capture a genuinely

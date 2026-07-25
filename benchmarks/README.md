@@ -113,7 +113,22 @@ node benchmarks/pool.mjs \
 # After a human resolves every final judgment and records the adjudicator:
 node benchmarks/pool.mjs \
   --verify-adjudication benchmarks/reviews/search-pool.adjudication.completed.json
+
+# Reconstruct each protected system ranking and write the comparison:
+node benchmarks/pool.mjs \
+  --compare benchmarks/fixtures/search-pool.json \
+  --adjudication benchmarks/reviews/search-pool.adjudication.completed.json \
+  --output benchmarks/reports/search-pool.comparison.json
 ```
+
+The comparison reports nDCG@5, Precision@5, pooled Recall@5, reciprocal rank,
+Success@5, citation support, latency, and failure disclosure per system and
+slice. Recall is explicitly relative to the adjudicated union pool, not the
+open web. Queries whose pool contains no relevant candidate score zero and are
+counted separately. Precision@5 uses a fixed denominator of five, so returning
+fewer results cannot inflate the score. Because the search tool returns evidence rather than a
+synthesized answer, answer accuracy and tokens per correct answer are marked
+unmeasured instead of inferred from retrieval relevance.
 
 For the current single-system qualification artifact, generate separate
 blinded packets with:
@@ -159,6 +174,7 @@ headline number.
 | [`quality.mjs`](./quality.mjs) | Label preparation and quality evaluator |
 | [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and human adjudication gate |
 | [`lib/pooling.mjs`](./lib/pooling.mjs) | Pool URL normalization, trace preservation, and completed-review validation |
+| [`lib/comparison-metrics.mjs`](./lib/comparison-metrics.mjs) | Per-system pooled-qrels comparison metrics and evidence gates |
 | [`lib/quality-metrics.mjs`](./lib/quality-metrics.mjs) | Trace, validation, and independent metrics |
 | [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
 | [`fixtures/quality-bootstrap.json`](./fixtures/quality-bootstrap.json) | Synthetic metric regression; never quality evidence |
@@ -167,6 +183,7 @@ headline number.
 | [`queries/reviewer-pilot.json`](./queries/reviewer-pilot.json) | Bilingual reviewer-pilot questions and reference answers |
 | [`reviews/`](./reviews) | Blinded, pending reviewer packets |
 | [`schemas/labeled-search-quality-v1.schema.json`](./schemas/labeled-search-quality-v1.schema.json) | Label/trace schema |
+| [`schemas/pooled-search-comparison-v1.schema.json`](./schemas/pooled-search-comparison-v1.schema.json) | Completed pooled comparison report schema |
 | [`methodology.md`](./methodology.md) | Evidence model and limitations |
 | [`run.cjs`](./run.cjs) | Legacy historical runner |
 | [`reports/`](./reports) | Historical and replay reports |

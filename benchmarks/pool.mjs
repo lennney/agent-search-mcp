@@ -6,6 +6,7 @@ import {
   prepareReviewAdjudication,
   validateCompletedAdjudication,
 } from './lib/pooling.mjs';
+import { evaluatePooledComparison } from './lib/comparison-metrics.mjs';
 
 const argv = process.argv.slice(2);
 
@@ -13,10 +14,12 @@ try {
   const captureOptions = optionValues('--capture');
   const prepareSource = optionValue('--prepare-adjudication');
   const verifySource = optionValue('--verify-adjudication');
+  const compareSource = optionValue('--compare');
   const selectedModes = [
     captureOptions.length > 0,
     prepareSource !== undefined,
     verifySource !== undefined,
+    compareSource !== undefined,
   ].filter(Boolean).length;
 
   if (selectedModes !== 1) usage();
@@ -45,9 +48,18 @@ try {
     const reviews = await Promise.all(reviewPaths.map(readJson));
     await writeJson(output, prepareReviewAdjudication(pool, reviews));
     console.error(`Wrote pending adjudication to ${resolve(output)}`);
-  } else {
+  } else if (verifySource !== undefined) {
     validateCompletedAdjudication(await readJson(verifySource));
     console.error(`Verified completed human adjudication at ${resolve(verifySource)}`);
+  } else {
+    const output = requiredOption('--output');
+    const adjudicationPath = requiredOption('--adjudication');
+    const report = evaluatePooledComparison(
+      await readJson(compareSource),
+      await readJson(adjudicationPath),
+    );
+    await writeJson(output, report);
+    console.error(`Wrote human-verified pooled comparison to ${resolve(output)}`);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
@@ -97,5 +109,6 @@ function usage() {
     '  node benchmarks/pool.mjs --capture system-id=path --capture other-id=path --output pool.json',
     '  node benchmarks/pool.mjs --prepare-adjudication pool.json --review a.json --review b.json --output adjudication.json',
     '  node benchmarks/pool.mjs --verify-adjudication completed-adjudication.json',
+    '  node benchmarks/pool.mjs --compare pool.json --adjudication completed.json --output report.json',
   ].join('\n'));
 }

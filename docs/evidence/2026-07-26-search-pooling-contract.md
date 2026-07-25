@@ -60,6 +60,24 @@ The contract has unit coverage for deterministic pooling, URL deduplication,
 input-order invariance, metadata/identity rejection, blind-packet provenance
 removal, disagreement import, and completed-adjudication validation.
 
+## Comparison report
+
+A completed adjudication can be evaluated with:
+
+```bash
+node benchmarks/pool.mjs \
+  --compare benchmarks/fixtures/search-pool.json \
+  --adjudication benchmarks/reviews/search-pool.adjudication.completed.json \
+  --output benchmarks/reports/search-pool.comparison.json
+```
+
+The evaluator verifies both evidence hashes and exact sample/candidate/rank
+coverage, then reconstructs each system's original top five. It reports
+nDCG@5, Precision@5, pool-relative Recall@5, reciprocal rank, Success@5,
+citation support, latency, failure disclosure, and language/category/freshness
+slices. It marks answer accuracy and tokens per correct answer unmeasured,
+because no synthesized answer was independently judged.
+
 ## Remaining external gate
 
 1. Capture Agent Search and a genuinely independent comparison system against

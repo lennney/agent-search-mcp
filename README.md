@@ -296,6 +296,10 @@ not a quality result: no public comparison is eligible until a real
 multi-system capture has two independent human reviews and completed
 adjudication.
 
+Once that gate is satisfied, the same toolchain reconstructs each system's
+protected ranking and emits per-system pooled-qrels metrics. Reported Recall is
+candidate-pool-relative; answer accuracy is not inferred from result relevance.
+
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 
 ---

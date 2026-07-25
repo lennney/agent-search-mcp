@@ -148,6 +148,13 @@ export function poolLiveCaptures(inputs) {
         status: isRecord(sample.response) ? 'success' : 'failed',
         duration_ms: sample.duration_ms,
         raw_response_sha256: sample.trace?.raw_response_sha256 ?? null,
+        engine_outcomes: Array.isArray(sample.trace?.engine_outcomes)
+          ? sample.trace.engine_outcomes
+          : [],
+        partial_failures: isRecord(sample.response)
+          && Array.isArray(sample.response.partialFailures)
+          ? sample.response.partialFailures
+          : [],
         result_order: resultOrder,
         ...(typeof sample.error === 'string' && { error: sample.error }),
       });

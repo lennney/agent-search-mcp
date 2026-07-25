@@ -45,6 +45,20 @@ Recall is not reported until candidate documents are pooled across systems.
 Judging only one system's returned URLs cannot establish the total number of
 relevant documents on the open web.
 
+After completed adjudication, the comparison evaluator reconstructs each
+system's original rank from the protected pool and uses the shared final
+judgments as qrels. `pooled_recall_at_5_percent` is recall against the
+adjudicated union pool only; it is never labeled web recall. nDCG uses the
+pool-wide ideal ordering. Queries with no relevant pooled candidate are scored
+zero and disclosed by `queries_with_relevant_pool`. Precision@5 always uses
+the fixed five-result denominator; missing ranks count as non-relevant.
+
+The search response is an evidence list, not a synthesized answer. Therefore
+the pooled comparison does not infer answer correctness from relevance and
+does not manufacture tokens-per-correct-answer. Those dimensions stay
+explicitly unmeasured until a separately blinded per-system answer protocol
+exists.
+
 ## Human labeling protocol
 
 1. Pool results from the systems/configurations being compared.

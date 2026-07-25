@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lennney/agent-search-mcp/benchmarks/schemas/pooled-search-comparison-v1.schema.json",
+  "title": "Agent Search pooled comparison report v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "label_status",
+    "quality_claim_eligible",
+    "source_pool_sha256",
+    "source_adjudication_sha256",
+    "metric_scope",
+    "systems",
+    "unmeasured"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "pooled-search-comparison"
+    },
+    "label_status": {
+      "const": "human-verified"
+    },
+    "quality_claim_eligible": {
+      "const": true
+    },
+    "source_pool_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_adjudication_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "metric_scope": {
+      "type": "object",
+      "required": [
+        "cutoff",
+        "relevance_threshold",
+        "recall",
+        "queries_without_relevant_pool"
+      ],
+      "properties": {
+        "cutoff": {
+          "const": 5
+        },
+        "relevance_threshold": {
+          "const": 2
+        },
+        "recall": {
+          "const": "adjudicated-candidate-pool"
+        },
+        "queries_without_relevant_pool": {
+          "const": "scored-as-zero"
+        }
+      }
+    },
+    "systems": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "evaluated_queries",
+          "queries_with_relevant_pool",
+          "retrieval",
+          "citation_support",
+          "latency",
+          "failure_transparency",
+          "slices"
+        ]
+      }
+    },
+    "unmeasured": {
+      "type": "object",
+      "required": [
+        "answer_accuracy",
+        "tokens_per_correct_answer"
+      ]
+    }
+  }
+}
