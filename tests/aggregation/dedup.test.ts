@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
+  PROVIDER_FAMILIES,
   normalizeUrl,
   dedupByUrl,
   dedupByTitle,
   filterLowQuality,
 } from '../../src/aggregation/dedup.js';
+import { readFileSync } from 'node:fs';
 import type { SearchResult } from '../../src/types.js';
 
 function r(overrides: Partial<SearchResult> & { url: string }): SearchResult {
@@ -43,15 +45,39 @@ describe('dedupByUrl', () => {
     expect(deduped[0].snippet).toBe('a much longer and richer snippet here');
   });
 
-  it('counts frequencies per URL', () => {
+  it('counts independent provider families per URL', () => {
     const results = [
       r({ url: 'https://a.com/1' }),
       r({ url: 'https://a.com/1' }),
       r({ url: 'https://b.com/2' }),
     ];
     const { frequencies } = dedupByUrl(results);
-    expect(frequencies.get('a.com/1')).toBe(2);
+    expect(frequencies.get('a.com/1')).toBe(1);
     expect(frequencies.get('b.com/2')).toBe(1);
+  });
+
+  it('does not count DuckDuckGo and Bing as independent corroboration', () => {
+    const { frequencies } = dedupByUrl([
+      r({ url: 'https://a.com/1', source: 'duckduckgo', engines: ['duckduckgo'] }),
+      r({ url: 'https://a.com/1', source: 'bing', engines: ['bing'] }),
+      r({ url: 'https://a.com/1', source: 'sogou', engines: ['sogou'] }),
+    ]);
+
+    expect(frequencies.get('a.com/1')).toBe(2);
+  });
+});
+
+describe('provider-family contract', () => {
+  it('matches the machine-readable Slim Guard handoff mapping', () => {
+    const contract = JSON.parse(readFileSync(
+      new URL(
+        '../../docs/contracts/provider-families-v1.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ));
+
+    expect(PROVIDER_FAMILIES).toEqual(contract.families);
   });
 });
 

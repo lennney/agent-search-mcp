@@ -76,6 +76,17 @@ fasm extract "https://..."
   promise。parallel/waterfall 必须使用同一搜索选项缓存键。
 - 正文提取只能改善 snippet，不得增加 `confidence` 或 `source_count`；
   `EVIDENCE_BUDGET_CHARS` 是整个响应共享预算。
+- Adapter 名称不等于独立来源；`source_count` 统计 upstream provider family。
+  DuckDuckGo/Bing 保守地归为同一 family，同一 provider 的 HTML/Lite 表示不能增信。
+  显式选择的同 family adapter 只作为顺序失败/低质后备；合同映射以
+  `docs/contracts/provider-families-v1.json` 为准。
+- 原始结果数量不能单独触发提前停止。逐条 relevance、平均 confidence 和
+  provider-family 覆盖必须分别通过；默认 relevance floor 是待 pooled qrels
+  校准的内部启发式。
+- DDG Lite 只在 HTML HTTP 202 后、同一总 deadline 内机会性尝试一次；它不是
+  限流绕过。调用方取消或其他 provider/IP 级限制不得触发重复请求。
+- `free_search_advanced.time_range` 当前仅是兼容保留字段，未端到端执行；完成
+  实现或正式弃用前不得宣传为可用的时间过滤能力。
 - 冻结 fixture 只证明格式和指标代码可复现，不代表搜索质量。公开质量数字必须来自
   非空多系统 capture、完整裁决和明确口径；零结果不得被静默删除。
 - 第三方摘要不自动继承 Apache-2.0。提交 capture 前核对再分发许可与署名。
@@ -96,6 +107,8 @@ fasm extract "https://..."
 - 搜索基准与 AI 评测：`benchmarks/README.md`、`benchmarks/methodology.md`
 - HTTP 部署：`docs/http-deployment.md`
 - 搜索评测调研：`docs/research/2026-07-26-search-quality-evaluation.md`
+- Agent Search 产品与架构调研：
+  `docs/research/2026-07-26-agent-search-product-architecture.md`
 - 关键证据：`docs/evidence/`
 - 架构决策：`docs/decisions/`
 

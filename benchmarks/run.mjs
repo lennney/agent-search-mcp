@@ -5,6 +5,7 @@ import { dirname, relative, resolve } from 'node:path';
 import { encode } from 'gpt-tokenizer';
 
 import { parseEngineSelection } from './lib/capture-options.mjs';
+import { countProviderFamilies } from './lib/evidence-handoff.mjs';
 import { buildCaptureTrace } from './lib/quality-metrics.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -185,7 +186,7 @@ async function generateFormatFixture(fixturePath) {
         snippet: `${suffix} ${suffix}`,
         confidence: round(0.94 - resultIndex * 0.035, 3),
         relevance: round(0.91 - resultIndex * 0.04, 3),
-        source_count: sources.length,
+        source_count: countProviderFamilies(sources),
         sources,
       };
     });
@@ -232,7 +233,7 @@ function toScoredResult(result) {
     engines: sources,
     confidence: result.confidence ?? 0,
     relevance,
-    source_count: result.source_count ?? sources.length,
+    source_count: result.source_count ?? countProviderFamilies(sources),
     score: relevance,
   };
 }

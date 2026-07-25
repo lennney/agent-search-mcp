@@ -19,6 +19,9 @@
 | [release-process.md](release-process.md) | 发布流程 checklist |
 | [architecture.md](architecture.md) | 系统架构文档（分层+数据流+关键模式） |
 | [ARCHITECTURE-IMPROVEMENTS.md](ARCHITECTURE-IMPROVEMENTS.md) | 从竞品提炼的 8 个架构模式 |
+| [research/2026-07-26-agent-search-product-architecture.md](research/2026-07-26-agent-search-product-architecture.md) | 当前 Agent Search/MCP 产品源码与架构调查 |
+| [contracts/slim-guard-evidence-handoff-v1.md](contracts/slim-guard-evidence-handoff-v1.md) | Agent Search → Slim Guard 可选证据合同与 provider-family 口径 |
+| [evidence/2026-07-26-ddg-html-lite-network-observation.md](evidence/2026-07-26-ddg-html-lite-network-observation.md) | 单 runner 的 DDG HTML/Lite 202 负面网络观测 |
 
 ## 路线图
 

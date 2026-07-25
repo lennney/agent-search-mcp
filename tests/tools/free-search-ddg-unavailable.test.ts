@@ -36,13 +36,25 @@ vi.mock('../../src/aggregation/index.js', () => ({
   dedupByUrl: vi.fn((r) => ({ results: r, frequencies: new Map() })),
   dedupByTitle: vi.fn((r) => r),
   filterLowQuality: vi.fn((r) => r),
+  getProviderFamily: vi.fn((engine: string) => (
+    engine === 'duckduckgo' || engine === 'bing' ? 'bing' : engine
+  )),
   scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 1, relevance: 0.5, source_count: 1, score: 0.5 }))),
   formatResults: vi.fn((r) => ({
     results: r,
     meta: { total: r.length, high_confidence: r.length, engines: [] },
     security_note: '',
   })),
-  checkConfidenceBasket: vi.fn(() => ({ sufficient: true, basketConfidence: 0.8, topResultsCount: 1, analyzedCount: 1 })),
+  checkConfidenceBasket: vi.fn(() => ({
+    sufficient: true,
+    basketConfidence: 0.8,
+    basketRelevance: 0.5,
+    relevantResultsCount: 1,
+    relevanceThreshold: 0.35,
+    providerFamilyCount: 1,
+    topResultsCount: 1,
+    analyzedCount: 1,
+  })),
   enrichResults: vi.fn(async (r) => ({ results: r, enriched: 0, failures: 0 })),
   expandQuery: vi.fn(() => []),
   hasChinese: vi.fn(() => false),

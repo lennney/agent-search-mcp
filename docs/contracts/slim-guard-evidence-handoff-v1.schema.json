@@ -31,6 +31,7 @@
           },
           "sources": {
             "type": "array",
+            "description": "Adapter provenance. Adapter names are mapped to upstream provider families by provider-families-v1.json.",
             "minItems": 1,
             "uniqueItems": true,
             "items": {
@@ -56,7 +57,8 @@
           },
           "source_count": {
             "type": "integer",
-            "minimum": 1
+            "minimum": 1,
+            "description": "Number of unique upstream provider families represented by sources, using provider-families-v1.json."
           },
           "evidence": {
             "type": "object",

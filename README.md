@@ -22,14 +22,15 @@ The route is deliberate: **zero-key start → Chinese-native routing → inspect
 
 | | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
 |---|:---:|:---:|:---:|:---:|
-| **Search without account/API key** | **Yes** | No | No | No |
+| **Start without a user API key** | **Yes — self-run adapters** | Limited — keyless Search/Extract | Limited — hosted free MCP | No |
+| **Zero-key path** | **Local router, no single vendor gateway** | Tavily service | Exa hosted service | — |
 | **Search backends** | **8 zero-key + 4 optional APIs** | Tavily API | Exa index | Brave index |
 | **Cross-engine aggregation** | **Yes** | Single upstream | Single upstream | Single upstream |
 | **Dedicated Chinese engines** | **Sogou + Baidu** | No | No | No |
 | **Local MCP server** | Yes | Yes | Yes | Yes |
 | **Best fit** | Zero-key, multilingual verification | Hosted search/extract/map/crawl | Semantic, code, and company research | Independent index + vertical search |
 
-Comparison last checked 2026-07-25 against the linked official repositories. Commercial services have useful free allowances, but still require an account or credential; pricing changes, so this table intentionally avoids monthly-price claims.
+Comparison last checked 2026-07-26 against the linked official repositories. Tavily's current local MCP exposes limited keyless Search/Extract; Exa's hosted MCP has a limited free no-key path while its local npm server uses `EXA_API_KEY`. Those are useful on-ramps, but both still route through one vendor service. Pricing and limits change, so this table intentionally avoids monthly-price claims.
 
 ### Zero-key by default
 
@@ -37,12 +38,18 @@ Eight adapters need no credentials — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia
 
 ### Progressive multi-source search
 
-Parallel and waterfall orchestration, URL/title deduplication, ranking, and graceful fallback are built in. Compact mode supports progressive disclosure so agents can inspect the top results first and call `free_extract` only when deeper content is needed.
+Parallel and waterfall orchestration, URL/title deduplication, ranking, and
+graceful fallback are built in. Later batches are skipped only when result
+count, per-result relevance, average source confidence, and independent
+provider-family coverage pass separately; `meta.execution` reports the observed
+gate and `stop_reason`. Compact mode supports progressive disclosure so agents
+can inspect the top results first and call `free_extract` only when deeper
+content is needed.
 
 ### Inspectable evidence packets
 
 Full results select a deterministic query-relevant passage and keep provenance,
-relevance, independent source count, upstream publication time, and extraction
+relevance, independent provider-family count, upstream publication time, and extraction
 metadata as separate fields. One response-level character budget bounds passage
 content, while compact placeholders retain their source list and engine
 failures remain visible in `partialFailures`.
@@ -140,10 +147,10 @@ The package contains 12 engine adapters, all selectable through `free_search`, `
 | **Startpage** | ✅ | Google results via privacy proxy |
 | **Yandex** | ✅ | Russian/Cyrillic web search |
 | **Mojeek** | ✅ | Independent crawler, privacy-focused |
-| Brave Search | ❌ | High-quality web results (2K free/month) |
-| Tavily | ❌ | Agent-optimized search (1K free/month) |
-| Exa | ❌ | Neural semantic search (1K free/month) |
-| You.com | ❌ | AI-powered search ($5/1K, free credits available) |
+| Brave Search | ❌ | High-quality web results (user API key required) |
+| Tavily | ❌ | Agent-optimized optional adapter (user API key required here) |
+| Exa | ❌ | Neural semantic optional adapter (user API key required here) |
+| You.com | ❌ | AI-powered optional adapter (user API key required here) |
 
 ---
 
@@ -152,7 +159,7 @@ The package contains 12 engine adapters, all selectable through `free_search`, `
 | Tool | Description | Best For |
 |------|-------------|----------|
 | `free_search` | Multi-engine search with auto-fallback | Quick fact-finding |
-| `free_search_advanced` | Filtered search with waterfall, domain filtering, enrichment | High-confidence results, date ranges |
+| `free_search_advanced` | Filtered search with waterfall, domain filtering, enrichment | High-confidence, domain-filtered, or Chinese-query results |
 | `free_search_news` | News search across DDG News + Bing News | Recent news, current events |
 | `search_with_synthesis` | Deep search with prompt hint for LLM synthesis | Complex queries needing verification |
 | `free_extract` | Extract full page content as Markdown | Reading a page from search results |
@@ -164,7 +171,8 @@ All tools are read-only and idempotent with MCP 2025 annotations.
 
 `search_with_synthesis.min_confidence` uses the same normalized `0-1`
 source-reliability scale as the other search tools. Use `min_source_count` for
-independent-engine corroboration. Legacy `min_confidence=2/3` inputs remain
+independent upstream-provider corroboration. Adapters from one provider family
+do not increase this count. Legacy `min_confidence=2/3` inputs remain
 accepted and are mapped to source count.
 
 Search execution keeps fallback resilient without hiding operational evidence:
@@ -197,7 +205,7 @@ including cache reads in waterfall mode.
 | `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
 | `EVIDENCE_BUDGET_CHARS` | `1200` | Shared passage budget per response (200-20000 characters) |
 | `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
-| `MIN_SOURCE_COUNT` | `1` | Minimum number of independent engine sources (1–12) |
+| `MIN_SOURCE_COUNT` | `1` | Minimum upstream provider families; accepts 1–12 for compatibility, while the current adapter set exposes at most 11 |
 | `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
 | `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
 | `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
@@ -282,7 +290,7 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 
 ## Benchmark
 
-The benchmark has three evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. The frozen formatting replay verifies the evidence-packet summary (currently 28.4% / 30.4%). A new review-gated pipeline preserves raw response hashes and engine outcomes, then reports graded retrieval, citation support, tokens per correct answer, latency, and failure transparency separately. Bootstrap labels are explicitly ineligible for public quality claims; the checked-in real pilot has not yet completed AI review. None of these tracks is a universal production guarantee.
+The benchmark has three evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. The frozen formatting replay verifies the evidence-packet summary (currently 28.4% / 30.4%). A new review-gated pipeline preserves raw response hashes and engine outcomes, then reports graded retrieval, citation support, latency, and failure transparency separately. Because the search tool does not synthesize an answer, answer correctness and tokens per correct answer remain explicitly unmeasured. Bootstrap labels are ineligible for public quality claims; the checked-in real pilot has not yet completed AI review. None of these tracks is a universal production guarantee.
 
 A second real-network qualification capture now returns 10 Wikipedia
 candidates for each of two bilingual questions and generates two blinded

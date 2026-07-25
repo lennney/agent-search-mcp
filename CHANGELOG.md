@@ -13,14 +13,22 @@ tags:
 
 ### Features
 
+- Added quality-aware batch and waterfall stopping. Execution metadata now
+  exposes `stop_reason` plus the observed relevance, confidence, result-count,
+  and independent-provider-family gate instead of treating raw result count as
+  sufficient evidence.
+- Added one bounded DuckDuckGo Lite attempt after HTML HTTP 202. HTML and Lite
+  remain one logical provider, share the original deadline/cancellation path,
+  and never increase corroboration.
 - Added deterministic query-aware passage selection and response-level evidence
   budgets. Full results now expose separate passage, publication, extraction,
   provenance, relevance, and corroboration signals while compact placeholders
   retain their source list.
 - Added a review-gated search-quality benchmark with hashed raw traces,
-  per-engine outcomes, graded ranking metrics, citation support, tokens per
-  correct answer, latency/failure dimensions, and slice reporting. Bootstrap
-  fixtures are explicitly ineligible for public quality claims.
+  per-engine outcomes, graded ranking metrics, citation support,
+  latency/failure dimensions, and slice reporting. Answer-only metrics remain
+  explicitly unmeasured when no synthesized answer exists. Bootstrap fixtures
+  are ineligible for public quality claims.
 - Added dedicated benchmark query-set and engine selection, a real non-empty
   bilingual reviewer-pipeline capture, and two provenance-blinded reviewer
   packets. A CI verifier checks hashes, license metadata, candidate coverage,
@@ -65,6 +73,26 @@ tags:
 
 ### Fixes
 
+- Count corroboration by independent upstream provider family rather than
+  adapter name. DuckDuckGo/Bing no longer double-count the same result or
+  inflate `source_count`; empty engine arrays now fall back to the result's
+  declared source.
+- Preserve explicitly selected adapters from the same provider family as a
+  sequential failure/low-quality fallback while keeping their corroboration
+  count at one.
+- Align the Slim Guard evidence validator and frozen-fixture fallback with a
+  versioned provider-family contract instead of equating adapter count with
+  `source_count`.
+- Made explicit engine selection authoritative in parallel mode, and made
+  optional API results pass the quality gate before waterfall query expansion.
+- Corrected parallel phase/early-stop metadata, rechecked the completed free
+  basket before optional escalation, and preserved per-result provenance from
+  expanded queries.
+- Made the DDG Lite table parser associate each snippet with its neighboring
+  result row, reject sponsored rows and DOM-equivalent captcha challenges, and
+  mark a combined HTML/Lite failure non-retryable.
+- Rejected zero, fractional, negative, or oversized search counts before they
+  can create a non-progressing waterfall batch.
 - Preserved explicit engine outcomes in the search orchestrator so thrown
   upstream errors no longer disappear as empty result sets and are reported in
   `partialFailures` while fallback continues.
@@ -98,6 +126,13 @@ tags:
 
 ### Documentation
 
+- Added a fixed-commit source audit of Tavily, Exa, Brave, Firecrawl, SearXNG,
+  DDGS, two recent open search MCPs, Vane, GPT Researcher, Open Deep Research,
+  and Jina DeepResearch. Updated the architecture boundary between deterministic
+  MCP retrieval and the future Search Agent layer.
+- Corrected the competitor table: current Tavily local MCP and Exa hosted MCP
+  have limited no-user-key paths, while Agent Search's distinction is a
+  self-run multi-source router without a single vendor gateway.
 - Recorded the P1 evidence-packet contract and its reproducible 1200/600/360
   character benchmark scenarios.
 - Documented established search-evaluation methods and an optional,

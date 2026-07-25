@@ -10,7 +10,7 @@
 | **函数** | `camelCase` | `searchWithFallback()`, `searchDuckDuckGo()` |
 | **类/类型/接口** | `PascalCase` | `SearchResult`, `BraveProvider`, `ScoredResult` |
 | **常量** | `UPPER_SNAKE` | `FREE_ENGINES`, `ENGINE_WEIGHTS` |
-| **环境变量** | `UPPER_SNAKE` | `JINA_API_KEY`, `BRAVE_API_KEY` |
+| **环境变量** | `UPPER_SNAKE` | `HTTP_AUTH_TOKEN`, `BRAVE_API_KEY` |
 
 ## 导入顺序
 

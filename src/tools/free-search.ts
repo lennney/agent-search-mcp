@@ -15,7 +15,7 @@ import { searchMojeek } from '../engines/mojeek.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 // ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
-import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank, type ScoredResult } from '../aggregation/index.js';
+import { dedupByUrl, dedupByTitle, filterLowQuality, getProviderFamily, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank, type ConfidenceBasketResult, type ScoredResult } from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics, abortableDelay } from '../infrastructure/index.js';
 
@@ -46,40 +46,16 @@ const rateLimiter = new RateLimiter();
 const config = loadConfig();
 const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
 
-// ─── Engine provider mapping (from ddgs pattern) ──────────────────────────
-// DDG uses Bing as backend, so we track providers to avoid duplicate queries
-const PROVIDER_MAP: Record<string, string> = {
-  duckduckgo: 'bing',
-  sogou: 'sogou',
-  bing: 'bing',
-  baidu: 'baidu',
-  wikipedia: 'wikipedia',
-  startpage: 'startpage',
-  yandex: 'yandex',
-  mojeek: 'mojeek',
-  brave: 'brave',
-  tavily: 'tavily',
-  exa: 'exa',
-  youcom: 'youcom',
-};
-
-/**
- * Get unique providers from engine list.
- * From ddgs: same provider only searches once.
- */
-function getUniqueProviders(engines: SearchProvider[]): SearchProvider[] {
-  const seenProviders = new Set<string>();
-  const unique: SearchProvider[] = [];
-  
+/** Group adapters by upstream provider while preserving caller preference. */
+function getProviderChains(engines: SearchProvider[]): SearchProvider[][] {
+  const chains = new Map<string, SearchProvider[]>();
   for (const engine of engines) {
-    const provider = PROVIDER_MAP[engine] || engine;
-    if (!seenProviders.has(provider)) {
-      seenProviders.add(provider);
-      unique.push(engine);
-    }
+    const provider = getProviderFamily(engine);
+    const chain = chains.get(provider) ?? [];
+    if (!chain.includes(engine)) chain.push(engine);
+    chains.set(provider, chain);
   }
-  
-  return unique;
+  return [...chains.values()];
 }
 
 /**
@@ -210,6 +186,9 @@ interface EngineOutcome {
  * Check if an error is retryable (network, timeout, 5xx).
  */
 function isRetryableError(err: Error): boolean {
+  if ((err as Error & { retryable?: boolean }).retryable === false) {
+    return false;
+  }
   const msg = err.message.toLowerCase();
   
   // Network errors
@@ -307,6 +286,10 @@ interface SearchResponse {
       searched_engines: string[];
       phases_completed: string[];
       early_stop: boolean;
+      stop_reason:
+        | 'quality_gate_satisfied'
+        | 'phases_exhausted';
+      quality_gate?: ConfidenceBasketResult;
     };
   };
   security_note: string;
@@ -389,6 +372,10 @@ function collectEngineOutcomes(
  */
 export async function searchWithFallback(options: SearchWithFallbackOptions): Promise<SearchResponse> {
   options.signal?.throwIfAborted();
+  const requestedCount = options.count ?? 10;
+  if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 50) {
+    throw new RangeError('count must be an integer between 1 and 50');
+  }
   if (options.signal) {
     return executeSearch(options);
   }
@@ -452,6 +439,55 @@ function calculateAdaptiveConcurrency(engines: SearchProvider[], count: number):
   return baseConcurrency;
 }
 
+function filterBasketByDomains(
+  results: ScoredResult[],
+  includeDomains?: string[],
+  excludeDomains?: string[],
+): ScoredResult[] {
+  let filtered = results;
+  if (includeDomains && includeDomains.length > 0) {
+    filtered = filtered.filter((result) => {
+      try {
+        const hostname = new URL(result.url).hostname;
+        return includeDomains.some(
+          (domain) => hostname.includes(domain) || hostname.endsWith(domain),
+        );
+      } catch {
+        return false;
+      }
+    });
+  }
+  if (excludeDomains && excludeDomains.length > 0) {
+    filtered = filtered.filter((result) => {
+      try {
+        const hostname = new URL(result.url).hostname;
+        return !excludeDomains.some(
+          (domain) => hostname.includes(domain) || hostname.endsWith(domain),
+        );
+      } catch {
+        return true;
+      }
+    });
+  }
+  return filtered;
+}
+
+function getEffectiveResultThresholds(
+  requestedMinConfidence: number,
+  requestedMinSourceCount: number,
+): { minConfidence: number; minSourceCount: number } {
+  if (config.outputStyle !== 'compact') {
+    return {
+      minConfidence: requestedMinConfidence,
+      minSourceCount: requestedMinSourceCount,
+    };
+  }
+  return {
+    minConfidence: Math.max(requestedMinConfidence, config.minConfidence),
+    minSourceCount: Math.max(requestedMinSourceCount, config.minSourceCount),
+  };
+}
+
 async function executeParallelSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
   const {
     query,
@@ -463,6 +499,10 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     includeDomains,
     excludeDomains,
   } = options;
+  const effectiveThresholds = getEffectiveResultThresholds(
+    minConfidence,
+    minSourceCount,
+  );
 
   const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
@@ -477,18 +517,29 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
 
   logger.info({ query, count, engines: userEngines }, 'Starting search');
 
-  // ── Step 1: Provider dedup (from ddgs) ──────────────────────────────
-  // Only search each provider once (e.g., DDG and Bing both use Bing backend)
-  const uniqueEngines = getUniqueProviders(userEngines);
+  // ── Step 1: Provider grouping (from ddgs) ───────────────────────────
+  // Query one adapter per family at a time. Additional explicitly selected
+  // adapters in that family remain a failure fallback, not a second source.
+  const providerChains = getProviderChains(userEngines);
+  const uniqueEngines = providerChains.map(chain => chain[0]);
   logger.info({ engines: uniqueEngines }, 'After provider dedup');
 
   // ── Step 2: Determine which engines to search ───────────────────────
-  // Phase 1: Free engines
-  const freeToSearch = uniqueEngines.filter(e => FREE_ENGINES.includes(e));
-  const allFree = FREE_ENGINES.filter(e => !uniqueEngines.includes(e));
-  const phase1Engines = [...freeToSearch, ...allFree];
-  const paidToSearch = uniqueEngines.filter(
-    e => PAID_ENGINES.includes(e) && hasApiKey(e)
+  // Explicit engine selection is authoritative in both parallel and waterfall
+  // modes. Do not silently fan out to every free adapter.
+  const freeProviderChains = providerChains
+    .map(chain => chain.filter(engine => FREE_ENGINES.includes(engine)))
+    .filter(chain => chain.length > 0);
+  const optionalProviderChains = providerChains
+    .map(chain => chain.filter(
+      engine => PAID_ENGINES.includes(engine) && hasApiKey(engine),
+    ))
+    .filter(chain => chain.length > 0);
+  const phase1Engines = freeProviderChains.map(chain => chain[0]);
+  const paidToSearch = optionalProviderChains.map(chain => chain[0]);
+  const providerChainByPrimary = new Map(
+    [...freeProviderChains, ...optionalProviderChains]
+      .map(chain => [chain[0], chain] as const),
   );
 
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
@@ -496,44 +547,148 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const allResults: SearchResult[] = [];
   const failures: EngineError[] = [];
   const searchedEngines: string[] = [];
+  let parallelGate: ConfidenceBasketResult | undefined;
+  let stoppedEarly = false;
+  let freePhaseAttempted = false;
+  let optionalPhaseAttempted = false;
+  const requestedProviderFamilies = new Set(
+    uniqueEngines.map(getProviderFamily),
+  ).size;
+  const requiredProviderFamilies = Math.min(2, Math.max(requestedProviderFamilies, 1));
+  const searchProviderChain = async (
+    primary: SearchProvider,
+    limit: number,
+  ): Promise<EngineOutcome[]> => {
+    const chain = providerChainByPrimary.get(primary) ?? [primary];
+    const outcomes: EngineOutcome[] = [];
+    for (const engine of chain) {
+      searchedEngines.push(engine);
+      const outcome = await searchEngine(engine, query, limit, 2, options.signal);
+      outcomes.push(outcome);
+      if (
+        outcome.status === 'success'
+        && filterLowQuality(outcome.results).length > 0
+      ) {
+        break;
+      }
+      logger.info(
+        { engine, providerFamily: getProviderFamily(engine), next: chain[outcomes.length] },
+        'Provider adapter produced no usable results; trying same-family fallback',
+      );
+    }
+    return outcomes;
+  };
+  const collectProviderChainOutcomes = (
+    settled: PromiseSettledResult<EngineOutcome[]>[],
+    primaries: SearchProvider[],
+  ): void => {
+    options.signal?.throwIfAborted();
+    settled.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const error = result.reason instanceof Error
+          ? result.reason
+          : new Error(String(result.reason));
+        failures.push(classifyEngineError(primaries[index], error));
+        return;
+      }
+      for (const outcome of result.value) {
+        allResults.push(...outcome.results);
+        if (outcome.status === 'failed' && outcome.error) {
+          failures.push(classifyEngineError(outcome.engine, outcome.error));
+        }
+      }
+    });
+  };
+  const evaluateParallelGate = (): ConfidenceBasketResult => {
+    const candidateFiltered = filterLowQuality(allResults);
+    const {
+      results: candidateUrlDeduped,
+      frequencies: candidateFrequencies,
+    } = dedupByUrl(candidateFiltered);
+    const candidateScored = filterBasketByDomains(
+      scoreAndRank(
+        dedupByTitle(candidateUrlDeduped),
+        query,
+        ENGINE_WEIGHTS,
+        candidateFrequencies,
+      ),
+      includeDomains,
+      excludeDomains,
+    ).filter(
+      (result) =>
+        result.confidence >= effectiveThresholds.minConfidence
+        && result.source_count >= effectiveThresholds.minSourceCount,
+    );
+    return checkConfidenceBasket(candidateScored, {
+      minResults: Math.min(count, 3),
+      minAvgConfidence: 0.6,
+      minProviderFamilies: requiredProviderFamilies,
+      topK: 5,
+    });
+  };
 
   // Batch 1: Free engines
   logger.info({ engines: phase1Engines }, 'Phase 1: free engines (batch)');
   
   for (let i = 0; i < phase1Engines.length; i += BATCH_SIZE) {
     const batch = phase1Engines.slice(i, i + BATCH_SIZE);
+    freePhaseAttempted = true;
     const batchResults = await Promise.allSettled(
-      batch.map(async (engine) => {
-        searchedEngines.push(engine);
-        return searchEngine(engine, query, count, 2, options.signal);
-      })
+      batch.map(engine => searchProviderChain(engine, count))
     );
 
-    collectEngineOutcomes(batchResults, batch, allResults, failures, options.signal);
+    collectProviderChainOutcomes(batchResults, batch);
 
-    // Early exit: stop if we have enough results
+    // Result count is necessary but not sufficient: only stop if the current
+    // display basket also has enough relevant, reliable, independent evidence.
     if (allResults.length >= count * 1.5) {
-      logger.info({ count: allResults.length }, 'Early exit: enough results');
-      break;
+      parallelGate = evaluateParallelGate();
+      if (parallelGate.sufficient) {
+        stoppedEarly =
+          i + BATCH_SIZE < phase1Engines.length
+          || paidToSearch.length > 0;
+        logger.info(
+          { count: allResults.length, qualityGate: parallelGate, stoppedEarly },
+          stoppedEarly
+            ? 'Parallel quality gate satisfied; skipping remaining work'
+            : 'Parallel quality gate satisfied at the end of selected work',
+        );
+        break;
+      }
     }
+  }
+
+  // Always assess the completed free phase. Otherwise a basket with enough raw
+  // rows to meet `count` but too few to reach the batching threshold could
+  // silently skip an explicitly requested optional provider.
+  parallelGate = parallelGate ?? evaluateParallelGate();
+  if (
+    !stoppedEarly
+    && allResults.length >= count
+    && parallelGate.sufficient
+    && paidToSearch.length > 0
+  ) {
+    stoppedEarly = true;
   }
 
   logger.info({ count: allResults.length }, 'Phase 1 results');
 
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
-  if (allResults.length < count) {
+  const qualityGateFailed = !parallelGate.sufficient;
+  if (allResults.length < count || qualityGateFailed) {
     if (paidToSearch.length > 0) {
-      const remaining = Math.max(count - allResults.length, 1);
+      optionalPhaseAttempted = true;
+      const remaining = qualityGateFailed
+        ? count
+        : Math.max(count - allResults.length, 1);
       logger.info({ engines: paidToSearch, remaining }, 'Phase 2: paid engines');
 
       const phase2Results = await Promise.allSettled(
-        paidToSearch.map(async (engine) => {
-          searchedEngines.push(engine);
-          return searchEngine(engine, query, remaining, 2, options.signal);
-        })
+        paidToSearch.map(engine => searchProviderChain(engine, remaining))
       );
 
-      collectEngineOutcomes(phase2Results, paidToSearch, allResults, failures, options.signal);
+      collectProviderChainOutcomes(phase2Results, paidToSearch);
+      parallelGate = evaluateParallelGate();
 
       logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
@@ -573,8 +728,15 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
         mode: 'parallel',
         engine_calls: searchedEngines.length,
         searched_engines: [...searchedEngines],
-        phases_completed: searchedEngines.length > 0 ? ['free', ...(searchedEngines.some(e => PAID_ENGINES.includes(e as SearchProvider)) ? ['optional'] : [])] : [],
-        early_stop: searchedEngines.length < phase1Engines.length + paidToSearch.length,
+        phases_completed: [
+          ...(freePhaseAttempted ? ['free'] : []),
+          ...(optionalPhaseAttempted ? ['optional'] : []),
+        ],
+        early_stop: stoppedEarly,
+        stop_reason: stoppedEarly
+          ? 'quality_gate_satisfied'
+          : 'phases_exhausted',
+        ...(parallelGate ? { quality_gate: parallelGate } : {}),
       },
     },
     security_note: formatted.security_note,
@@ -738,6 +900,10 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     waterfallMinResults = 3,
     waterfallMinConfidence = 0.6,
   } = options;
+  const effectiveThresholds = getEffectiveResultThresholds(
+    minConfidence,
+    minSourceCount,
+  );
 
   const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
@@ -756,6 +922,32 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   const requestedEngines = options.engines === undefined
     ? undefined
     : new Set(options.engines);
+  const requestedProviderFamilyCount = requestedEngines === undefined
+    ? 2
+    : new Set([...requestedEngines].map(getProviderFamily)).size;
+  const requiredProviderFamilies = Math.min(
+    2,
+    Math.max(requestedProviderFamilyCount, 1),
+  );
+  const paidAvailable = selectWaterfallPhase(
+    WATERFALL_PHASES.phase2,
+    requestedEngines,
+  ).filter(hasApiKey);
+  const expansionPlan = (() => {
+    if (options.expandQueries === false) {
+      return { alternatives: [] as string[], source: 'disabled' as const };
+    }
+    if (hasChinese(query)) {
+      const alternatives = generateChineseVariants(query);
+      if (alternatives.length > 0) {
+        return { alternatives, source: 'chinese-optimizer' as const };
+      }
+    }
+    return {
+      alternatives: expandQuery(query),
+      source: 'generic' as const,
+    };
+  })();
   const freePhases = [
     {
       label: '1a',
@@ -770,6 +962,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
       engines: selectWaterfallPhase(WATERFALL_PHASES.phase1c, requestedEngines),
     },
   ];
+
+  let lastBasket: ConfidenceBasketResult | undefined;
+  let stoppedEarly = false;
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
     phasesCompleted.push(phaseLabel);
@@ -792,64 +987,55 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     const titleDeduped = dedupByTitle(urlDeduped);
     const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
 
-    let basketScored = scored;
-    if (includeDomains && includeDomains.length > 0) {
-      basketScored = basketScored.filter((r) => {
-        try {
-          const hostname = new URL(r.url).hostname;
-          return includeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
-        } catch { return false; }
-      });
-    }
-    if (excludeDomains && excludeDomains.length > 0) {
-      basketScored = basketScored.filter((r) => {
-        try {
-          const hostname = new URL(r.url).hostname;
-          return !excludeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
-        } catch { return true; }
-      });
-    }
+    const basketScored = filterBasketByDomains(
+      scored,
+      includeDomains,
+      excludeDomains,
+    ).filter(
+      (result) =>
+        result.confidence >= effectiveThresholds.minConfidence
+        && result.source_count >= effectiveThresholds.minSourceCount,
+    );
 
     const basket = checkConfidenceBasket(basketScored, {
       minResults: waterfallMinResults,
       minAvgConfidence: waterfallMinConfidence,
+      minProviderFamilies: requiredProviderFamilies,
       topK: 5,
     });
+    lastBasket = basket;
 
     logger.info({ phase: phaseLabel, total: allResults.length, basket }, "Waterfall phase complete");
     return basket.sufficient;
   }
 
   let basketFull = false;
-  for (const phase of freePhases) {
+  for (let phaseIndex = 0; phaseIndex < freePhases.length; phaseIndex++) {
+    const phase = freePhases[phaseIndex];
     if (phase.engines.length === 0) continue;
     basketFull = await searchBatch(phase.engines, phase.label);
     if (basketFull) {
-      logger.info({ phase: phase.label }, 'Waterfall basket satisfied; skipping remaining phases');
+      stoppedEarly =
+        freePhases.slice(phaseIndex + 1).some(candidate => candidate.engines.length > 0)
+        || paidAvailable.length > 0
+        || expansionPlan.alternatives.length > 0;
+      logger.info(
+        { phase: phase.label, stoppedEarly },
+        stoppedEarly
+          ? 'Waterfall basket satisfied; skipping remaining work'
+          : 'Waterfall basket satisfied at the end of selected work',
+      );
       break;
     }
   }
 
   if (!basketFull) {
-    const paidAvailable = selectWaterfallPhase(WATERFALL_PHASES.phase2, requestedEngines)
-      .filter(hasApiKey);
     if (paidAvailable.length > 0) {
-      phasesCompleted.push('2');
       logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");
-      const paidResults = await Promise.allSettled(
-        paidAvailable.map(async (engine) => {
-          const remaining = Math.max(count - allResults.length, 1);
-          searchedEngines.push(engine);
-          return searchEngine(engine as SearchProvider, query, remaining, 2, options.signal);
-        })
-      );
-      collectEngineOutcomes(
-        paidResults,
-        paidAvailable as SearchProvider[],
-        allResults,
-        allFailures,
-        options.signal,
-      );
+      basketFull = await searchBatch(paidAvailable, '2');
+      if (basketFull) {
+        stoppedEarly = expansionPlan.alternatives.length > 0;
+      }
     } else {
       logger.info("Phase 2: no paid engines available");
     }
@@ -857,22 +1043,10 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
 
   // ── Phase 3: Query Expansion (if confidence still low) ──────────
   if (!basketFull && options.expandQueries !== false) {
-    // 3a: Chinese query optimization — try character variants first
-    let alternatives: string[] = [];
-    if (hasChinese(query)) {
-      alternatives = generateChineseVariants(query);
-      if (alternatives.length > 0) {
-        logger.info({ alternatives, source: 'chinese-optimizer' }, 'Phase 3a: Chinese query variants');
-      }
-    }
-    // 3b: Fall back to generic query expansion for non-Chinese or if Chinese
-    //     variants were insufficient (empty or already exhausted)
-    if (alternatives.length === 0) {
-      alternatives = expandQuery(query);
-    }
+    const { alternatives, source } = expansionPlan;
     if (alternatives.length > 0) {
       phasesCompleted.push('3');
-      logger.info({ alternatives }, "Phase 3: query expansion");
+      logger.info({ alternatives, source }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
         options.signal?.throwIfAborted();
         const altSearch = await executeWaterfallSearch({
@@ -892,7 +1066,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
               url: r.url,
               snippet: r.snippet || '',
               source: "expanded",
-              engines: altSearch.meta?.engines || [],
+              // Preserve provenance per result. The response-level engine list
+              // can contain providers that never returned this URL.
+              engines: r.sources || [],
             });
           }
         }
@@ -925,7 +1101,11 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
         engine_calls: searchedEngines.length,
         searched_engines: [...searchedEngines],
         phases_completed: phasesCompleted,
-        early_stop: basketFull,
+        early_stop: stoppedEarly,
+        stop_reason: stoppedEarly
+          ? 'quality_gate_satisfied'
+          : 'phases_exhausted',
+        ...(lastBasket ? { quality_gate: lastBasket } : {}),
       },
     },
     detected_language: detectedLang,
@@ -954,24 +1134,25 @@ export function setupFreeSearchTool(server: McpServer): void {
     'free_search',
     {
       description:
-        'Search the web with multi-engine automatic fallback.\n\n' +
+        'Search the web with an explicit adapter set and bounded fallback.\n\n' +
         'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
         'Not recommended for: Filtered or verified-only results — use free_search_advanced. ' +
         'For full page content — use free_extract.\n\n' +
-        'Phase 1: 8 zero-key adapters (DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek).\n' +
-        'Phase 2: Brave + Tavily + Exa + You.com (optional API keys).\n' +
+        'Twelve adapters are selectable; the default request uses DuckDuckGo + Sogou only. ' +
+        'Adapters that share one upstream family are tried sequentially on failure and never double-count as corroboration. ' +
+        'Explicitly requested optional API adapters run only when credentials are present and the free basket is short or below the quality gate.\n' +
         'Results are deduplicated and include separate confidence, relevance, and source-count signals.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
         'Injection detection and SSRF protection active.',
       inputSchema: {
         query: z.string().min(1, 'Search query must not be empty')
-          .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese queries, Sogou and Baidu are used automatically.'),
+          .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese coverage, include Sogou or Baidu in engines.'),
         limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
         engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom']))
           .min(1)
           .default(['duckduckgo', 'sogou'])
           .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +
-            'Paid engines (brave/tavily/exa) require corresponding env vars. You.com requires YDC_API_KEY ($5/1K queries; free credits at signup). ' +
+            'Optional API engines require their corresponding environment-variable credentials. ' +
             'For Chinese results, include sogou or baidu.'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },

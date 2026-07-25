@@ -64,7 +64,9 @@ describe('Slim Guard evidence handoff contract', () => {
 
     const result = validateEvidenceHandoff(invalid);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('results[0].source_count must equal unique sources length');
+    expect(result.errors).toContain(
+      'results[0].source_count must equal unique provider-family count',
+    );
   });
 
   it('rejects an inconsistent source count even on a compact packet', () => {
@@ -73,7 +75,9 @@ describe('Slim Guard evidence handoff contract', () => {
 
     const result = validateEvidenceHandoff(invalid);
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('results[1].source_count must equal unique sources length');
+    expect(result.errors).toContain(
+      'results[1].source_count must equal unique provider-family count',
+    );
   });
 
   it('rejects duplicate source provenance', () => {
@@ -83,5 +87,21 @@ describe('Slim Guard evidence handoff contract', () => {
     const result = validateEvidenceHandoff(invalid);
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('results[1].sources must contain unique non-empty strings');
+  });
+
+  it('counts DuckDuckGo and Bing as one upstream provider family', () => {
+    const packet = structuredClone(validResponse);
+    packet.results[0].sources = ['duckduckgo', 'bing'];
+    packet.results[0].source_count = 1;
+
+    expect(validateEvidenceHandoff(packet)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('counts DuckDuckGo and Wikipedia as two upstream provider families', () => {
+    const packet = structuredClone(validResponse);
+    packet.results[0].sources = ['duckduckgo', 'wikipedia'];
+    packet.results[0].source_count = 2;
+
+    expect(validateEvidenceHandoff(packet)).toEqual({ valid: true, errors: [] });
   });
 });

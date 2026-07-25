@@ -1,6 +1,7 @@
 import { ScoredResult } from './scorer.js';
 import { processResultSecurity, getSecurityNote } from '../infrastructure/security.js';
 import type { SecurityProcessedResult } from '../infrastructure/security.js';
+import { getResultEngines } from './dedup.js';
 import { selectRelevantPassage, type PassageSelection } from './passage-selector.js';
 const TITLE_MAX = 100;
 const TITLE_MAX_CN = 150;
@@ -229,7 +230,7 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
       confidence: style === 'compact' ? Math.round(result.confidence * 100) / 100 : result.confidence,
       relevance: style === 'compact' ? Math.round(result.relevance * 100) / 100 : result.relevance,
       source_count: result.source_count,
-      sources: result.engines || [result.source],
+      sources: getResultEngines(result),
       evidence: evidenceFor(result, passage),
       ...securityFor(result),
     };
@@ -239,7 +240,7 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     title: truncateAtSentence(result.title, isChinese(result.title) ? TITLE_MAX_CN : TITLE_MAX),
     url: result.url,
     compacted: true as const,
-    sources: result.engines || [result.source],
+    sources: getResultEngines(result),
     ...securityFor(result),
   });
 
@@ -270,7 +271,7 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
   } = {
     total: results.length,
     high_confidence: results.filter(r => r.confidence >= 0.8).length,
-    engines: [...new Set(results.flatMap(r => r.engines || [r.source]))],
+    engines: [...new Set(results.flatMap(getResultEngines))],
   };
 
   // Add compacted_count when progressive disclosure actively applies

@@ -13,8 +13,12 @@ runtime dependency or change an MCP tool signature.
 - Every result retains `title`, `url`, and at least one entry in `sources`.
 - Full results keep `confidence`, `relevance`, `source_count`, and `evidence`
   as separate signals.
-- `source_count` equals the number of unique sources. Extraction quality or
-  passage score must never increase corroboration.
+- `source_count` equals the number of unique upstream provider families, not
+  adapter names. Extraction quality, passage score, or alternate
+  representations of one provider must never increase corroboration.
+  The versioned mapping is
+  [`provider-families-v1.json`](./provider-families-v1.json); unknown adapter
+  names map to themselves.
 - A compact result may omit passage text and scores, but not source provenance.
 - `partialFailures` remains response-level evidence and must survive a
   transformation.
@@ -29,4 +33,6 @@ metadata rather than overwriting Agent Search evidence.
 The machine-readable input contract is
 [`slim-guard-evidence-handoff-v1.schema.json`](./slim-guard-evidence-handoff-v1.schema.json).
 The benchmark validator in `benchmarks/lib/evidence-handoff.mjs` checks the
-cross-field invariants that JSON Schema cannot express concisely.
+cross-field invariants that JSON Schema cannot express concisely and reads the
+same versioned provider-family mapping. A parity test keeps the runtime mapping
+aligned with that contract.

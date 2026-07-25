@@ -8,6 +8,50 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 research-informed core routing handover
+
+- Audited fixed commits from current Tavily, Exa, Brave, Firecrawl, DDGS,
+  SearXNG, two recent open search MCPs, Vane, GPT Researcher, Open Deep
+  Research, and Jina DeepResearch. The source-level comparison and Agent/MCP
+  boundary are in
+  `docs/research/2026-07-26-agent-search-product-architecture.md`.
+- Product positioning was corrected: Tavily local MCP and Exa hosted MCP now
+  have limited no-user-key paths. Agent Search's defensible distinction is its
+  self-run, multi-source, Chinese-native, evidence/Token policy without a
+  single vendor gateway.
+- Adapter names no longer inflate corroboration. `source_count`, frequency
+  bonus, and quality-gate provider coverage use conservative upstream provider
+  families; DuckDuckGo/Bing are one family. Explicit same-family adapters remain
+  sequential failure/low-quality fallbacks.
+- Parallel mode now honors the explicit `engines` list. Raw result count is
+  only a prerequisite for early stop; the displayed basket must also meet
+  per-result relevance, average source confidence, and provider-family gates.
+- Waterfall re-checks the gate after optional API engines before query
+  expansion. `meta.execution` now includes `stop_reason` and the observed gate
+  values. Invalid counts are rejected before batch calculation, and expanded
+  results retain per-result rather than response-wide provenance.
+- The Slim Guard handoff validator and fixture replay now read the versioned
+  `docs/contracts/provider-families-v1.json` mapping; a parity test locks it to
+  runtime aggregation semantics.
+- The `0.35` per-result relevance floor is a provisional internal routing
+  heuristic. It must be calibrated on a non-empty pooled capture and is not a
+  public relevance probability.
+- DDG HTML HTTP 202 now triggers at most one Lite attempt under the original
+  deadline/cancellation signal. HTML/Lite remain one logical engine and
+  provider family. Combined failure is non-retryable; the Lite parser associates
+  snippets by neighboring rows and rejects sponsored/captcha rows.
+- A live probe on this runner returned HTTP 202 challenge from both HTML and
+  Lite. This is failure evidence for one network exit, not proof of universal
+  DDG availability or a Lite improvement. The bounded observation is recorded
+  in `docs/evidence/2026-07-26-ddg-html-lite-network-observation.md`.
+- Verification is complete: 592 stable tests passed across 52 files; the
+  Windows build, frozen Token-format benchmark, bootstrap quality benchmark,
+  and 2026 experimental track (21 tests) passed. Lint reported 0 errors and
+  68 pre-existing warnings.
+- Remaining non-blocking work is explicit in the roadmap: calibrate the `0.35`
+  relevance floor, close the semantic-enabled post-display gate, and either
+  implement or deprecate the reserved `time_range` field.
+
 ## 2026-07-26 multi-system review-pool handover
 
 - The primary automated review path now uses two pointwise AI judges from

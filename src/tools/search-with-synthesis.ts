@@ -11,18 +11,19 @@ export function registerSearchWithSynthesis(server: McpServer) {
     'search_with_synthesis',
     {
       description:
-        'Deep search with waterfall multi-engine verification. Returns structured results plus a prompt_hint for the agent to synthesize its own answer. No LLM required — zero API keys, zero external calls.\n\n' +
+        'Deep search with waterfall multi-engine verification. Returns structured results plus a prompt_hint for the agent to synthesize its own answer. No external LLM call or model API key is required; search and enrichment still make outbound network requests.\n\n' +
         'Best for: Complex queries needing multi-source verification and LLM synthesis.\n' +
         'Not recommended for: Simple fact-finding — use free_search instead.\n\n' +
         '@readOnly true @idempotent true — runs waterfall search across free+paid engines with content enrichment.',
       inputSchema: {
         query: z.string().describe('Search query'),
-        count: z.number().optional().default(10).describe('Number of search results to gather (1-20)'),
+        count: z.number().int().min(1).max(20).optional().default(10)
+          .describe('Number of search results to gather (1-20)'),
         language: z.enum(['auto', 'en', 'zh']).optional().default('auto'),
         min_confidence: z.number().min(0).max(3).optional().default(0)
           .describe('Minimum source-reliability confidence (0-1). Legacy values 2-3 are treated as min_source_count.'),
         min_source_count: z.number().int().min(1).max(12).optional().default(1)
-          .describe('Minimum number of independent sources that must corroborate a result (1-12).'),
+          .describe('Minimum independent upstream provider families; accepts 1-12 for compatibility, current adapters expose at most 11.'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },

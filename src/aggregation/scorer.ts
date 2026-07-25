@@ -1,4 +1,5 @@
 import { SearchResult } from '../types.js';
+import { getProviderFamily, getResultEngines } from './dedup.js';
 import { extractQueryTerms } from './passage-selector.js';
 
 // 域名权威评级: 域名 → 评分加成
@@ -69,7 +70,7 @@ export interface ScoredResult extends SearchResult {
   confidence: number;
   /** Query relevance score (0-1). */
   relevance: number;
-  /** Number of independent adapters that returned this result. */
+  /** Number of independent upstream provider families that returned this result. */
   source_count: number;
   /** @deprecated Use relevance. Retained for backward compatibility. */
   score: number;
@@ -91,10 +92,11 @@ export function scoreAndRank(
     .map(r => {
       const normalizedUrl = normalizeUrl(r.url);
       const freq = frequencies?.get(normalizedUrl) || 1;
-      const engines = [...new Set((r.engines || [r.source]).filter(Boolean))];
-      // Frequency can include duplicate rows from one adapter; source_count is
-      // intentionally limited to distinct adapter provenance.
-      const sourceCount = Math.max(engines.length, 1);
+      const engines = getResultEngines(r);
+      const sourceCount = Math.max(
+        new Set(engines.map(getProviderFamily)).size,
+        1,
+      );
       const relevance = calculateRelevance(r, tokens, weights, freq);
       
       return {
@@ -127,12 +129,22 @@ function calculateWeightedConfidence(
   weights: Record<string, number>,
   sourceCount: number
 ): number {
-  const engines = [...new Set((result.engines || [result.source]).filter(Boolean))];
+  const engines = getResultEngines(result);
   if (engines.length === 0) {
     return 0.5;
   }
 
-  const reliability = engines.reduce((sum, engine) => sum + (weights[engine] || 0.5), 0) / engines.length;
+  const familyWeights = new Map<string, number>();
+  for (const engine of engines) {
+    const family = getProviderFamily(engine);
+    familyWeights.set(
+      family,
+      Math.max(familyWeights.get(family) ?? 0, weights[engine] || 0.5),
+    );
+  }
+  const reliability =
+    [...familyWeights.values()].reduce((sum, weight) => sum + weight, 0)
+    / familyWeights.size;
   const corroborationBonus = Math.min(Math.max(sourceCount - 1, 0) * 0.08, 0.2);
   return Math.min(reliability + corroborationBonus, 1.0);
 }
@@ -186,9 +198,10 @@ function calculateRelevance(
   const freqBonus = Math.min(frequency * 0.1, 0.3); // Cap at 0.3
   
   // Engine weight
-  const maxWeight = Math.max(
-    ...(result.engines || [result.source]).map(e => weights[e] || 0.5)
-  );
+  const resultEngines = getResultEngines(result);
+  const maxWeight = resultEngines.length > 0
+    ? Math.max(...resultEngines.map(e => weights[e] || 0.5))
+    : 0.5;
   
   // Final score: base + bucket + frequency, then apply weight
   let score = 0.1 + bucketScore + freqBonus;
@@ -200,36 +213,104 @@ function calculateRelevance(
 export interface ConfidenceBasketOptions {
   minResults?: number;
   minAvgConfidence?: number;
+  /** Minimum number of individually relevant results in the Top-K basket. */
+  minRelevantResults?: number;
+  /** Per-result query-relevance gate. Default: 0.35 (provisional). */
+  minResultRelevance?: number;
+  /** Minimum independent upstream provider families represented in Top-K. */
+  minProviderFamilies?: number;
   topK?: number;
 }
 
 export interface ConfidenceBasketResult {
   sufficient: boolean;
   basketConfidence: number;
+  /** Diagnostic mean; the stopping decision uses relevantResultsCount. */
+  basketRelevance: number;
+  relevantResultsCount: number;
+  relevanceThreshold: number;
+  providerFamilyCount: number;
   topResultsCount: number;
   analyzedCount: number;
 }
 
+// This is an internal, deliberately conservative heuristic rather than a
+// calibrated relevance probability. Real pooled qrels must calibrate it before
+// it can support a public quality claim.
+const DEFAULT_RESULT_RELEVANCE_GATE = 0.35;
+
+/**
+ * Decide whether a confidence-ranked result basket has enough independent
+ * source-quality and query-relevance evidence to stop a waterfall search.
+ */
 export function checkConfidenceBasket(
   results: ScoredResult[],
   options?: ConfidenceBasketOptions
 ): ConfidenceBasketResult {
   const minResults = options?.minResults ?? 3;
   const minAvgConfidence = options?.minAvgConfidence ?? 0.6;
+  const minRelevantResults = options?.minRelevantResults ?? minResults;
+  const minResultRelevance =
+    options?.minResultRelevance ?? DEFAULT_RESULT_RELEVANCE_GATE;
+  const minProviderFamilies = options?.minProviderFamilies ?? 1;
   const topK = options?.topK ?? 5;
 
   if (results.length === 0) {
-    return { sufficient: false, basketConfidence: 0, topResultsCount: 0, analyzedCount: 0 };
+    return {
+      sufficient: false,
+      basketConfidence: 0,
+      basketRelevance: 0,
+      relevantResultsCount: 0,
+      relevanceThreshold: minResultRelevance,
+      providerFamilyCount: 0,
+      topResultsCount: 0,
+      analyzedCount: 0,
+    };
   }
 
-  const sorted = [...results].sort((a, b) => b.confidence - a.confidence);
-  const top = sorted.slice(0, topK);
-  const avgConfidence = top.reduce((sum, r) => sum + r.confidence, 0) / top.length;
+  // Preserve the caller's current candidate order rather than applying a
+  // confidence-only sort that could hide relevant lower-ranked candidates.
+  const top = results.slice(0, topK);
+  const avgConfidence = top.reduce((sum, r) => {
+    const confidence = Number.isFinite(r.confidence)
+      && r.confidence >= 0
+      && r.confidence <= 1
+      ? r.confidence
+      : 0;
+    return sum + confidence;
+  }, 0) / top.length;
+  const avgRelevance = top.reduce((sum, r) => {
+    const relevance = Number.isFinite(r.relevance) && r.relevance >= 0 && r.relevance <= 1
+      ? r.relevance
+      : 0;
+    return sum + relevance;
+  }, 0) / top.length;
   const basketConfidence = Math.round(avgConfidence * 100) / 100;
+  const basketRelevance = Math.round(avgRelevance * 100) / 100;
+  const relevantResultsCount = top.filter((result) => (
+    Number.isFinite(result.relevance)
+    && result.relevance >= minResultRelevance
+    && result.relevance <= 1
+  )).length;
+  const providerFamilies = new Set<string>();
+  for (const result of top) {
+    for (const engine of getResultEngines(result)) {
+      if (engine) providerFamilies.add(getProviderFamily(engine));
+    }
+  }
+  const providerFamilyCount = providerFamilies.size;
 
   return {
-    sufficient: top.length >= minResults && basketConfidence >= minAvgConfidence,
+    sufficient:
+      top.length >= minResults
+      && basketConfidence >= minAvgConfidence
+      && relevantResultsCount >= minRelevantResults
+      && providerFamilyCount >= minProviderFamilies,
     basketConfidence,
+    basketRelevance,
+    relevantResultsCount,
+    relevanceThreshold: minResultRelevance,
+    providerFamilyCount,
     topResultsCount: top.length,
     analyzedCount: results.length,
   };

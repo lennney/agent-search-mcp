@@ -1,9 +1,25 @@
+import { readFileSync } from 'node:fs';
+
+const providerFamilyContract = JSON.parse(readFileSync(
+  new URL('../../docs/contracts/provider-families-v1.json', import.meta.url),
+  'utf8',
+));
+const PROVIDER_FAMILIES = providerFamilyContract.families;
+
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isFiniteNumber(value) {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+export function getProviderFamily(source) {
+  return PROVIDER_FAMILIES[source] ?? source;
+}
+
+export function countProviderFamilies(sources) {
+  return new Set(sources.map(getProviderFamily)).size;
 }
 
 export function validateEvidenceHandoff(response) {
@@ -35,10 +51,11 @@ export function validateEvidenceHandoff(response) {
       errors.push(`${prefix}.sources must contain unique non-empty strings`);
     }
 
+    const providerFamilyCount = countProviderFamilies(sources);
     const sourceCountValid = Number.isInteger(result.source_count)
-      && result.source_count === sources.length;
+      && result.source_count === providerFamilyCount;
     if (result.source_count !== undefined && !sourceCountValid) {
-      errors.push(`${prefix}.source_count must equal unique sources length`);
+      errors.push(`${prefix}.source_count must equal unique provider-family count`);
     }
     if (result.compacted === true) continue;
 
@@ -53,7 +70,7 @@ export function validateEvidenceHandoff(response) {
       errors.push(`${prefix}.relevance must be a number from 0 to 1`);
     }
     if (result.source_count === undefined) {
-      errors.push(`${prefix}.source_count must equal unique sources length`);
+      errors.push(`${prefix}.source_count must equal unique provider-family count`);
     }
     if (!isRecord(result.evidence)) {
       errors.push(`${prefix}.evidence is required for a full result`);

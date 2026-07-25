@@ -301,30 +301,46 @@ DDG News URL: `https://html.duckduckgo.com/html/?q=...`（与 web 搜索同端�
 
 ---
 
-## C2: `lite.duckduckgo.com` 第三层回退 (P1)
+## C2: DuckDuckGo Lite 同源机会性尝试 (P1)
 
-**目标**: 当 `html.duckduckgo.com` 返回 202 (限流) 时，用 Lite 端点救火。
+**状态**: 代码与确定性 fixture 已完成；跨网络可用率证据仍待稳定 runner。
 
-DDG Lite: `https://lite.duckduckgo.com/lite/` — 极简 HTML 版，反爬更少。
+**目标**: 当 `html.duckduckgo.com` 返回 202 时，在同一总 deadline
+内最多尝试一次 `https://lite.duckduckgo.com/lite/`，同时保持失败透明。
 
 Lite HTML 结构不同：
 - 结果 class: `.result-link` (标题) / `.result-snippet` (摘要)
 - 无 JavaScript，纯表格布局
-- 限流策略更宽松
+
+2026-07-26 源码调查修正了最初假设：SearXNG 和 DDGS 当前都没有
+HTML → Lite 自动回退，且 SearXNG 将二者描述为同一类 IP 级 bot blocker。
+因此本实现是项目自己的机会性兼容路径，不宣称 Lite 限流更宽松，也不把
+HTML/Lite 算成两个来源。
 
 **改动清单**:
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
 | `src/engines/duckduckgo-html.ts` | 扩展 | 新增 `searchDuckDuckGoLiteHtml()` |
-| 同上 | 修改 | `searchDuckDuckGoHtml()` 失败 202 时自动 fallback |
-| `tests/engines/duckduckgo-html.test.ts` | 扩展 | Lite 路径测试 |
+| 同上 | 修改 | HTML 202 时最多一次 Lite attempt，共享取消与总 deadline |
+| `src/aggregation/dedup.ts` | 修改 | HTML/Lite 保持同一 provider family，不增加 `source_count` |
+| `tests/engines/duckduckgo-html.test.ts` | 扩展 | DOM 邻近配对、双失败、软失败和取消 |
 
 **回退链**: Python ddgs → cheerio HTML → Lite HTML → 空数组
 
-**测试**: vitest — mock Lite HTML 响应 + 202 触发回退验证 (+5-8 tests)
+**测试**: vitest — mock Lite HTML 响应 + 202 触发回退验证
 
-**验证**: `npm test` ✅
+**验证边界**:
+
+- [x] 同一逻辑 engine / provider family；
+- [x] HTML 202 后仅一次 Lite attempt；
+- [x] 调用方取消后不启动 Lite；
+- [x] Lite parser 按相邻 table row 关联摘要，不用全局数组 index；
+- [ ] 在不同网络 runner 捕获非空 Lite fixture，证明机会性收益；
+- [ ] 在真实捕获完成前，不发布“DDG 可用率提升”数字。
+
+研究依据:
+[`docs/research/2026-07-26-agent-search-product-architecture.md`](../../research/2026-07-26-agent-search-product-architecture.md)
 
 ---
 
@@ -683,10 +699,45 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
         a third-family disagreement adjudicator, and hashed verdict evidence.
   - [ ] Complete two-model AI review and third-model adjudication on a non-empty
         pooled capture.
-- [x] Measure quality, citation support, tokens per correct answer, latency, and
-      failure transparency as separate dimensions.
+- [x] Report quality, citation support, latency, and failure transparency as
+      separate dimensions; keep answer correctness and tokens per correct
+      answer explicitly unmeasured when no synthesized answer exists.
 - [x] Define an optional Slim Guard integration contract without making direct
       Agent Search installation depend on the gateway.
+
+### P1.1 - research-informed routing corrections
+
+- [x] Audit current Tavily, Exa, Brave, Firecrawl, DDGS, SearXNG, Vane,
+      GPT Researcher, Open Deep Research, and Jina DeepResearch source code.
+- [x] Treat upstream provider family, adapter name, relevance, confidence, and
+      corroboration as different concepts. DuckDuckGo/Bing no longer create
+      false independent corroboration.
+- [x] Make explicit engine selection authoritative in parallel as well as
+      waterfall mode.
+- [x] Require result count, per-result relevance, average confidence, and
+      independent provider families before skipping later search batches.
+- [x] Return `stop_reason` and the observed quality-gate diagnostics in
+      execution metadata.
+- [x] Re-evaluate the quality gate after optional API phases before query
+      expansion.
+- [x] Keep same-provider adapters as sequential failure/low-quality fallbacks
+      without letting them create independent corroboration.
+- [x] Bound every public and internal `count` path so a zero batch size cannot
+      stall waterfall execution.
+- [x] Pin provider-family semantics in a machine-readable Slim Guard handoff
+      contract and verify runtime/benchmark parity.
+- [x] Make an HTML-202/Lite combined DDG failure non-retryable so one MCP
+      request cannot repeat the same Lite representation.
+- [ ] Calibrate the provisional per-result relevance floor on a non-empty
+      pooled capture. It is an internal routing heuristic, not a public
+      relevance probability.
+- [ ] Close the semantic-enabled path: validate the routing gate against the
+      post-semantic display basket (semantic features remain off by default).
+- [ ] Either implement `free_search_advanced.time_range` end to end or deprecate
+      the reserved compatibility field; do not advertise it as active filtering.
+
+Research:
+[`docs/research/2026-07-26-agent-search-product-architecture.md`](../../research/2026-07-26-agent-search-product-architecture.md)
 
 Evidence:
 

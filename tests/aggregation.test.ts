@@ -230,7 +230,7 @@ describe('formatResults', () => {
 import { checkConfidenceBasket } from '../src/aggregation/scorer.js';
 
 describe('checkConfidenceBasket', () => {
-  function makeResult(confidence: number, index: number): ScoredResult {
+  function makeResult(confidence: number, relevance: number, index: number): ScoredResult {
     return {
       title: `Result ${index}`,
       url: `https://example.com/${index}`,
@@ -238,7 +238,9 @@ describe('checkConfidenceBasket', () => {
       source: 'duckduckgo',
       engines: [],
       confidence,
-      score: confidence,
+      relevance,
+      source_count: 1,
+      score: relevance,
     };
   }
 
@@ -246,32 +248,36 @@ describe('checkConfidenceBasket', () => {
     const result = checkConfidenceBasket([]);
     expect(result.sufficient).toBe(false);
     expect(result.basketConfidence).toBe(0);
+    expect(result.basketRelevance).toBe(0);
+    expect(result.relevantResultsCount).toBe(0);
     expect(result.analyzedCount).toBe(0);
   });
 
-  it('returns sufficient=true when top-5 confidence meets threshold', () => {
-    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.8 + i * 0.01, i));
+  it('returns sufficient=true when top-5 confidence and relevance meet their thresholds', () => {
+    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.8 + i * 0.01, 0.5, i));
     const result = checkConfidenceBasket(results, { minResults: 3, minAvgConfidence: 0.6, topK: 5 });
     expect(result.sufficient).toBe(true);
     expect(result.basketConfidence).toBeGreaterThanOrEqual(0.8);
+    expect(result.basketRelevance).toBe(0.5);
+    expect(result.relevantResultsCount).toBe(5);
   });
 
   it('returns sufficient=false when confidence is too low', () => {
-    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.3, i));
+    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.3, 0.8, i));
     const result = checkConfidenceBasket(results);
     expect(result.sufficient).toBe(false);
   });
 
   it('returns sufficient=false when not enough results (minResults)', () => {
-    const results = [makeResult(0.9, 1), makeResult(0.9, 2)];
+    const results = [makeResult(0.9, 0.8, 1), makeResult(0.9, 0.8, 2)];
     const result = checkConfidenceBasket(results, { minResults: 3, minAvgConfidence: 0.6, topK: 5 });
     expect(result.sufficient).toBe(false);
     expect(result.topResultsCount).toBe(2);
   });
 
   it('respects custom topK — picks only the top results', () => {
-    const high = [1, 2, 3].map(i => makeResult(0.9, i));
-    const low = [4, 5, 6, 7].map(i => makeResult(0.2, i));
+    const high = [1, 2, 3].map(i => makeResult(0.9, 0.8, i));
+    const low = [4, 5, 6, 7].map(i => makeResult(0.2, 0.8, i));
     const result = checkConfidenceBasket([...high, ...low], { topK: 3, minResults: 3, minAvgConfidence: 0.6 });
     expect(result.sufficient).toBe(true);
     expect(result.topResultsCount).toBe(3);

@@ -1,4 +1,13 @@
-export { dedupByUrl, dedupByTitle, filterLowQuality, normalizeUrl } from './dedup.js';
+export {
+  dedupByProvider,
+  dedupByUrl,
+  dedupByTitle,
+  filterLowQuality,
+  getProviderFamily,
+  getResultEngines,
+  normalizeUrl,
+  PROVIDER_FAMILIES,
+} from './dedup.js';
 export { scoreAndRank } from './scorer.js';
 export { checkConfidenceBasket } from './scorer.js';
 export type { ScoredResult, ConfidenceBasketResult, ConfidenceBasketOptions } from './scorer.js';

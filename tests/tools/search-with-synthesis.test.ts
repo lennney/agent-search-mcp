@@ -48,6 +48,9 @@ describe('search_with_synthesis', () => {
 
   it('defaults to no confidence filtering and one required source', () => {
     const tool = registerTool();
+    const countSchema = tool.config.inputSchema.count as {
+      parse: (value: unknown) => number;
+    };
     const confidenceSchema = tool.config.inputSchema.min_confidence as {
       parse: (value: unknown) => number;
     };
@@ -55,6 +58,10 @@ describe('search_with_synthesis', () => {
       parse: (value: unknown) => number;
     };
 
+    expect(countSchema.parse(undefined)).toBe(10);
+    expect(() => countSchema.parse(0)).toThrow();
+    expect(() => countSchema.parse(1.5)).toThrow();
+    expect(() => countSchema.parse(21)).toThrow();
     expect(confidenceSchema.parse(undefined)).toBe(0);
     expect(sourceCountSchema.parse(undefined)).toBe(1);
   });

@@ -22,14 +22,15 @@
 
 | | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
 |---|:---:|:---:|:---:|:---:|
-| **无需账号/API Key 搜索** | **是** | 否 | 否 | 否 |
+| **无需用户 API Key 起步** | **是——自行运行适配器** | 受限——keyless Search/Extract | 受限——托管免费 MCP | 否 |
+| **零密钥调用路径** | **本地路由，无单一厂商网关** | Tavily 服务 | Exa 托管服务 | — |
 | **搜索后端** | **8 个零密钥 + 4 个可选 API** | Tavily API | Exa 索引 | Brave 索引 |
 | **跨引擎聚合** | **支持** | 单一上游 | 单一上游 | 单一上游 |
 | **专用中文引擎** | **搜狗 + 百度** | 无 | 无 | 无 |
 | **本地 MCP Server** | 支持 | 支持 | 支持 | 支持 |
 | **最适合** | 零密钥、多语种互补搜索 | 托管搜索/提取/Map/Crawl | 语义、代码、企业研究 | 独立索引 + 垂直搜索 |
 
-对比信息于 2026-07-25 按上述官方仓库核对。商业服务也提供免费额度，但仍需要账号或凭证；价格变化快，因此这里不再使用容易过期的月费对比。
+对比信息于 2026-07-26 按上述官方仓库核对。Tavily 当前本地 MCP 提供受限的 keyless Search/Extract；Exa 托管 MCP 有受限的免费零密钥入口，但本地 npm Server 使用 `EXA_API_KEY`。这些入口仍经过单一厂商服务。价格和限额变化快，因此这里不再使用容易过期的月费数字。
 
 ### 默认零密钥
 
@@ -37,11 +38,15 @@
 
 ### 渐进式多源搜索
 
-内置并行/瀑布编排、URL/标题去重、排序与自动降级。Compact 模式支持渐进披露，让 Agent 先看高优先级结果，只在需要时调用 `free_extract` 深挖正文。
+内置并行/瀑布编排、URL/标题去重、排序与自动降级。只有结果数量、逐条相关性、平均来源置信度和独立 provider family 分别达标，才跳过后续批次；`meta.execution` 会返回观测到的质量门和 `stop_reason`。Compact 模式支持渐进披露，让 Agent 先看高优先级结果，只在需要时调用 `free_extract` 深挖正文。
+
+### 可检查的证据包
+
+完整结果把 provenance、relevance、独立 provider-family 数、上游发布时间和提取元数据分开保存。响应级字符预算限制 passage 内容；Compact 占位结果仍保留来源列表，引擎失败仍通过 `partialFailures` 可见。
 
 ### Token 控制是产品能力
 
-通过 `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`MIN_CONFIDENCE`和 `MIN_SOURCE_COUNT`，使用者可在上下文体积和信息细节间主动取舍。历史 30 查询真实运行实测了 **Compact 节省 28.7% token**、**Compact+ 节省 35.5%**，以及相比 8 引擎全并发 **少 75% 引擎调用**。这是特定查询集和环境的实测，不是通用保证。新的冻结 fixture 回放使用进程内 tokenizer，当前可重现 30.2% / 33.9% 的格式化节省。
+通过 `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`EVIDENCE_BUDGET_CHARS`、`MIN_CONFIDENCE` 和 `MIN_SOURCE_COUNT`，使用者可在上下文体积和信息细节间主动取舍。历史 30 查询真实运行实测了 **Compact 节省 28.7% token**、**Compact+ 节省 35.5%**，以及相比 8 引擎全并发 **少 75% 引擎调用**。这是特定查询集和环境的实测，不是通用保证。新的冻结 fixture 回放包含证据元数据，当前可重现 28.4% / 30.4% 的格式化节省。
 
 ### 原生中文搜索
 
@@ -132,10 +137,10 @@ mcp_servers:
 | **Startpage** | ✅ | Google 结果通过隐私代理 |
 | **Yandex** | ✅ | 俄语/西里尔语搜索 |
 | **Mojeek** | ✅ | 独立爬虫，隐私优先 |
-| Brave Search | ❌ | 高质量网页搜索（2K 免费/月） |
-| Tavily | ❌ | Agent 优化搜索（1K 免费/月） |
-| Exa | ❌ | 神经语义搜索（1K 免费/月） |
-| You.com | ❌ | AI 驱动搜索（$5/千次，有免费额度） |
+| Brave Search | ❌ | 高质量网页搜索（本项目适配器需要用户 API Key） |
+| Tavily | ❌ | Agent 优化的可选适配器（本项目需要用户 API Key） |
+| Exa | ❌ | 神经语义的可选适配器（本项目需要用户 API Key） |
+| You.com | ❌ | AI 搜索的可选适配器（本项目需要用户 API Key） |
 
 ---
 
@@ -144,7 +149,7 @@ mcp_servers:
 | 工具 | 说明 | 适用场景 |
 |------|------|----------|
 | `free_search` | 多引擎搜索 + 自动回退 | 快速查事实 |
-| `free_search_advanced` | 过滤搜索 + 瀑布流程 + 内容丰富化 | 高置信度结果、时间过滤 |
+| `free_search_advanced` | 过滤搜索 + 瀑布流程 + 内容丰富化 | 高置信度、域名过滤或中文查询 |
 | `free_search_news` | DDG 新闻 + Bing 新闻 | 时事新闻 |
 | `search_with_synthesis` | 深度搜索 + LLM 综合提示 | 复杂查询需多源验证 |
 | `free_extract` | 提取完整页面为 Markdown | 阅读搜索结果中的页面 |
@@ -172,8 +177,9 @@ mcp_servers:
 | `OUTPUT_STYLE` | `normal` | `compact` 开启 token 优化输出 |
 | `SNIPPET_LENGTH` | `200` | 摘要最大字符数（60–500） |
 | `MAX_FULL_RESULTS` | `3` | compact 模式下的完整结果数 |
+| `EVIDENCE_BUDGET_CHARS` | `1200` | 每次响应共享的证据段落字符预算（200–20000） |
 | `MIN_CONFIDENCE` | `0` | 置信度阈值（0.0–1.0）；历史值 2–3 自动映射为来源数 |
-| `MIN_SOURCE_COUNT` | `1` | 最少独立引擎来源数（1–12） |
+| `MIN_SOURCE_COUNT` | `1` | 最少独立上游 provider family 数；兼容接受 1–12，当前适配器集合最多 11 |
 | `HTTP_AUTH_TOKEN` | — | HTTP 模式必需的 Bearer Token |
 | `HTTP_ALLOW_UNAUTHENTICATED` | `false` | 显式关闭 HTTP 认证（仅限受信任本地网络） |
 | `ALLOWED_ORIGINS` | — | 允许访问 HTTP 端点的浏览器 Origin，逗号分隔 |
@@ -230,7 +236,7 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 
 ## 基准测试
 
-基准现在分两条证据线。2026-07-24 历史真实运行覆盖 30 条中英文查询，实测 Compact 28.7%、Compact+ 35.5%，以及相比 8 引擎全并发少 75% 调用；由于当时没有保存原始响应 fixture，它们仍是限定查询集和环境的历史实测。新 runner 记录真实执行遥测，并用锁定的 `gpt-tokenizer` 对同一冻结 fixture 进行三种输出回放；CI 校验当前 30.2% / 33.9% 的预期摘要。两者都不是跨产品质量排名或生产保证。
+基准现在分三条证据线。2026-07-24 历史真实运行覆盖 30 条中英文查询，实测 Compact 28.7%、Compact+ 35.5%，以及相比 8 引擎全并发少 75% 调用；由于当时没有保存原始响应 fixture，它们仍是限定查询集和环境的历史实测。冻结格式回放用锁定的 `gpt-tokenizer` 校验当前 28.4% / 30.4% 的证据包格式化节省。新的评审门禁流水线保存原始响应哈希和引擎结果，分别报告检索、引用支持、延迟与失败透明度；在没有合成答案时，答案正确率和每个正确答案 Token 数明确标为未测量。Bootstrap 标签不能用于公开质量声明，仓库内真实 pilot 也尚未完成 AI 评审。这些口径都不是跨产品质量排名或生产保证。
 
 → [方法、查询、限制与报告](./benchmarks/)
 

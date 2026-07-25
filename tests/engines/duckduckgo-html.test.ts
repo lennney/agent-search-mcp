@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { searchDuckDuckGoHtml, duckduckgoHtmlProvider } from '../../src/engines/duckduckgo-html.js';
+import {
+  DuckDuckGoFallbackError,
+  searchDuckDuckGoHtml,
+  duckduckgoHtmlProvider,
+} from '../../src/engines/duckduckgo-html.js';
 
 describe('DuckDuckGo HTML engine', () => {
   it('has correct provider metadata', () => {
@@ -86,15 +90,20 @@ describe('DuckDuckGo HTML engine', () => {
 
   it('returns empty array on HTTP error', async () => {
     const originalFetch = global.fetch;
-    global.fetch = (async () => ({
-      ok: false,
-      status: 503,
-      text: async () => 'Service Unavailable',
-    })) as typeof fetch;
+    let fetchCount = 0;
+    global.fetch = (async () => {
+      fetchCount += 1;
+      return {
+        ok: false,
+        status: 503,
+        text: async () => 'Service Unavailable',
+      };
+    }) as typeof fetch;
 
     try {
       const results = await searchDuckDuckGoHtml('test query', 10);
       expect(results).toEqual([]);
+      expect(fetchCount).toBe(1);
     } finally {
       global.fetch = originalFetch;
     }
@@ -267,17 +276,205 @@ describe('DuckDuckGo HTML engine', () => {
     }
   });
 
-  it('returns empty array on rate limit (HTTP 202)', async () => {
+  it('falls back to DDG Lite on HTTP 202 and parses safe Lite results', async () => {
+    const liteHtml = `
+      <table>
+        <tr>
+          <td><a class="result-link" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.com%2Flite&rut=abc">Lite Result</a></td>
+        </tr>
+        <tr>
+          <td class="result-snippet">Lite <strong>snippet</strong></td>
+        </tr>
+        <tr>
+          <td><a class="result-link" href="javascript:alert(1)">Unsafe Result</a></td>
+        </tr>
+        <tr>
+          <td><a class="result-link" href="https://example.com/second">Second Result</a></td>
+        </tr>
+        <tr>
+          <td class="result-snippet">Second paired snippet</td>
+        </tr>
+      </table>
+    `;
+    const fetchCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = [];
     const originalFetch = global.fetch;
-    global.fetch = (async () => ({
-      ok: false,
-      status: 202,
-      text: async () => '',
-    })) as typeof fetch;
+    global.fetch = (async (input, init) => {
+      fetchCalls.push({ input, init });
+      if (fetchCalls.length === 1) {
+        return new Response('', { status: 202 });
+      }
+      return new Response(liteHtml, { status: 200 });
+    }) as typeof fetch;
 
     try {
-      const results = await searchDuckDuckGoHtml('test query', 10);
-      expect(results).toEqual([]);
+      const results = await searchDuckDuckGoHtml('test query', 10, { throwOnError: true });
+      expect(fetchCalls.map(call => String(call.input))).toEqual([
+        'https://html.duckduckgo.com/html/',
+        'https://lite.duckduckgo.com/lite/',
+      ]);
+      expect(results).toEqual([
+        {
+          title: 'Lite Result',
+          url: 'https://example.com/lite',
+          snippet: 'Lite snippet',
+          source: 'duckduckgo',
+          engines: ['duckduckgo'],
+        },
+        {
+          title: 'Second Result',
+          url: 'https://example.com/second',
+          snippet: 'Second paired snippet',
+          source: 'duckduckgo',
+          engines: ['duckduckgo'],
+        },
+      ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('filters sponsored rows from DDG Lite even when they use valid external URLs', async () => {
+    const liteHtml = `
+      <table>
+        <tr class="result-sponsored">
+          <td><a class="result-link" href="https://ads.example/course">Sponsored Course</a></td>
+        </tr>
+        <tr class="result-sponsored">
+          <td class="result-snippet">Sponsored snippet</td>
+        </tr>
+        <tr>
+          <td><a class="result-link" href="https://example.com/organic">Organic Result</a></td>
+        </tr>
+        <tr>
+          <td class="result-snippet">Organic paired snippet</td>
+        </tr>
+      </table>
+    `;
+    let fetchCount = 0;
+    const originalFetch = global.fetch;
+    global.fetch = (async () => {
+      fetchCount += 1;
+      return fetchCount === 1
+        ? new Response('', { status: 202 })
+        : new Response(liteHtml, { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      const results = await searchDuckDuckGoHtml('test query', 10, {
+        throwOnError: true,
+      });
+      expect(results).toHaveLength(1);
+      expect(results[0].title).toBe('Organic Result');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('treats DOM-equivalent Lite captcha markup as a fallback failure', async () => {
+    let fetchCount = 0;
+    const originalFetch = global.fetch;
+    global.fetch = (async () => {
+      fetchCount += 1;
+      return fetchCount === 1
+        ? new Response('', { status: 202 })
+        : new Response("<html><form class='gate' id = 'challenge-form'></form></html>", {
+            status: 200,
+          });
+    }) as typeof fetch;
+
+    try {
+      await expect(searchDuckDuckGoHtml('test query', 10, {
+        throwOnError: true,
+      })).rejects.toThrow(
+        'DuckDuckGo fallback failed: HTML HTTP 202 rate limit; Lite: DuckDuckGo Lite captcha challenge',
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('reports a Lite HTTP 202 as the second same-provider failure', async () => {
+    let fetchCount = 0;
+    const originalFetch = global.fetch;
+    global.fetch = (async () => {
+      fetchCount += 1;
+      return new Response('', { status: 202 });
+    }) as typeof fetch;
+
+    try {
+      await expect(searchDuckDuckGoHtml('test query', 10, {
+        throwOnError: true,
+      })).rejects.toThrow(
+        'DuckDuckGo fallback failed: HTML HTTP 202 rate limit; Lite: DuckDuckGo Lite HTTP 202 rate limit',
+      );
+      expect(fetchCount).toBe(2);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('throws only after the DDG Lite fallback also fails', async () => {
+    const fetchCalls: string[] = [];
+    const originalFetch = global.fetch;
+    global.fetch = (async (input) => {
+      fetchCalls.push(String(input));
+      if (fetchCalls.length === 1) {
+        return new Response('', { status: 202 });
+      }
+      return new Response('Service Unavailable', { status: 503 });
+    }) as typeof fetch;
+
+    try {
+      await expect(searchDuckDuckGoHtml('test query', 10, { throwOnError: true }))
+        .rejects.toMatchObject({
+          name: 'DuckDuckGoFallbackError',
+          message: 'DuckDuckGo fallback failed: HTML HTTP 202 rate limit; Lite: DuckDuckGo Lite HTTP 503',
+          retryable: false,
+        } satisfies Partial<DuckDuckGoFallbackError>);
+      expect(fetchCalls).toEqual([
+        'https://html.duckduckgo.com/html/',
+        'https://lite.duckduckgo.com/lite/',
+      ]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('returns an empty array when the DDG Lite fallback fails in soft-error mode', async () => {
+    let fetchCount = 0;
+    const originalFetch = global.fetch;
+    global.fetch = (async () => {
+      fetchCount += 1;
+      if (fetchCount === 1) {
+        return new Response('', { status: 202 });
+      }
+      throw new Error('Lite network error');
+    }) as typeof fetch;
+
+    try {
+      await expect(searchDuckDuckGoHtml('test query', 10)).resolves.toEqual([]);
+      expect(fetchCount).toBe(2);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('does not start the Lite attempt when the caller cancels after HTML 202', async () => {
+    const controller = new AbortController();
+    let fetchCount = 0;
+    const originalFetch = global.fetch;
+    global.fetch = (async () => {
+      fetchCount += 1;
+      controller.abort(new DOMException('cancelled', 'AbortError'));
+      return new Response('', { status: 202 });
+    }) as typeof fetch;
+
+    try {
+      await expect(searchDuckDuckGoHtml('test query', 10, {
+        signal: controller.signal,
+        throwOnError: true,
+      })).rejects.toMatchObject({ name: 'AbortError' });
+      expect(fetchCount).toBe(1);
     } finally {
       global.fetch = originalFetch;
     }

@@ -76,9 +76,11 @@ node benchmarks/quality.mjs \
 The default automated path requires two pointwise AI judges from different
 model families plus a third-family adjudicator. Its status is `ai-reviewed`;
 legacy human review remains supported as `human-verified`. The evaluator reports graded nDCG@5, Precision@5, reciprocal
-rank@5, Success@5, answer correctness, citation support, tokens per correct
-answer, latency, trace coverage, and failure disclosure. Language, category,
-and freshness slices are emitted in JSON reports.
+rank@5, Success@5, citation support, latency, trace coverage, and failure
+disclosure. Answer correctness and tokens per correct answer remain report
+dimensions but are marked unmeasured when the system returns evidence rather
+than a synthesized answer. Language, category, and freshness slices are
+emitted in JSON reports.
 
 Build a deterministic pool from captures of the same query set. Every capture
 must retain a valid raw-response trace. `system-id` is stored in the protected
