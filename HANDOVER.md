@@ -8,6 +8,20 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 P2 MCP routing-header handover
+
+- The experimental Node HTTP edge now inspects `IncomingMessage.rawHeaders`
+  and rejects duplicate `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and
+  arbitrary `Mcp-Param-*` fields before normalization can hide ambiguity.
+- A real tool schema with `x-mcp-header` proves case-insensitive header names
+  and integer `5.0` versus body `5` canonicalization through SDK v2 beta.5.
+- Missing or malformed Base64 parameter headers return SDK
+  `HeaderMismatch` (`-32020`) before tool dispatch.
+- Reproducible evidence:
+  `docs/evidence/mcp-2026-routing-headers.md`.
+- Remaining protocol test package: CORS, auth, trace, cache hints,
+  cancellation, tool-list changes, and raw trace capture.
+
 ## 2026-07-26 P2 search-quality benchmark handover
 
 - Live captures now preserve raw response hashes, latency, requested-engine
@@ -71,16 +85,17 @@ tags:
   to serve a `2025-11-25` legacy client.
 - Only JSON-shaped search inputs/results cross into the stable
   `searchWithFallback` implementation. No SDK v1 object crosses the boundary.
-- Experimental tests: 9 passed across 3 files, including real HTTP and stdio
-  transports, modern/legacy negotiation, structured results, and routing
-  mismatch rejection.
+- Experimental tests: 14 passed across 4 files, including real HTTP and stdio
+  transports, modern/legacy negotiation, structured results, fallback, and
+  routing-header validation.
 - `@modelcontextprotocol/conformance@0.1.16` `server-initialize` passed 1/1.
   That release only lists scenarios through `2025-11-25`, so full 2026
   conformance remains a P2 release gate.
 - POST bodies require a valid `Content-Length`; chunked transfer encoding is
   rejected so `HTTP_MAX_BODY_BYTES` cannot be bypassed.
-- Known P2 work: `Mcp-Param-*` edge cases, automatic fallback to the production
-  entry, and the official 2026 conformance scenarios once published.
+- Remaining P2 work: the broader CORS/auth/trace/cache/cancellation/tool-list
+  matrix, raw traces, and the official 2026 conformance scenarios once
+  published.
 - Residual audit note: SDK v2 beta.5 brings `@hono/node-server@1.19.15`, whose
   advisory affects Windows static-file serving. This entry does not use that
   feature; do not force a major transitive override.

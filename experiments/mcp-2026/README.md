@@ -27,8 +27,11 @@ npm run experimental:2026:test
 
 The tests pin an SDK v2 client to `2026-07-28`, verify legacy fallback,
 exercise routing-header mismatch rejection, and connect through real HTTP and
-stdio transports. They also start the production SDK v1 entrypoints and prove
-that an SDK v2 client in `auto` mode falls back over both HTTP and stdio.
+stdio transports. The real HTTP tests cover case-insensitive
+`Mcp-Param-*` names, integer canonicalization, missing and malformed parameter
+headers, and duplicate routing fields. They also start the production SDK v1
+entrypoints and prove that an SDK v2 client in `auto` mode falls back over both
+HTTP and stdio.
 
 ## Run
 
@@ -43,6 +46,8 @@ The default endpoint is `http://127.0.0.1:3100/mcp`. For a non-loopback
 `ALLOWED_ORIGINS`. `HTTP_ALLOW_UNAUTHENTICATED=true` is intended only for a
 trusted local test. POST requests must declare `Content-Length`; chunked
 request bodies are rejected so `HTTP_MAX_BODY_BYTES` cannot be bypassed.
+Duplicate `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, or
+`Mcp-Param-*` fields are rejected before Node normalizes them into one value.
 
 For stdio:
 

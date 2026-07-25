@@ -22,6 +22,7 @@ const CORS_REQUEST_HEADERS = [
   'tracestate',
   'baggage',
 ].join(', ');
+const HEADER_MISMATCH_ERROR_CODE = -32020;
 
 export interface ExperimentalHttpConfig {
   host: string;
@@ -133,6 +134,22 @@ export function createExperimentalNodeServer(
       return;
     }
 
+    const duplicateRoutingHeader = findDuplicateRoutingHeader(request.rawHeaders);
+    if (duplicateRoutingHeader !== undefined) {
+      writeJson(response, 400, {
+        jsonrpc: '2.0',
+        error: {
+          code: HEADER_MISMATCH_ERROR_CODE,
+          message: `Bad Request: duplicate MCP routing header ${duplicateRoutingHeader}`,
+          data: {
+            header: duplicateRoutingHeader,
+          },
+        },
+        id: null,
+      });
+      return;
+    }
+
     if (request.method === 'POST') {
       if (request.headers['transfer-encoding'] !== undefined) {
         writeJson(response, 411, {
@@ -241,6 +258,26 @@ function defaultAllowedHosts(host: string): string[] {
     return ['127.0.0.1', 'localhost', '[::1]'];
   }
   return [];
+}
+
+function findDuplicateRoutingHeader(rawHeaders: readonly string[]): string | undefined {
+  const counts = new Map<string, number>();
+  for (let index = 0; index < rawHeaders.length; index += 2) {
+    const name = rawHeaders[index]?.toLowerCase();
+    if (
+      name !== 'mcp-protocol-version'
+      && name !== 'mcp-method'
+      && name !== 'mcp-name'
+      && !name?.startsWith('mcp-param-')
+    ) {
+      continue;
+    }
+
+    const count = (counts.get(name) ?? 0) + 1;
+    if (count > 1) return name;
+    counts.set(name, count);
+  }
+  return undefined;
 }
 
 function hasValidBearerToken(

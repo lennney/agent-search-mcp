@@ -52,6 +52,10 @@ tags:
   server/transports are now created per request, notifications no longer
   collapse into empty HTTP 500 responses, and SDK v2 auto-mode clients can
   fall back cleanly over HTTP and stdio.
+- Hardened the experimental 2026 HTTP boundary against duplicate
+  `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and `Mcp-Param-*` fields
+  before Node combines them. Added real-socket coverage for case-insensitive
+  names, integer canonicalization, missing headers, and malformed Base64.
 
 ### Documentation
 
@@ -69,6 +73,8 @@ tags:
   current conformance-suite coverage gap.
 - Added reproducible P2 fallback evidence and an isolated Node 20/22
   experimental CI matrix.
+- Added reproducible MCP 2026 routing-header evidence and closed the
+  `Mcp-Param-*` canonicalization/duplicate gate.
 
 ## v3.3.0 (2026-07-24)
 

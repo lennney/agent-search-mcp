@@ -4,6 +4,11 @@ import {
   Client,
   StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client';
+import {
+  McpServer,
+  createMcpHandler,
+} from '@modelcontextprotocol/server';
+import * as z from 'zod/v4';
 
 import {
   createExperimentalNodeServer,
@@ -14,6 +19,86 @@ import { createExperimentalHandler } from '../src/server.js';
 
 const openServers: ExperimentalNodeServer[] = [];
 const openClients: Client[] = [];
+
+function createRoutedParameterHandler() {
+  return createMcpHandler(() => {
+    const server = new McpServer(
+      {
+        name: 'routing-header-test',
+        version: '1.0.0',
+      },
+      {
+        capabilities: { tools: {} },
+      },
+    );
+    server.registerTool(
+      'routed_echo',
+      {
+        inputSchema: z.object({
+          limit: z.number().int().meta({ 'x-mcp-header': 'Limit' }),
+        }),
+      },
+      async ({ limit }) => ({
+        content: [{ type: 'text', text: String(limit) }],
+        structuredContent: { limit },
+      }),
+    );
+    return server;
+  });
+}
+
+function modernToolCall(limit: number) {
+  return {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: {
+      name: 'routed_echo',
+      arguments: { limit },
+      _meta: {
+        'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+        'io.modelcontextprotocol/clientInfo': {
+          name: 'routing-header-test',
+          version: '1.0.0',
+        },
+        'io.modelcontextprotocol/clientCapabilities': {},
+      },
+    },
+  };
+}
+
+async function rawPost(
+  server: ExperimentalNodeServer,
+  routingHeaders: http.OutgoingHttpHeaders,
+  body: unknown,
+): Promise<{ status: number | undefined; body: unknown }> {
+  const payload = JSON.stringify(body);
+  return new Promise((resolveResponse, rejectResponse) => {
+    const request = http.request({
+      host: '127.0.0.1',
+      port: server.getPort(),
+      path: '/mcp',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': String(Buffer.byteLength(payload)),
+        ...routingHeaders,
+      },
+    }, response => {
+      const chunks: Buffer[] = [];
+      response.on('data', chunk => chunks.push(Buffer.from(chunk)));
+      response.once('end', () => {
+        const text = Buffer.concat(chunks).toString('utf8');
+        resolveResponse({
+          status: response.statusCode,
+          body: text ? JSON.parse(text) as unknown : null,
+        });
+      });
+    });
+    request.once('error', rejectResponse);
+    request.end(payload);
+  });
+}
 
 afterEach(async () => {
   await Promise.all(openClients.splice(0).map(client => client.close()));
@@ -139,5 +224,114 @@ describe('experimental MCP 2026 HTTP entry', () => {
     });
 
     expect(status).toBe(411);
+  });
+
+  it('accepts canonicalized integer Mcp-Param values regardless of header casing', async () => {
+    const handler = createRoutedParameterHandler();
+    const server = createExperimentalNodeServer(handler, {
+      host: '127.0.0.1',
+      port: 0,
+      authToken: '',
+      allowUnauthenticated: true,
+      allowedHosts: ['127.0.0.1'],
+      allowedOrigins: [],
+    });
+    await server.listen();
+    openServers.push(server);
+
+    const response = await rawPost(server, {
+      'MCP-Protocol-Version': '2026-07-28',
+      'mCp-MeThOd': 'tools/call',
+      'McP-NaMe': 'routed_echo',
+      'mCp-PaRaM-LiMiT': '5.0',
+    }, modernToolCall(5));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(expect.objectContaining({
+      result: expect.objectContaining({
+        structuredContent: { limit: 5 },
+      }),
+    }));
+  });
+
+  it('rejects a missing or malformed Mcp-Param value before tool dispatch', async () => {
+    const handler = createRoutedParameterHandler();
+    const server = createExperimentalNodeServer(handler, {
+      host: '127.0.0.1',
+      port: 0,
+      authToken: '',
+      allowUnauthenticated: true,
+      allowedHosts: ['127.0.0.1'],
+      allowedOrigins: [],
+    });
+    await server.listen();
+    openServers.push(server);
+
+    const missing = await rawPost(server, {
+      'MCP-Protocol-Version': '2026-07-28',
+      'Mcp-Method': 'tools/call',
+      'Mcp-Name': 'routed_echo',
+    }, modernToolCall(5));
+    const malformed = await rawPost(server, {
+      'MCP-Protocol-Version': '2026-07-28',
+      'Mcp-Method': 'tools/call',
+      'Mcp-Name': 'routed_echo',
+      'Mcp-Param-Limit': '=?base64?***?=',
+    }, modernToolCall(5));
+
+    expect(missing.status).toBe(400);
+    expect(missing.body).toEqual(expect.objectContaining({
+      error: expect.objectContaining({ code: -32020 }),
+    }));
+    expect(malformed.status).toBe(400);
+    expect(malformed.body).toEqual(expect.objectContaining({
+      error: expect.objectContaining({ code: -32020 }),
+    }));
+  });
+
+  it('rejects duplicate standard and parameter routing headers before normalization', async () => {
+    const handler = createRoutedParameterHandler();
+    const server = createExperimentalNodeServer(handler, {
+      host: '127.0.0.1',
+      port: 0,
+      authToken: '',
+      allowUnauthenticated: true,
+      allowedHosts: ['127.0.0.1'],
+      allowedOrigins: [],
+    });
+    await server.listen();
+    openServers.push(server);
+
+    const duplicateMethod = await rawPost(server, {
+      'MCP-Protocol-Version': '2026-07-28',
+      'Mcp-Method': ['tools/call', 'tools/list'],
+      'Mcp-Name': 'routed_echo',
+      'Mcp-Param-Limit': '5',
+    }, modernToolCall(5));
+    const duplicateParam = await rawPost(server, {
+      'MCP-Protocol-Version': '2026-07-28',
+      'Mcp-Method': 'tools/call',
+      'Mcp-Name': 'routed_echo',
+      'Mcp-Param-Limit': ['5', '5'],
+    }, modernToolCall(5));
+
+    expect(duplicateMethod.status).toBe(400);
+    expect(duplicateMethod.body).toEqual(expect.objectContaining({
+      jsonrpc: '2.0',
+      id: null,
+      error: expect.objectContaining({
+        code: -32020,
+        data: { header: 'mcp-method' },
+      }),
+    }));
+    expect(duplicateParam.status).toBe(400);
+    expect(duplicateParam.body).toEqual(expect.objectContaining({
+      jsonrpc: '2.0',
+      id: null,
+      error: expect.objectContaining({
+        code: -32020,
+        data: { header: 'mcp-param-limit' },
+      }),
+    }));
   });
 });
