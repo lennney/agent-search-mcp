@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import * as http from 'node:http';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import * as z from 'zod/v4';
+
 import { createHttpServer } from '../../src/infrastructure/http.js';
 
 describe('createHttpServer', () => {
@@ -125,6 +130,58 @@ it('GET /mcp without transport returns 404', async () => {
       const body = await res.json();
       expect(body.error).toBe('Not found');
     } finally {
+      await server.close();
+    }
+  });
+
+  it('uses a fresh stateless server and transport for each MCP HTTP request', async () => {
+    let serverInstances = 0;
+    const server = createHttpServer(() => {
+      serverInstances += 1;
+      const mcpServer = new McpServer(
+        { name: 'http-regression-test', version: '1.0.0' },
+        { capabilities: { tools: {} } },
+      );
+      mcpServer.registerTool(
+        'echo',
+        {
+          inputSchema: z.object({
+            value: z.string(),
+          }),
+        },
+        async ({ value }) => ({
+          content: [{ type: 'text', text: value }],
+        }),
+      );
+      return mcpServer;
+    }, {
+      port: 0,
+      enableCors: false,
+      corsOrigin: '*',
+    });
+    await server.listen();
+
+    const client = new Client({
+      name: 'http-regression-client',
+      version: '1.0.0',
+    });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://127.0.0.1:${server.getPort()}/mcp`),
+    );
+
+    try {
+      await client.connect(transport);
+      expect((await client.listTools()).tools.map(tool => tool.name)).toContain('echo');
+      const result = await client.callTool({
+        name: 'echo',
+        arguments: { value: 'ok' },
+      });
+      expect(result.content).toEqual([
+        { type: 'text', text: 'ok' },
+      ]);
+      expect(serverInstances).toBeGreaterThanOrEqual(4);
+    } finally {
+      await client.close();
       await server.close();
     }
   });

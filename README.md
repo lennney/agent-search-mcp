@@ -221,7 +221,9 @@ HTTP_AUTH_TOKEN=replace-me npm run experimental:2026:http
 ```
 
 It remains opt-in until the official conformance suite publishes and passes
-the 2026 scenarios. See the
+the 2026 scenarios. SDK v2 `auto` fallback to the stable server is covered over
+both real HTTP and stdio entrypoints, with an experimental Node 20/22 CI matrix
+configured to keep that path covered. See the
 [2026 readiness plan](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md).
 
 ### Engine Filtering

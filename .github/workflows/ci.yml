@@ -75,6 +75,35 @@ jobs:
       - name: Build
         run: npm run build
 
+  experimental-2026:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [20, 22]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            experiments/mcp-2026/package-lock.json
+
+      - name: Install stable dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Install experimental dependencies
+        run: npm ci --prefix experiments/mcp-2026
+
+      - name: Test 2026 negotiation and stable fallback
+        run: npm run experimental:2026:test
+
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest

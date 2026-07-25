@@ -78,7 +78,11 @@ Evidence on 2026-07-25:
 
 - [ ] Run official 2026 conformance for HTTP and stdio when those scenarios are
       published.
-- [ ] Test automatic fallback from a 2026-capable client to the stable server.
+- [x] Test automatic fallback from a 2026-capable client to the stable server
+      over real HTTP and stdio entrypoints.
+- [x] Run the experimental compatibility suite as isolated Node 20/22 CI jobs.
+- [x] Record the first fallback trace, versions, root cause, and reproduction
+      commands in `docs/evidence/mcp-2026-p2-fallback.md`.
 - [ ] Expand routing checks to `Mcp-Param-*` canonicalization and duplicates.
 - [ ] Test CORS preflight, Origin validation, Bearer auth, trace propagation,
       caching hints, cancellation, and tool-list changes.

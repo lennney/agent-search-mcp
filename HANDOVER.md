@@ -32,6 +32,21 @@ tags:
   feature; do not force a major transitive override.
 - Hermes work was intentionally deferred; the Git plan remains authoritative.
 
+## 2026-07-25 P2 fallback and CI handover
+
+- SDK v2 beta.5 `auto` mode now falls back to the real stable server over both
+  HTTP and stdio, negotiating `2025-11-25` and preserving `free_search`.
+- The fallback test exposed a production HTTP bug: one stateless SDK v1
+  transport was reused across requests, so `notifications/initialized`
+  returned an empty HTTP 500.
+- Stable server composition now lives in `src/server.ts`; stdio creates one
+  long-lived instance, while stateless HTTP creates a server plus Web Standard
+  transport per request.
+- `.github/workflows/ci.yml` runs the isolated 2026 suite on Node 20 and 22.
+- Evidence and exact reproduction commands:
+  `docs/evidence/mcp-2026-p2-fallback.md`.
+- Test totals: stable 515/44; experimental 11/4.
+
 # Agent Search MCP — Handover
 
 ## 项目状态

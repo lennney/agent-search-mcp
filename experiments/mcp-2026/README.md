@@ -27,7 +27,8 @@ npm run experimental:2026:test
 
 The tests pin an SDK v2 client to `2026-07-28`, verify legacy fallback,
 exercise routing-header mismatch rejection, and connect through real HTTP and
-stdio transports.
+stdio transports. They also start the production SDK v1 entrypoints and prove
+that an SDK v2 client in `auto` mode falls back over both HTTP and stdio.
 
 ## Run
 

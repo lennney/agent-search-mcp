@@ -29,6 +29,10 @@ tags:
 - Corrected `search_with_synthesis` to use normalized 0-1 confidence, keep
   source-count filtering separate, preserve legacy 2-3 inputs, and report each
   result's actual source provenance.
+- Corrected stable Streamable HTTP lifecycle handling: stateless SDK v1
+  server/transports are now created per request, notifications no longer
+  collapse into empty HTTP 500 responses, and SDK v2 auto-mode clients can
+  fall back cleanly over HTTP and stdio.
 
 ### Documentation
 
@@ -37,6 +41,8 @@ tags:
   Hermes-projection decision for multi-device planning.
 - Documented the experimental 2026 entry, its stable-domain boundary, and the
   current conformance-suite coverage gap.
+- Added reproducible P2 fallback evidence and an isolated Node 20/22
+  experimental CI matrix.
 
 ## v3.3.0 (2026-07-24)
 

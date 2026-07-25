@@ -15,7 +15,7 @@ tags:
 
 **版本**: v3.1.0（已发布 npm + GitHub Release）— [查看完整路线图](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-**测试**: stable 514 passed, 44 files; experimental 2026 9 passed, 3 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
+**测试**: stable 515 passed, 44 files; experimental 2026 11 passed, 4 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
 
 当前优先事项：
 1. **搜索质量证据** — 在稳定网络 runner 上捕获真实 fixture 并增加人工相关性标签
