@@ -54,6 +54,11 @@ describe('parseArgs', () => {
     expect(args.engines).toEqual(['bing', 'baidu', 'youcom']);
   });
 
+  it('accepts all additional zero-key engines', () => {
+    const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--engines', 'wikipedia,startpage,yandex,mojeek']);
+    expect(args.engines).toEqual(['wikipedia', 'startpage', 'yandex', 'mojeek']);
+  });
+
   it('parses --proxy flag', () => {
     const args = parseArgs(['node', 'cli.ts', 'search', 'query', '--proxy', 'http://127.0.0.1:7890']);
     expect(args.proxy).toBe('http://127.0.0.1:7890');

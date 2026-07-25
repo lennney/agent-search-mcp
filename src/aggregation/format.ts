@@ -57,8 +57,10 @@ export interface FormatOptions {
   snippetMax?: number;
   /** Max full results before remaining are compacted (compact mode only, default: 3) */
   maxFullResults?: number;
-  /** Minimum confidence threshold for filtering (compact mode only, 0.0-3.0, default: 0 = no filtering) */
+  /** Minimum source-reliability confidence (0.0-1.0, default: 0 = no filtering) */
   minConfidence?: number;
+  /** Minimum number of independent sources (default: 1) */
+  minSourceCount?: number;
 }
 
 interface FormattedResult {
@@ -66,6 +68,9 @@ interface FormattedResult {
   url: string;
   snippet?: string;
   confidence?: number;
+  relevance?: number;
+  source_count?: number;
+  sources?: string[];
   security?: {
     injection_detected: boolean;
     url_safe: boolean;
@@ -102,6 +107,7 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
   const snippetMax = clampSnippet(options?.snippetMax);
   const maxFullResults = options?.maxFullResults;
   const minConfidence = options?.minConfidence;
+  const minSourceCount = options?.minSourceCount;
 
   const secured = results.map(r => processResultSecurity(r));
 
@@ -112,6 +118,11 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     filteredResults = secured.filter(r => r.confidence >= minConfidence);
     filteredCount = secured.length - filteredResults.length;
   }
+  if (style === 'compact' && minSourceCount !== undefined && minSourceCount > 1) {
+    const beforeSourceFilter = filteredResults.length;
+    filteredResults = filteredResults.filter(r => r.source_count >= minSourceCount);
+    filteredCount += beforeSourceFilter - filteredResults.length;
+  }
 
   // Progressive disclosure (compact mode only)
   let compactedCount = 0;
@@ -121,6 +132,9 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     url: r.url,
     snippet: truncateAtSentence(r.snippet, isChinese(r.snippet) ? snippetMax.cn : snippetMax.en),
     confidence: style === 'compact' ? Math.round(r.confidence * 100) / 100 : r.confidence,
+    relevance: style === 'compact' ? Math.round(r.relevance * 100) / 100 : r.relevance,
+    source_count: r.source_count,
+    sources: r.engines || [r.source],
     ...(r.security.injectionDetected || !r.security.urlSafe ? {
       security: {
         injection_detected: r.security.injectionDetected,
@@ -165,7 +179,7 @@ export function formatResults(results: ScoredResult[], options?: FormatOptions):
     filtered_total?: number;
   } = {
     total: results.length,
-    high_confidence: results.filter(r => r.confidence >= 2).length,
+    high_confidence: results.filter(r => r.confidence >= 0.8).length,
     engines: [...new Set(results.flatMap(r => r.engines || [r.source]))],
   };
 

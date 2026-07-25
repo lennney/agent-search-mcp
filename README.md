@@ -1,7 +1,7 @@
 # Agent Search MCP
 
-> **12 search adapters (8 zero-key), one MCP server.**
-> Chinese search via Sogou + Baidu. Multi-source verification with confidence scoring. Waterfall progressive search. Content extraction. `npx agent-search-mcp` is all you need.
+> **The local-first search router for AI agents.**
+> Start with eight zero-key sources, route Chinese queries natively, inspect multi-source evidence, control token spend, and escalate to optional commercial APIs only when needed. `npx agent-search-mcp` is all you need.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -16,7 +16,9 @@
 
 ## Why Agent Search MCP
 
-Most MCP search servers expose one commercial search backend. Agent Search MCP focuses on a different job: a local, zero-key path that can aggregate multiple public engines and search the Chinese web directly.
+An agent needs more than a search endpoint. It needs a policy for **where to search, when to stop, how much context to spend, and what evidence to trust**. Agent Search MCP is that control layer: a local-first search router, not another single-backend search API.
+
+The route is deliberate: **zero-key start → Chinese-native routing → inspectable multi-source evidence → token-aware progressive search → optional commercial escalation**. The 12 adapters serve this route; adapter count is not the product story by itself.
 
 | | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
 |---|:---:|:---:|:---:|:---:|
@@ -39,7 +41,7 @@ Parallel and waterfall orchestration, URL/title deduplication, ranking, and grac
 
 ### Token control is a product feature
 
-`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, and `MIN_CONFIDENCE` let operators trade context size against detail. The benchmark harness is being strengthened before exact savings percentages are used as release claims.
+`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `MIN_CONFIDENCE`, and `MIN_SOURCE_COUNT` let operators trade context size against detail. A historical 30-query live run measured **28.7% fewer tokens in Compact mode**, **35.5% in Compact+**, and **75% fewer engine calls than naive eight-engine fan-out**. These are scoped measurements for that query set and environment, not universal guarantees. The new frozen-fixture replay uses an in-process tokenizer and currently measures 30.2% / 33.9% formatting savings reproducibly.
 
 ### Native Chinese search
 
@@ -118,7 +120,7 @@ mcp_servers:
 
 ## Engines
 
-The package contains 12 engine adapters. The current `free_search`/CLI routing surface exposes DuckDuckGo, Sogou, Bing, Baidu, Brave, Tavily, Exa, and You.com; the remaining adapters are not yet selectable from every entry point.
+The package contains 12 engine adapters, all selectable through `free_search`, `free_search_advanced`, the CLI, and waterfall routing. Eight work without credentials; Brave, Tavily, Exa, and You.com are enabled when their API keys are present.
 
 | Engine | Free | Strengths |
 |--------|:----:|-----------|
@@ -170,7 +172,11 @@ All tools are read-only and idempotent with MCP 2025 annotations.
 | `OUTPUT_STYLE` | `normal` | `compact` for token-optimized output |
 | `SNIPPET_LENGTH` | `200` | Max snippet characters (60–500) |
 | `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
-| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–3.0) |
+| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
+| `MIN_SOURCE_COUNT` | `1` | Minimum number of independent engine sources (1–12) |
+| `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
+| `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
+| `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
 | `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
 | `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
 | `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |
@@ -189,6 +195,10 @@ DISABLED_TOOLS=free_extract,fetch_github_readme
 ```
 
 `DISABLED_TOOLS` takes priority over `ENABLED_TOOLS`.
+
+### HTTP deployment
+
+HTTP mode is secure-by-default: `/mcp` requires `Authorization: Bearer <token>`, and browser requests with an `Origin` header must match `ALLOWED_ORIGINS`. Keep `/health` available for probes, terminate TLS at a trusted reverse proxy, and rotate the token as a secret. See the [HTTP deployment guide](./docs/http-deployment.md).
 
 ### Engine Filtering
 
@@ -212,17 +222,15 @@ fasm search "query" --count 5 --engines bing,baidu,youcom --json
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
 
-# HTTP server
-fasm serve --port 8080
+# HTTP server (Bearer auth is required for MCP HTTP mode)
+HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
 
 ---
 
 ## Benchmark
 
-The repository includes a reproducible harness and historical reports for 30 EN/ZH queries. The current reports are an **exploratory baseline**, not a cross-product quality benchmark: token counts are estimates, most queries are technical, and engine-call telemetry is not yet sufficient to substantiate exact waterfall savings.
-
-Use the reports to reproduce behavior and spot regressions; do not treat the historical percentages as guaranteed production savings.
+The benchmark has two evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. Its raw responses were not frozen, so those figures remain historical environment-scoped measurements. The current runner captures actual execution telemetry and replays a frozen fixture through every output style with locked `gpt-tokenizer`; CI verifies the expected summary (currently 30.2% / 33.9%). Neither track is a cross-product quality ranking or a production guarantee.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

@@ -85,6 +85,38 @@ describe('loadConfig', () => {
     expect(config.allowedEngines).toEqual([]);
   });
 
+  it('treats MIN_CONFIDENCE within 0..1 as confidence', () => {
+    process.env.MIN_CONFIDENCE = '0.7';
+    delete process.env.MIN_SOURCE_COUNT;
+    const config = loadConfig();
+    expect(config.minConfidence).toBe(0.7);
+    expect(config.minSourceCount).toBe(1);
+  });
+
+  it('maps legacy MIN_CONFIDENCE source counts to MIN_SOURCE_COUNT', () => {
+    process.env.MIN_CONFIDENCE = '2';
+    delete process.env.MIN_SOURCE_COUNT;
+    const config = loadConfig();
+    expect(config.minConfidence).toBe(0);
+    expect(config.minSourceCount).toBe(2);
+  });
+
+  it('prefers an explicit MIN_SOURCE_COUNT', () => {
+    process.env.MIN_CONFIDENCE = '0.6';
+    process.env.MIN_SOURCE_COUNT = '3';
+    const config = loadConfig();
+    expect(config.minConfidence).toBe(0.6);
+    expect(config.minSourceCount).toBe(3);
+  });
+
+  it('parses HTTP authentication and origin settings', () => {
+    process.env.HTTP_AUTH_TOKEN = 'test-token';
+    process.env.ALLOWED_ORIGINS = 'https://one.example, https://two.example';
+    const config = loadConfig();
+    expect(config.httpAuthToken).toBe('test-token');
+    expect(config.allowedOrigins).toEqual(['https://one.example', 'https://two.example']);
+  });
+
   it('parses ENABLED_TOOLS as array', () => {
     process.env.ENABLED_TOOLS = 'free_search,free_extract';
     const config = loadConfig();

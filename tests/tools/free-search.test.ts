@@ -15,13 +15,18 @@ vi.mock('../../src/engines/tavily.js', () => ({
   TavilyProvider: vi.fn(() => ({ search: vi.fn() })),
 }));
 vi.mock('../../src/engines/exa.js', () => ({ searchExa: vi.fn() }));
+vi.mock('../../src/engines/youcom.js', () => ({ searchYouCom: vi.fn() }));
+vi.mock('../../src/engines/wikipedia.js', () => ({ searchWikipedia: vi.fn(async () => []) }));
+vi.mock('../../src/engines/startpage.js', () => ({ searchStartpage: vi.fn(async () => []) }));
+vi.mock('../../src/engines/yandex.js', () => ({ searchYandex: vi.fn(async () => []) }));
+vi.mock('../../src/engines/mojeek.js', () => ({ searchMojeek: vi.fn(async () => []) }));
 
 vi.mock('../../src/aggregation/index.js', () => ({
   dedupByProvider: vi.fn((r) => r),
   dedupByUrl: vi.fn((r) => ({ results: r, frequencies: new Map() })),
   dedupByTitle: vi.fn((r) => r),
   filterLowQuality: vi.fn((r) => r),
-  scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 0.8, score: 0.6 }))),
+  scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 0.8, relevance: 0.6, source_count: 1, score: 0.6 }))),
   formatResults: vi.fn((r) => ({
     results: r.map((x) => ({
       title: x.title, url: x.url, snippet: x.snippet || '', confidence: x.confidence || 0.8,
@@ -68,6 +73,10 @@ import { searchDuckDuckGo } from '../../src/engines/duckduckgo.js';
 import { searchSogou } from '../../src/engines/sogou.js';
 import { searchBing } from '../../src/engines/bing.js';
 import { searchBaidu } from '../../src/engines/baidu.js';
+import { searchWikipedia } from '../../src/engines/wikipedia.js';
+import { searchStartpage } from '../../src/engines/startpage.js';
+import { searchYandex } from '../../src/engines/yandex.js';
+import { searchMojeek } from '../../src/engines/mojeek.js';
 import { detectLanguage, enrichResults } from '../../src/aggregation/index.js';
 
 function makeResults(count: number, source: string) {
@@ -114,6 +123,18 @@ describe('searchWithFallback — parallel', () => {
     expect(a).toBe(b);
   });
 
+  it('does not collapse requests with different verification filters', async () => {
+    (searchDuckDuckGo as any).mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return makeResults(3, 'ddg');
+    });
+    const [a, b] = await Promise.all([
+      searchWithFallback({ query: 'filter-variant', minSourceCount: 1 }),
+      searchWithFallback({ query: 'filter-variant', minSourceCount: 2 }),
+    ]);
+    expect(a).not.toBe(b);
+  });
+
   it('handles engine failure gracefully', async () => {
     (searchBing as any).mockRejectedValue(new Error('ECONNRESET'));
     await expect(
@@ -138,6 +159,19 @@ describe('searchWithFallback — parallel', () => {
   it('enriches results on enrich=true', async () => {
     await searchWithFallback({ query: 'e', enrich: true, enrichMax: 3 });
     expect(enrichResults).toHaveBeenCalled();
+  });
+
+  it('routes all four additional zero-key adapters', async () => {
+    await searchWithFallback({
+      query: 'all-free-adapters',
+      count: 50,
+      engines: ['wikipedia', 'startpage', 'yandex', 'mojeek'],
+    });
+
+    expect(searchWikipedia).toHaveBeenCalled();
+    expect(searchStartpage).toHaveBeenCalled();
+    expect(searchYandex).toHaveBeenCalled();
+    expect(searchMojeek).toHaveBeenCalled();
   });
 });
 

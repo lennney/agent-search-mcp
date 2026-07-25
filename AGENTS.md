@@ -15,12 +15,12 @@ tags:
 
 **版本**: v3.1.0（已发布 npm + GitHub Release）— [查看完整路线图](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-**测试**: 498 passed, 43 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
+**测试**: 510 passed, 43 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
 
 当前优先事项：
-1. **可信能力面** — 统一 12 个适配器在 MCP / CLI / 瀑布模式中的路由
-2. **Benchmark v3** — 真实引擎遥测、冻结 fixture、可靠 tokenizer、相关性标签
-3. **置信度契约** — 拆分 relevance/confidence 与独立来源数
+1. **搜索质量证据** — 在稳定网络 runner 上捕获真实 fixture 并增加人工相关性标签
+2. **HTTP 部署指南** — Bearer 密钥轮换、Origin allowlist 与反向代理配置
+3. **信号校准** — 用真实失败查询持续校准 relevance/confidence/source_count
 4. **分发推广** — 发布已校准口径的掘金/Reddit/V2EX 素材（持续）
 
 ## 常用命令
@@ -98,8 +98,9 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 - **Env 变量**: API key 通过环境变量传入，不走配置文件
 - **npm publish**: 当前 registry 是腾讯镜像（mirrors.tencentyun.com），publish 前必须切到 registry.npmjs.org
 - **工具可见性**: `ENABLED_TOOLS` / `DISABLED_TOOLS` 环境变量控制 MCP 工具注册。`DISABLED_TOOLS` 优先级高于 `ENABLED_TOOLS`。默认全部启用。资源（capabilities/health）不受此策略影响。
-- **适配器数不等于可达路由数**: 包内有 12 个适配器，但当前 `free_search`/CLI 只统一路由 8 个。文档和推广必须明确区分，扩展 MCP enum 前先确认向后兼容方案。
-- **Benchmark 口径**: `benchmarks/` 当前是探索性基线。未实现真实 engine-call telemetry 和冻结 fixture 前，不宣传精确的瀑布/Token 节省百分比。
+- **路由能力面**: 12 个适配器已统一进入 MCP / CLI / 瀑布路由；You.com 必须有 `YDC_API_KEY`，不要把“包内存在”与“当前凭证可用”混淆。
+- **Benchmark 口径**: 可保留 2026-07-24 历史 30 查询实测的 28.7% / 35.5% / 75%，但必须限定当时查询集和环境。当前冻结 fixture + `gpt-tokenizer` 用于可重现的格式化回归，不代表搜索质量。
+- **HTTP 安全默认值**: HTTP / both 模式必须配置 `HTTP_AUTH_TOKEN`；只有显式 `HTTP_ALLOW_UNAUTHENTICATED=true` 才允许无认证运行。带 Origin 的浏览器请求必须命中 `ALLOWED_ORIGINS`。
 - **stdio 日志**: stdout 只用于 MCP JSON-RPC。运行日志必须走 `logger`（stderr）或 `console.error`，禁止在服务路径使用 `console.log`。
 
 ## 文档索引

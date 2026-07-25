@@ -30,9 +30,9 @@ free_search_advanced(query, language="zh") — Chinese sources
 ## Content Extraction
 free_extract(url) — get full page as markdown
 
-## Confidence Scores
-Each result has a normalized confidence/relevance score derived from source agreement and quality signals.
-Use confidence for ranking; inspect result URLs and corroborating results before treating a claim as verified.
+## Result Signals
+Each result exposes relevance (query match), confidence (source reliability and corroboration), and source_count (independent engines).
+Use these as ranking and verification aids; inspect result URLs before treating a claim as verified.
 
 ## Engines
 - DuckDuckGo (free)

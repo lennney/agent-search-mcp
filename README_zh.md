@@ -1,7 +1,7 @@
 # Agent Search MCP
 
-> **12 个搜索适配器（8 个零密钥），一个 MCP Server。**
-> 搜狗 + 百度原生中文搜索。多源交叉验证 + 置信度评分。瀑布式渐进搜索。内容提取。`npx agent-search-mcp` 即可使用。
+> **给 AI Agent 的本地优先搜索路由器。**
+> 8 个零密钥来源起步，中文查询原生路由，多源证据可检查，token 消耗可控制，只在需要时升级到可选商业 API。`npx agent-search-mcp` 即可使用。
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -16,7 +16,9 @@
 
 ## 为什么选择 Agent Search MCP
 
-多数 MCP 搜索服务器只暴露一个商业搜索后端。Agent Search MCP 解决的是另一类问题：本地运行、零密钥起步、多公共引擎聚合，以及直接搜索中文互联网。
+Agent 需要的不只是一个搜索接口，还要知道**去哪里搜、什么时候停、花多少上下文、哪些证据值得信**。Agent Search MCP 做的是这个控制层：它是本地优先的搜索路由器，不是又一个单后端搜索 API。
+
+这条路线是：**零密钥起步 → 中文原生路由 → 多源证据可检查 → 按 token 预算渐进搜索 → 必要时升级商业 API**。12 个适配器是这条路线的实现，适配器数量本身不是产品故事。
 
 | | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
 |---|:---:|:---:|:---:|:---:|
@@ -39,7 +41,7 @@
 
 ### Token 控制是产品能力
 
-通过 `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`MIN_CONFIDENCE`，使用者可在上下文体积和信息细节间主动取舍。基准框架完成遥测校准前，不再把精确节省百分比作为发布宣传口径。
+通过 `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`MIN_CONFIDENCE`和 `MIN_SOURCE_COUNT`，使用者可在上下文体积和信息细节间主动取舍。历史 30 查询真实运行实测了 **Compact 节省 28.7% token**、**Compact+ 节省 35.5%**，以及相比 8 引擎全并发 **少 75% 引擎调用**。这是特定查询集和环境的实测，不是通用保证。新的冻结 fixture 回放使用进程内 tokenizer，当前可重现 30.2% / 33.9% 的格式化节省。
 
 ### 原生中文搜索
 
@@ -118,7 +120,7 @@ mcp_servers:
 
 ## 搜索引擎
 
-包内包含 12 个引擎适配器。当前 `free_search`/CLI 可路由 DuckDuckGo、搜狗、Bing、百度、Brave、Tavily、Exa、You.com；其余适配器尚未在所有入口开放选择。
+包内包含 12 个引擎适配器，现在均可从 `free_search`、`free_search_advanced`、CLI 和瀑布路由选择。8 个零密钥引擎直接可用；Brave、Tavily、Exa 和 You.com 在配置 API Key 后启用。
 
 | 引擎 | 免费 | 优势 |
 |------|:----:|------|
@@ -170,7 +172,11 @@ mcp_servers:
 | `OUTPUT_STYLE` | `normal` | `compact` 开启 token 优化输出 |
 | `SNIPPET_LENGTH` | `200` | 摘要最大字符数（60–500） |
 | `MAX_FULL_RESULTS` | `3` | compact 模式下的完整结果数 |
-| `MIN_CONFIDENCE` | `0` | 置信度过滤阈值（0.0–3.0） |
+| `MIN_CONFIDENCE` | `0` | 置信度阈值（0.0–1.0）；历史值 2–3 自动映射为来源数 |
+| `MIN_SOURCE_COUNT` | `1` | 最少独立引擎来源数（1–12） |
+| `HTTP_AUTH_TOKEN` | — | HTTP 模式必需的 Bearer Token |
+| `HTTP_ALLOW_UNAUTHENTICATED` | `false` | 显式关闭 HTTP 认证（仅限受信任本地网络） |
+| `ALLOWED_ORIGINS` | — | 允许访问 HTTP 端点的浏览器 Origin，逗号分隔 |
 | `SEMANTIC_DEDUP` | `false` | 语义去重（需 `pip install model2vec`） |
 | `DEDUP_THRESHOLD` | `0.85` | 语义去重的余弦相似度阈值 |
 | `SEMANTIC_RERANK` | `false` | 语义重排（需 `pip install model2vec`） |
@@ -189,6 +195,10 @@ DISABLED_TOOLS=free_extract,fetch_github_readme
 ```
 
 `DISABLED_TOOLS` 优先级高于 `ENABLED_TOOLS`。
+
+### HTTP 部署
+
+HTTP 模式采用安全默认值：`/mcp` 要求 `Authorization: Bearer <token>`，带 `Origin` 请求头的浏览器请求必须命中 `ALLOWED_ORIGINS`。`/health` 保留给健康检查；生产环境应在受信反向代理终止 TLS，并把 Token 当作密钥轮换。详见 [HTTP 部署指南](./docs/http-deployment.md)。
 
 ### 引擎过滤
 
@@ -212,17 +222,15 @@ fasm search "关键词" --count 5 --engines bing,baidu,youcom --json
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
 
-# HTTP 服务
-fasm serve --port 8080
+# HTTP MCP 服务（默认要求 Bearer 认证）
+HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
 
 ---
 
 ## 基准测试
 
-仓库包含可运行的基准框架及 30 条中英文查询的历史报告。当前报告属于**探索性基线**，不是跨产品质量排名：token 数为估算值，查询以技术主题为主，引擎调用遥测也还不足以证明精确的瀑布节省比例。
-
-这些报告适合复现行为和发现回归，不应把历史百分比理解为生产环境保证。
+基准现在分两条证据线。2026-07-24 历史真实运行覆盖 30 条中英文查询，实测 Compact 28.7%、Compact+ 35.5%，以及相比 8 引擎全并发少 75% 调用；由于当时没有保存原始响应 fixture，它们仍是限定查询集和环境的历史实测。新 runner 记录真实执行遥测，并用锁定的 `gpt-tokenizer` 对同一冻结 fixture 进行三种输出回放；CI 校验当前 30.2% / 33.9% 的预期摘要。两者都不是跨产品质量排名或生产保证。
 
 → [方法、查询、限制与报告](./benchmarks/)
 

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "fixture": "benchmarks/fixtures/format-regression.json",
+  "fixture_sha256": "de1f34144eba54bb27e6778f97b7a0d9033e68226dcb73c1eb48cf7d176bb7bb",
+  "generated_at": "2026-07-25T04:10:18.036Z",
+  "scenarios": {
+    "normal": {
+      "style": "normal",
+      "snippetMax": 200
+    },
+    "compact": {
+      "style": "compact",
+      "snippetMax": 200,
+      "maxFullResults": 3
+    },
+    "compact_aggressive": {
+      "style": "compact",
+      "snippetMax": 120,
+      "maxFullResults": 3
+    }
+  },
+  "summary": {
+    "successful_queries": 10,
+    "tokenizer": "gpt-tokenizer@3.4.0",
+    "average_tokens": {
+      "normal": 2122,
+      "compact": 1480.3,
+      "compact_aggressive": 1401.7
+    },
+    "savings_percent": {
+      "compact": 30.2,
+      "compact_aggressive": 33.9,
+      "waterfall_engine_calls": null
+    },
+    "average_engine_calls": null
+  },
+  "per_query": {
+    "normal": [
+      {
+        "id": "format-1",
+        "tokens": 1686
+      },
+      {
+        "id": "format-2",
+        "tokens": 1646
+      },
+      {
+        "id": "format-3",
+        "tokens": 1655
+      },
+      {
+        "id": "format-4",
+        "tokens": 1624
+      },
+      {
+        "id": "format-5",
+        "tokens": 1656
+      },
+      {
+        "id": "format-6",
+        "tokens": 2617
+      },
+      {
+        "id": "format-7",
+        "tokens": 2545
+      },
+      {
+        "id": "format-8",
+        "tokens": 2546
+      },
+      {
+        "id": "format-9",
+        "tokens": 2638
+      },
+      {
+        "id": "format-10",
+        "tokens": 2607
+      }
+    ],
+    "compact": [
+      {
+        "id": "format-1",
+        "tokens": 1297
+      },
+      {
+        "id": "format-2",
+        "tokens": 1257
+      },
+      {
+        "id": "format-3",
+        "tokens": 1273
+      },
+      {
+        "id": "format-4",
+        "tokens": 1249
+      },
+      {
+        "id": "format-5",
+        "tokens": 1267
+      },
+      {
+        "id": "format-6",
+        "tokens": 1710
+      },
+      {
+        "id": "format-7",
+        "tokens": 1666
+      },
+      {
+        "id": "format-8",
+        "tokens": 1667
+      },
+      {
+        "id": "format-9",
+        "tokens": 1717
+      },
+      {
+        "id": "format-10",
+        "tokens": 1700
+      }
+    ],
+    "compact_aggressive": [
+      {
+        "id": "format-1",
+        "tokens": 1276
+      },
+      {
+        "id": "format-2",
+        "tokens": 1221
+      },
+      {
+        "id": "format-3",
+        "tokens": 1249
+      },
+      {
+        "id": "format-4",
+        "tokens": 1222
+      },
+      {
+        "id": "format-5",
+        "tokens": 1240
+      },
+      {
+        "id": "format-6",
+        "tokens": 1578
+      },
+      {
+        "id": "format-7",
+        "tokens": 1540
+      },
+      {
+        "id": "format-8",
+        "tokens": 1541
+      },
+      {
+        "id": "format-9",
+        "tokens": 1582
+      },
+      {
+        "id": "format-10",
+        "tokens": 1568
+      }
+    ]
+  }
+}

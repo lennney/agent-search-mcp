@@ -12,13 +12,17 @@ tags:
 ## 项目状态
 
 **版本**: npm v3.1.3；main 含 v3.3.0 候选功能，尚未发布
-**引擎**: 12 个适配器；当前 `free_search`/CLI 统一路由 8 个
-**测试**: vitest — 498 passed, 43 test files
+**引擎**: 12 个适配器；`free_search`/`free_search_advanced`/CLI/瀑布模式已全部统一路由
+**测试**: vitest — 510 passed, 43 test files
 **最后更新**: 2026-07-25
 **npm**: https://www.npmjs.com/package/agent-search-mcp
 **Python 依赖**: 可选（DDG 自动回退到 cheerio HTML 引擎；语义层需 `pip install model2vec`）
 
 ## 最近活动
+
+- [2026-07-25] ✅ 统一 12 适配器路由，拆分 relevance/confidence/source_count 契约
+- [2026-07-25] ✅ Benchmark v3：真实执行遥测、冻结 fixture、锁定 tokenizer 与 CI 回归门禁
+- [2026-07-25] ✅ HTTP Bearer 认证 + Origin allowlist；无认证模式必须显式开启
 
 - [2026-07-25] ✅ Node 18 兼容：Cheerio 固定到 1.0.0；HTTP 关闭时主动清理 keep-alive 空闲连接
 - [2026-07-25] ✅ CI 分层：Node 18/20/22 各自 build/test；Node 22 独立执行 lint/typecheck，矩阵不再 fail-fast
@@ -42,16 +46,14 @@ tags:
 
 **下一阶段**:
 
-1. 统一 Wikipedia/Startpage/Yandex/Mojeek 在 MCP、CLI、瀑布模式中的路由（涉及 MCP enum，实施前确认兼容方案）
-2. Benchmark v3：冻结结果 fixture、真实 engine telemetry、进程内 tokenizer、人工相关性标签
-3. 将 confidence/relevance 与独立来源数拆分，修正 `min_confidence` 契约
-4. 合并加固分支后发布已重写的掘金文章和短帖素材
+1. 在稳定网络 runner 上捕获非空真实 fixture，并补人工相关性标签
+2. 在真实反向代理环境验收 Bearer 密钥轮换、Origin 策略和限流
+3. 合并加固分支后，按“Agent 搜索路由器”独特路线发布掘金文章和短帖素材
 
 ## 已知限制
 
 - **DDG HTML 限流**：POST 大量请求触发 HTTP 202，Python 路径不受此限制
 - **无分页**：所有引擎目前只返回第一页结果
-- **路由未完全统一**：12 个适配器中，Wikipedia/Startpage/Yandex/Mojeek 尚不能从所有 MCP/CLI 入口选择
-- **Benchmark 仅作探索**：历史 engine/token 节省比例缺少真实调用遥测与同源 fixture，不应作为发布保证
-- **HTTP 暴露面**：HTTP 模式尚未提供认证/Origin 校验；仅应绑定到受信网络或置于认证代理之后
-- **依赖审计**：`npm audit` 当前报告 4 项（1 high/1 low 均在 Vitest/Vite 开发链；2 moderate 来自 MCP SDK 的 Hono 传递依赖）。MCP SDK 项暂无非破坏性上游修复，不要为清零审计而降级协议栈。
+- **Benchmark 边界**：冻结 fixture 只验证格式和 token 回归，暂无人工相关性标签；历史精确数字必须带当时查询集/环境限定
+- **HTTP 部署**：已有 Bearer/Origin 防护，但生产环境仍需 TLS、密钥轮换和反向代理限流
+- **依赖审计**：本次安装报告 5 项（1 low / 2 moderate / 2 high）；当前 runner 访问 npm audit endpoint 被 EACCES 拦截，未能刷新 advisory 明细。不要为清零审计而盲目降级 MCP/测试协议栈。

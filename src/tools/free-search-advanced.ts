@@ -17,8 +17,10 @@ Not recommended for: Simple queries — use free_search instead.
       inputSchema: {
         query: z.string().describe('Search query'),
         count: z.number().optional().default(5).describe('Number of results (1-20)'),
-        min_confidence: z.number().min(1).max(3).optional().default(1)
-          .describe('Only return results verified by N+ sources'),
+        min_confidence: z.number().min(0).max(3).optional().default(0)
+          .describe('Minimum source-reliability confidence (0-1). Legacy values 2-3 are treated as min_source_count.'),
+        min_source_count: z.number().int().min(1).max(12).optional().default(1)
+          .describe('Minimum number of independent adapters that returned the result'),
         time_range: z.enum(['day', 'week', 'month', 'year']).optional()
           .describe('Filter by recency'),
         language: z.enum(['auto', 'en', 'zh']).optional().default('auto')
@@ -42,11 +44,13 @@ Not recommended for: Simple queries — use free_search instead.
     },
     async (input) => {
       try {
+        const legacySourceCount = input.min_confidence > 1 ? Math.ceil(input.min_confidence) : 1;
         const results = await searchWithFallback({
           query: input.query,
           count: input.count,
-          engines: ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily'],
-          minConfidence: input.min_confidence,
+          engines: ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom'],
+          minConfidence: input.min_confidence <= 1 ? input.min_confidence : 0,
+          minSourceCount: Math.max(input.min_source_count, legacySourceCount),
           language: input.language,
           includeDomains: input.include_domains,
           excludeDomains: input.exclude_domains,

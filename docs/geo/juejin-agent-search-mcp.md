@@ -1,8 +1,10 @@
-# 不想先注册搜索 API？我做了一个零密钥起步的 MCP 搜索服务器
+# 不只是搜索 API：我给 AI Agent 做了一个搜索路由器
 
-> `npx agent-search-mcp`，让 Claude Code、Cursor、Codex 等 MCP 客户端直接获得网页搜索、中文搜索、新闻和正文提取能力。
+> `npx agent-search-mcp`：零密钥起步，中文原生路由，多源证据可检查，按 token 预算渐进搜索，必要时再升级商业 API。
 
-很多 AI Agent 的搜索接入都从“注册账号、创建 API Key、绑定额度”开始。商业搜索服务在托管、深度研究和 Crawl/Map 上很强，但对于本地开发、中文资料检索和低门槛试用，我想要另一种选择：
+很多 AI Agent 的搜索接入都从“注册账号、创建 API Key、绑定额度”开始。但 Agent 真正缺的不只是一个能返回链接的 API，而是一个搜索控制层：去哪里搜、什么时候停、花多少上下文、哪些证据值得信。
+
+所以这个项目选的不是“再做一个 Tavily/Exa”，而是一条不同的路线：
 
 - 不注册账号也能开始搜索；
 - 能直接覆盖搜狗、百度等中文来源；
@@ -52,18 +54,20 @@ fasm extract "https://example.com"
 
 包内有 12 个搜索适配器，其中 8 个不需要凭证，4 个为可选商业 API。
 
-当前 `free_search` 和 CLI 已统一路由：
+当前 `free_search`、`free_search_advanced`、CLI 和瀑布模式已统一路由全部 12 个适配器：
 
 - DuckDuckGo
 - 搜狗
 - Bing
 - 百度
+- Wikipedia
+- Startpage
+- Yandex
+- Mojeek
 - Brave（可选 Key）
 - Tavily（可选 Key）
 - Exa（可选 Key）
 - You.com（可选 Key）
-
-Wikipedia、Startpage、Yandex、Mojeek 适配器已经在包内，但还没有在所有 MCP/CLI 入口统一开放。README 会明确区分“已有适配器”和“当前可选择路由”，避免把代码数量包装成用户能力。
 
 一次搜索会经过：
 
@@ -89,17 +93,17 @@ SNIPPET_LENGTH=160
 MIN_CONFIDENCE=0
 ```
 
-Compact 模式会完整展示前几个结果，其余结果只保留标题和 URL；Agent 需要时再调用 `free_extract`。这是可配置的产品能力，但当前 benchmark 仍是探索性基线，项目暂不把历史 token 百分比当成生产保证。
+Compact 模式会完整展示前几个结果，其余结果只保留标题和 URL；Agent 需要时再调用 `free_extract`。历史 30 查询真实运行实测 Compact 节省 28.7% token、Compact+ 节省 35.5%，瀑布调用数相比 8 引擎全并发少 75%。这些是当时查询集和环境的实测，不是生产保证。新的冻结 fixture + 锁定 tokenizer 回放可稳定验证 30.2% / 33.9% 的格式化节省。
 
 ## 可靠性和安全边界
 
 当前版本包含：
 
-- stdio 与 Streamable HTTP；
+- stdio 与 Streamable HTTP，HTTP 默认要求 Bearer Token 并校验浏览器 Origin；
 - MCP read-only / idempotent annotations；
 - 引擎限速、健康状态与熔断；
 - URL 安全检查和搜索内容注入标记；
-- 498 项 Vitest 测试；
+- 510 项 Vitest 测试；
 - Linux、macOS、Windows 通用构建脚本。
 
 最近还修复了两个容易被忽略的问题：
@@ -126,9 +130,9 @@ Compact 模式会完整展示前几个结果，其余结果只保留标题和 UR
 
 下一阶段会优先做三件事：
 
-1. 统一 12 个适配器在 MCP、CLI 和瀑布模式中的可达性；
-2. 重做 benchmark 遥测，让引擎调用数、停止阶段和 token 统计可复现；
-3. 修正 confidence 与“来源数量”的契约，避免把相关度分数写成验证次数。
+1. 给真实搜索 benchmark 增加人工相关性标签和稳定的网络 runner；
+2. 为 HTTP 部署补充反向代理、密钥轮换和部署指南；
+3. 继续用真实失败查询校准 relevance、confidence 和 `source_count`。
 
 项目地址：[github.com/lennney/agent-search-mcp](https://github.com/lennney/agent-search-mcp)
 

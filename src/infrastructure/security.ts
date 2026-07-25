@@ -189,6 +189,10 @@ export interface SecurityProcessedResult {
   url: string;
   snippet: string;
   confidence: number;
+  relevance: number;
+  source_count: number;
+  source: string;
+  engines?: string[];
   security: {
     injectionDetected: boolean;
     urlSafe: boolean;
@@ -206,6 +210,10 @@ export function processResultSecurity(result: {
   url: string;
   snippet: string;
   confidence: number;
+  relevance?: number;
+  source_count?: number;
+  source?: string;
+  engines?: string[];
 }): SecurityProcessedResult {
   // Check snippet for injection
   const injectionResult = checkSnippetInjection(result.snippet);
@@ -224,6 +232,10 @@ export function processResultSecurity(result: {
     url: result.url,
     snippet: injectionResult.clean ? result.snippet : injectionResult.snippet,
     confidence: result.confidence,
+    relevance: result.relevance ?? 0,
+    source_count: result.source_count ?? 1,
+    source: result.source ?? 'unknown',
+    engines: result.engines,
     security: {
       injectionDetected: allThreats.length > 0,
       urlSafe: urlResult.safe,

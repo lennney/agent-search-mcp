@@ -26,7 +26,7 @@ export interface CliArgs {
 }
 
 const VALID_COMMANDS = ['search', 'extract', 'serve'];
-const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom'];
+const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom'];
 
 export function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2); // skip node and script path
@@ -98,7 +98,7 @@ Usage:
 
 Search Options:
   --count <n>          Number of results (1-50, default: 10)
-  --engines <list>     Comma-separated engines (duckduckgo,sogou,bing,baidu,brave,tavily,exa,youcom)
+  --engines <list>     Comma-separated engines (all 12 adapters supported)
   --json               Output as JSON
   --proxy <url>        HTTP proxy URL (e.g., http://127.0.0.1:7890)
 
@@ -192,6 +192,8 @@ async function main(): Promise<void> {
       port,
       enableCors: config.enableCors,
       corsOrigin: config.corsOrigin,
+      allowedOrigins: config.allowedOrigins,
+      authToken: config.httpAuthToken,
     });
 
     await server.listen();

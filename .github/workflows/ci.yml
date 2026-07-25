@@ -54,6 +54,9 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      - name: Verify frozen benchmark fixture
+        run: npm run benchmark:verify
+
   windows-build:
     runs-on: windows-latest
 

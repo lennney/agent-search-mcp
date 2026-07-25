@@ -3,6 +3,9 @@ export interface Config {
   port: number;
   enableCors: boolean;
   corsOrigin: string;
+  allowedOrigins: string[];
+  httpAuthToken: string;
+  httpAllowUnauthenticated: boolean;
   useProxy: boolean;
   proxyUrl: string;
   defaultEngine: string;
@@ -15,6 +18,7 @@ export interface Config {
   snippetLength: number;
   maxFullResults: number;
   minConfidence: number;
+  minSourceCount: number;
   semanticDedup: boolean;
   dedupThreshold: number;
   dedupModel: string;
@@ -29,12 +33,20 @@ export function loadConfig(): Config {
   
   const rawPort = parseInt(process.env.PORT || '3000', 10);
   const port = Number.isFinite(rawPort) && rawPort > 0 ? rawPort : 3000;
+  const legacyMinConfidence = parseFloat(process.env.MIN_CONFIDENCE || '0') || 0;
+  const explicitMinSourceCount = parseInt(process.env.MIN_SOURCE_COUNT || '', 10);
   
   return {
     mode,
     port,
     enableCors: process.env.ENABLE_CORS === 'true',
     corsOrigin: process.env.CORS_ORIGIN || '*',
+    allowedOrigins: (process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGIN || '')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean),
+    httpAuthToken: process.env.HTTP_AUTH_TOKEN || '',
+    httpAllowUnauthenticated: process.env.HTTP_ALLOW_UNAUTHENTICATED === 'true',
     useProxy: process.env.USE_PROXY === 'true',
     proxyUrl: process.env.PROXY_URL || 'http://127.0.0.1:7890',
     defaultEngine: process.env.DEFAULT_ENGINE || 'duckduckgo',
@@ -52,7 +64,10 @@ export function loadConfig(): Config {
     outputStyle: process.env.OUTPUT_STYLE === 'compact' ? 'compact' : 'normal',
     snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
     maxFullResults: parseInt(process.env.MAX_FULL_RESULTS || '3', 10) || 3,
-    minConfidence: parseFloat(process.env.MIN_CONFIDENCE || '0') || 0,
+    minConfidence: legacyMinConfidence <= 1 ? Math.max(legacyMinConfidence, 0) : 0,
+    minSourceCount: Math.min(12, Number.isFinite(explicitMinSourceCount)
+      ? Math.max(explicitMinSourceCount, 1)
+      : legacyMinConfidence > 1 ? Math.ceil(legacyMinConfidence) : 1),
     semanticDedup: process.env.SEMANTIC_DEDUP === 'true',
     dedupThreshold: parseFloat(process.env.DEDUP_THRESHOLD || '0.85') || 0.85,
     dedupModel: process.env.DEDUP_MODEL || 'minishlab/M2V_base_output',

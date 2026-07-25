@@ -50,13 +50,16 @@ export function dedupByUrl(results: SearchResult[]): { results: SearchResult[]; 
     frequencies.set(key, (frequencies.get(key) || 0) + 1);
     
     if (!seen.has(key)) {
-      seen.set(key, r);
+      seen.set(key, { ...r, engines: [...new Set(r.engines || [r.source])] });
     } else {
       // From ddgs: keep the item with longer body (richer content)
       const existing = seen.get(key)!;
-      if ((r.snippet?.length || 0) > (existing.snippet?.length || 0)) {
-        seen.set(key, r);
-      }
+      const richer = (r.snippet?.length || 0) > (existing.snippet?.length || 0) ? r : existing;
+      const engines = [...new Set([
+        ...(existing.engines || [existing.source]),
+        ...(r.engines || [r.source]),
+      ].filter(Boolean))];
+      seen.set(key, { ...richer, engines });
     }
   }
   

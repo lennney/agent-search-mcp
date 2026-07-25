@@ -42,8 +42,8 @@ export function registerSearchWithSynthesis(server: McpServer) {
         const results: SynthesisResult[] = rawResults.map((r) => ({
           title: r.title,
           url: r.url,
-          snippet: r.snippet,
-          confidence: r.confidence,
+          snippet: r.snippet || '',
+          confidence: r.confidence ?? 0,
           source: engines[0] || 'unknown',
         }));
 

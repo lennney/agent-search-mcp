@@ -26,12 +26,17 @@ vi.mock('../../src/engines/tavily.js', () => ({
   TavilyProvider: vi.fn(() => ({ search: vi.fn() })),
 }));
 vi.mock('../../src/engines/exa.js', () => ({ searchExa: vi.fn() }));
+vi.mock('../../src/engines/youcom.js', () => ({ searchYouCom: vi.fn() }));
+vi.mock('../../src/engines/wikipedia.js', () => ({ searchWikipedia: vi.fn(async () => []) }));
+vi.mock('../../src/engines/startpage.js', () => ({ searchStartpage: vi.fn(async () => []) }));
+vi.mock('../../src/engines/yandex.js', () => ({ searchYandex: vi.fn(async () => []) }));
+vi.mock('../../src/engines/mojeek.js', () => ({ searchMojeek: vi.fn(async () => []) }));
 
 vi.mock('../../src/aggregation/index.js', () => ({
   dedupByUrl: vi.fn((r) => ({ results: r, frequencies: new Map() })),
   dedupByTitle: vi.fn((r) => r),
   filterLowQuality: vi.fn((r) => r),
-  scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 1, score: 0.5 }))),
+  scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 1, relevance: 0.5, source_count: 1, score: 0.5 }))),
   formatResults: vi.fn((r) => ({
     results: r,
     meta: { total: r.length, high_confidence: r.length, engines: [] },

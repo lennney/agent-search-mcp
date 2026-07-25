@@ -64,7 +64,13 @@ function getDomainBoost(url: string): number {
 }
 
 export interface ScoredResult extends SearchResult {
+  /** Source-reliability confidence, independent of query relevance (0-1). */
   confidence: number;
+  /** Query relevance score (0-1). */
+  relevance: number;
+  /** Number of independent adapters that returned this result. */
+  source_count: number;
+  /** @deprecated Use relevance. Retained for backward compatibility. */
   score: number;
 }
 
@@ -80,18 +86,23 @@ export function scoreAndRank(
 ): ScoredResult[] {
   const tokens = query.toLowerCase().split(/\W+/).filter(t => t.length >= 3);
   
-  // Calculate max possible weight for normalization
-  const maxWeightSum = Math.max(...Object.values(weights), 0.5) * Math.max(tokens.length, 1);
-  
   return results
     .map(r => {
       const normalizedUrl = normalizeUrl(r.url);
       const freq = frequencies?.get(normalizedUrl) || 1;
+      const engines = [...new Set((r.engines || [r.source]).filter(Boolean))];
+      // Frequency can include duplicate rows from one adapter; source_count is
+      // intentionally limited to distinct adapter provenance.
+      const sourceCount = Math.max(engines.length, 1);
+      const relevance = calculateRelevance(r, tokens, weights, freq);
       
       return {
         ...r,
-        confidence: calculateWeightedConfidence(r, weights, maxWeightSum),
-        score: calculateScore(r, tokens, weights, freq),
+        engines,
+        confidence: calculateWeightedConfidence(r, weights, sourceCount),
+        relevance,
+        source_count: sourceCount,
+        score: relevance,
       };
     })
     .sort((a, b) => {
@@ -103,8 +114,8 @@ export function scoreAndRank(
 }
 
 /**
- * Calculate weighted confidence score (0-1) based on engine weights.
- * Instead of raw engine count, uses sum of weights / max possible weight.
+ * Calculate confidence (0-1) from source reliability and corroboration only.
+ * Query-token matches intentionally do not affect this signal.
  * 
  * Example: Brave (0.95) + Exa (0.92) = (0.95+0.92)/max_possible
  *          vs Sogou (0.80) + Baidu (0.75) = (0.80+0.75)/max_possible
@@ -113,27 +124,16 @@ export function scoreAndRank(
 function calculateWeightedConfidence(
   result: SearchResult,
   weights: Record<string, number>,
-  maxWeightSum: number
+  sourceCount: number
 ): number {
-  const engines = result.engines || [];
+  const engines = [...new Set((result.engines || [result.source]).filter(Boolean))];
   if (engines.length === 0) {
-    // No engine info, use source weight as fallback
-    const sourceWeight = weights[result.source] || 0.5;
-    return sourceWeight * 0.5; // Lower confidence for unknown source
+    return 0.5;
   }
-  
-  // Sum weights for engines that returned this result
-  const weightSum = engines.reduce((sum, engine) => {
-    return sum + (weights[engine] || 0.5);
-  }, 0);
-  
-  // Normalize: divide by max possible weight sum (considering count)
-  const normalizedConfidence = Math.min(weightSum / (maxWeightSum * engines.length), 1.0);
-  
-  // Apply count bonus (more engines still matters, but with diminishing returns)
-  const countBonus = Math.min(engines.length * 0.1, 0.3);
-  
-  return Math.min(normalizedConfidence + countBonus, 1.0);
+
+  const reliability = engines.reduce((sum, engine) => sum + (weights[engine] || 0.5), 0) / engines.length;
+  const corroborationBonus = Math.min(Math.max(sourceCount - 1, 0) * 0.08, 0.2);
+  return Math.min(reliability + corroborationBonus, 1.0);
 }
 
 function normalizeUrl(url: string): string {
@@ -157,7 +157,7 @@ function normalizeUrl(url: string): string {
  * 
  * Then multiply by frequency bonus and engine weight.
  */
-function calculateScore(
+function calculateRelevance(
   result: SearchResult,
   tokens: string[],
   weights: Record<string, number>,

@@ -68,6 +68,9 @@
     "build": "tsc && node scripts/build.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "benchmark": "node benchmarks/run.mjs --fixture benchmarks/fixtures/format-regression.json",
+    "benchmark:capture": "npm run build && node benchmarks/run.mjs --capture benchmarks/fixtures/live-latest.json",
+    "benchmark:verify": "npm run build && node benchmarks/run.mjs --fixture benchmarks/fixtures/format-regression.json --check",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "watch": "tsc --watch",
@@ -91,6 +94,7 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "eslint": "^10.7.0",
+    "gpt-tokenizer": "3.4.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0",
     "vitest": "^3.1.3"
