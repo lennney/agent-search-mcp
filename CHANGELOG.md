@@ -17,6 +17,10 @@ tags:
   budgets. Full results now expose separate passage, publication, extraction,
   provenance, relevance, and corroboration signals while compact placeholders
   retain their source list.
+- Added a human-gated search-quality benchmark with hashed raw traces,
+  per-engine outcomes, graded ranking metrics, citation support, tokens per
+  correct answer, latency/failure dimensions, and slice reporting. Bootstrap
+  fixtures are explicitly ineligible for public quality claims.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the
@@ -53,6 +57,8 @@ tags:
 
 - Recorded the P1 evidence-packet contract and its reproducible 1200/600/360
   character benchmark scenarios.
+- Documented established search-evaluation methods and an optional,
+  dependency-free Slim Guard evidence handoff contract.
 
 - Added the Agent Search-only core evidence track to both active roadmaps;
   Slim Guard remains a separate, unchanged product in this implementation.

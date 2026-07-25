@@ -61,6 +61,19 @@ without adding a runtime dependency on the gateway.
 
 Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../evidence/2026-07-26-evidence-packets.md).
 
+## P2B - measurable search and optional middleware contract
+
+- [x] Preserve raw response hashes, per-engine outcomes, latency, and failures
+      in live benchmark captures.
+- [x] Add independent retrieval, citation, token-efficiency, latency, and
+      failure-transparency metrics with language/category/freshness slices.
+- [x] Prevent bootstrap fixtures from becoming public quality claims.
+- [x] Define and test an optional Slim Guard evidence handoff without adding a
+      runtime dependency.
+- [ ] Complete two-reviewer human judgments on a non-empty pooled capture.
+
+Evidence: [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../evidence/2026-07-26-p2-quality-pilot.md).
+
 ## P0 - credibility and compatibility
 
 - [x] Correct `search_with_synthesis` confidence semantics: confidence is 0-1,

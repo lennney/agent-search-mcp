@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lennney/agent-search-mcp/benchmarks/schemas/labeled-search-quality-v1.schema.json",
+  "title": "Agent Search labeled search quality fixture v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "labeling",
+    "samples"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "labeled-search-quality"
+    },
+    "labeling": {
+      "type": "object",
+      "required": [
+        "status",
+        "relevance_scale"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending-human",
+            "bootstrap",
+            "human-verified"
+          ]
+        },
+        "relevance_scale": {
+          "type": "object",
+          "required": [
+            "min",
+            "max",
+            "relevant_threshold"
+          ],
+          "properties": {
+            "min": {
+              "const": 0
+            },
+            "max": {
+              "const": 3
+            },
+            "relevant_threshold": {
+              "const": 2
+            }
+          }
+        },
+        "reviewers": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "human"
+              }
+            }
+          }
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "adjudication": {
+          "type": "object",
+          "required": [
+            "status",
+            "adjudicator_id"
+          ],
+          "properties": {
+            "status": {
+              "const": "completed"
+            },
+            "adjudicator_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "samples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "query",
+          "language",
+          "category",
+          "freshness",
+          "response",
+          "trace",
+          "labels"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "language": {
+            "type": "string",
+            "minLength": 2
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "freshness": {
+            "enum": [
+              "evergreen",
+              "dynamic",
+              "false-premise",
+              "unknown"
+            ]
+          },
+          "response": {
+            "type": "object",
+            "required": [
+              "results"
+            ],
+            "properties": {
+              "results": {
+                "type": "array"
+              },
+              "partialFailures": {
+                "type": "array"
+              }
+            }
+          },
+          "trace": {
+            "type": "object",
+            "required": [
+              "duration_ms",
+              "raw_response_sha256",
+              "engine_outcomes"
+            ],
+            "properties": {
+              "duration_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "raw_response_sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "engine_outcomes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "engine",
+                    "status"
+                  ],
+                  "properties": {
+                    "engine": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "enum": [
+                        "success",
+                        "skipped",
+                        "failed"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "labels": {
+            "type": "object",
+            "required": [
+              "answer_correct",
+              "results"
+            ],
+            "properties": {
+              "answer_correct": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "relevance",
+                    "citation_supported"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "relevance": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ],
+                      "minimum": 0,
+                      "maximum": 3
+                    },
+                    "citation_supported": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "reviews": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": [
+                "reviewer_id",
+                "answer_correct",
+                "results"
+              ],
+              "properties": {
+                "reviewer_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "answer_correct": {
+                  "type": "boolean"
+                },
+                "results": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "url",
+                      "relevance",
+                      "citation_supported"
+                    ],
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "format": "uri"
+                      },
+                      "relevance": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3
+                      },
+                      "citation_supported": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

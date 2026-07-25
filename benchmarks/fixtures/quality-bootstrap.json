@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "kind": "labeled-search-quality",
+  "description": "Synthetic bootstrap fixture for metric regression only. Labels are not human verified and cannot support a search-quality claim.",
+  "labeling": {
+    "status": "bootstrap",
+    "method": "deterministic metric regression seed",
+    "relevance_scale": {
+      "min": 0,
+      "max": 3,
+      "relevant_threshold": 2
+    }
+  },
+  "expected_summary": {
+    "evaluated_queries": 2,
+    "labeled_results": 4,
+    "label_status": "bootstrap",
+    "quality_claim_eligible": false,
+    "quality": {
+      "answer_accuracy_percent": 50,
+      "ndcg_at_5_percent": 81.5,
+      "precision_at_5_percent": 50,
+      "reciprocal_rank_at_5_percent": 75,
+      "success_at_5_percent": 100
+    },
+    "citation_support": {
+      "supported_relevant_results": 1,
+      "relevant_results": 2,
+      "rate_percent": 50
+    },
+    "token_efficiency": {
+      "total_response_tokens": 395,
+      "correct_answers": 1,
+      "tokens_per_correct_answer": 395
+    },
+    "latency": {
+      "average_ms": 2000,
+      "p50_ms": 1000,
+      "p95_ms": 3000
+    },
+    "failure_transparency": {
+      "expected_failures": 2,
+      "disclosed_failures": 1,
+      "undisclosed_failures": 1,
+      "disclosure_rate_percent": 50
+    },
+    "raw_trace_coverage_percent": 100
+  },
+  "samples": [
+    {
+      "id": "bootstrap-en-1",
+      "query": "alpha",
+      "language": "en",
+      "category": "factual",
+      "freshness": "evergreen",
+      "response": {
+        "query": "alpha",
+        "engines": [
+          "duckduckgo",
+          "bing"
+        ],
+        "results": [
+          {
+            "title": "Alpha answer",
+            "url": "https://benchmark.example/alpha",
+            "snippet": "Alpha is the first letter of the Greek alphabet.",
+            "confidence": 0.8,
+            "relevance": 0.95,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Unrelated background",
+            "url": "https://benchmark.example/background",
+            "snippet": "Background material unrelated to the query.",
+            "confidence": 0.6,
+            "relevance": 0.2,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 2,
+          "high_confidence": 1,
+          "engines": [
+            "duckduckgo"
+          ],
+          "execution": {
+            "mode": "waterfall",
+            "engine_calls": 2,
+            "searched_engines": [
+              "duckduckgo",
+              "bing"
+            ],
+            "phases_completed": [
+              "phase1"
+            ],
+            "early_stop": true
+          }
+        },
+        "security_note": "Synthetic bootstrap response.",
+        "partialFailures": [
+          {
+            "engine": "bing",
+            "type": "timeout",
+            "error": "synthetic timeout"
+          }
+        ]
+      },
+      "trace": {
+        "started_at": "2026-07-26T00:00:00.000Z",
+        "duration_ms": 1000,
+        "raw_response_sha256": "6621b4aaf6e46ecb5acd67eadf0f5582b1227acaf5cfd5bc06ad88f16bf9070b",
+        "engine_outcomes": [
+          {
+            "engine": "duckduckgo",
+            "status": "success"
+          },
+          {
+            "engine": "bing",
+            "status": "failed"
+          }
+        ]
+      },
+      "labels": {
+        "answer_correct": true,
+        "results": [
+          {
+            "url": "https://benchmark.example/alpha",
+            "relevance": 3,
+            "citation_supported": true
+          },
+          {
+            "url": "https://benchmark.example/background",
+            "relevance": 1,
+            "citation_supported": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "bootstrap-zh-1",
+      "query": "测试",
+      "language": "zh",
+      "category": "factual",
+      "freshness": "evergreen",
+      "response": {
+        "query": "测试",
+        "engines": [
+          "sogou",
+          "baidu"
+        ],
+        "results": [
+          {
+            "title": "无关结果",
+            "url": "https://benchmark.example/zh-background",
+            "snippet": "这段内容与查询无关。",
+            "confidence": 0.5,
+            "relevance": 0.1,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "相关结果",
+            "url": "https://benchmark.example/zh-relevant",
+            "snippet": "测试用于验证系统是否符合预期。",
+            "confidence": 0.75,
+            "relevance": 0.8,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 2,
+          "high_confidence": 0,
+          "engines": [
+            "sogou"
+          ],
+          "execution": {
+            "mode": "waterfall",
+            "engine_calls": 2,
+            "searched_engines": [
+              "sogou",
+              "baidu"
+            ],
+            "phases_completed": [
+              "phase1"
+            ],
+            "early_stop": false
+          }
+        },
+        "security_note": "Synthetic bootstrap response.",
+        "partialFailures": []
+      },
+      "trace": {
+        "started_at": "2026-07-26T00:00:00.000Z",
+        "duration_ms": 3000,
+        "raw_response_sha256": "a3ca794cc4f87ba8ac656e86ae6c0db37012e998e591984baa85e68e462155b7",
+        "engine_outcomes": [
+          {
+            "engine": "sogou",
+            "status": "success"
+          },
+          {
+            "engine": "baidu",
+            "status": "failed"
+          }
+        ]
+      },
+      "labels": {
+        "answer_correct": false,
+        "results": [
+          {
+            "url": "https://benchmark.example/zh-background",
+            "relevance": 0,
+            "citation_supported": false
+          },
+          {
+            "url": "https://benchmark.example/zh-relevant",
+            "relevance": 2,
+            "citation_supported": false
+          }
+        ]
+      }
+    }
+  ]
+}

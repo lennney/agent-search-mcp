@@ -1,6 +1,7 @@
 # Benchmarks
 
-Agent Search MCP keeps two complementary evidence tracks: a historical live-search measurement and a deterministic formatting regression benchmark.
+Agent Search MCP keeps three evidence tracks: historical live measurements,
+deterministic formatting regression, and a human-gated search-quality pipeline.
 
 ## Historical live result (2026-07-24)
 
@@ -48,13 +49,50 @@ Live capture records searched engines, calls, completed phases, early stop, raw 
 node benchmarks/run.mjs --fixture benchmarks/fixtures/live-latest.json
 ```
 
+## Human-gated search quality
+
+Live capture now preserves a response SHA-256, per-engine outcomes, latency,
+and disclosed failures. Prepare a label file without inventing judgments:
+
+```bash
+node benchmarks/quality.mjs \
+  --prepare-capture benchmarks/fixtures/live-latest.json \
+  --output benchmarks/fixtures/live-latest-labels.pending.json
+```
+
+Two people must review a non-empty pooled capture before its status can become
+`human-verified`. The evaluator reports graded nDCG@5, Precision@5, reciprocal
+rank@5, Success@5, answer correctness, citation support, tokens per correct
+answer, latency, trace coverage, and failure disclosure. Language, category,
+and freshness slices are emitted in JSON reports.
+
+```bash
+# Metric-code regression only; bootstrap data is not a quality claim
+npm run benchmark:quality:verify
+
+# Human gate for a completed fixture
+node benchmarks/quality.mjs \
+  --fixture benchmarks/fixtures/quality-human.json \
+  --require-human \
+  --output benchmarks/reports/quality-human.json
+```
+
+The 2026-07-26 real-network pilot returned zero results for both queries. It is
+retained as failure-transparency evidence rather than excluded to improve the
+headline number.
+
 ## Contents
 
 | File | Description |
 |------|-------------|
 | [`queries.json`](./queries.json) | 30 bilingual live-search queries |
 | [`run.mjs`](./run.mjs) | Current capture/replay runner |
+| [`quality.mjs`](./quality.mjs) | Label preparation and quality evaluator |
+| [`lib/quality-metrics.mjs`](./lib/quality-metrics.mjs) | Trace, validation, and independent metrics |
 | [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
+| [`fixtures/quality-bootstrap.json`](./fixtures/quality-bootstrap.json) | Synthetic metric regression; never quality evidence |
+| [`fixtures/live-p2-pilot.json`](./fixtures/live-p2-pilot.json) | Real zero-result failure pilot with raw traces |
+| [`schemas/labeled-search-quality-v1.schema.json`](./schemas/labeled-search-quality-v1.schema.json) | Label/trace schema |
 | [`methodology.md`](./methodology.md) | Evidence model and limitations |
 | [`run.cjs`](./run.cjs) | Legacy historical runner |
 | [`reports/`](./reports) | Historical and replay reports |

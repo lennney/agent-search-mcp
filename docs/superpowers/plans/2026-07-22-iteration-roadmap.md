@@ -667,9 +667,18 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 ### P2 - measurable ecosystem contract
 
 - [ ] Add benchmark datasets with human relevance labels and raw traces.
-- [ ] Measure quality, citation support, tokens per correct answer, latency, and
+  - [x] Capture raw response hashes, engine outcomes, latency, and failures.
+  - [x] Generate a pending label template without synthetic human claims.
+  - [ ] Complete two-reviewer human labels on a non-empty pooled capture.
+- [x] Measure quality, citation support, tokens per correct answer, latency, and
       failure transparency as separate dimensions.
-- [ ] Define an optional Slim Guard integration contract without making direct
+- [x] Define an optional Slim Guard integration contract without making direct
       Agent Search installation depend on the gateway.
+
+Evidence:
+
+- [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../../evidence/2026-07-26-p2-quality-pilot.md)
+- [`docs/research/2026-07-26-search-quality-evaluation.md`](../../research/2026-07-26-search-quality-evaluation.md)
+- [`docs/contracts/slim-guard-evidence-handoff-v1.md`](../../contracts/slim-guard-evidence-handoff-v1.md)
 
 ---

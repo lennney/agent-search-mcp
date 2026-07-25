@@ -275,7 +275,7 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 
 ## Benchmark
 
-The benchmark has two evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. Its raw responses were not frozen, so those figures remain historical environment-scoped measurements. The current runner captures actual execution telemetry and replays a frozen fixture through every output style with locked `gpt-tokenizer`; CI verifies the evidence-packet summary (currently 28.4% / 30.4%). Neither track is a cross-product quality ranking or a production guarantee.
+The benchmark has three evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. The frozen formatting replay verifies the evidence-packet summary (currently 28.4% / 30.4%). A new human-gated pipeline preserves raw response hashes and engine outcomes, then reports graded retrieval, citation support, tokens per correct answer, latency, and failure transparency separately. Bootstrap labels are explicitly ineligible for public quality claims; the checked-in real pilot is still pending human review. None of these tracks is a universal production guarantee.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

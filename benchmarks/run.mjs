@@ -4,6 +4,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { encode } from 'gpt-tokenizer';
 
+import { buildCaptureTrace } from './lib/quality-metrics.mjs';
+
 const ROOT = resolve(import.meta.dirname, '..');
 const ALL_ENGINES = [
   'duckduckgo', 'sogou', 'bing', 'baidu',
@@ -82,7 +84,8 @@ async function capture(fixturePath) {
     const item = typeof queries[index] === 'string' ? { query: queries[index] } : queries[index];
     const query = item.query || item.q;
     if (!query) throw new Error(`Query ${index + 1} has no query/q field`);
-    const startedAt = Date.now();
+    const startedAt = new Date().toISOString();
+    const startedAtMs = Date.now();
     try {
       const response = await searchWithFallback({
         query,
@@ -94,12 +97,20 @@ async function capture(fixturePath) {
         enrich: false,
         expandQueries: false,
       });
+      const durationMs = Date.now() - startedAtMs;
       samples.push({
         id: item.id || `q${index + 1}`,
         query,
         language: item.language || item.lang || 'unknown',
-        duration_ms: Date.now() - startedAt,
+        category: item.category || item.type || 'unknown',
+        freshness: item.freshness || (item.type === 'news' ? 'dynamic' : 'evergreen'),
+        duration_ms: durationMs,
         response,
+        trace: buildCaptureTrace(response, {
+          durationMs,
+          requestedEngines: ALL_ENGINES,
+          startedAt,
+        }),
       });
       console.log(`[${index + 1}/${queries.length}] ${query} — ${response.results.length} results, ${response.meta.execution?.engine_calls ?? 0} calls`);
     } catch (error) {
@@ -107,7 +118,9 @@ async function capture(fixturePath) {
         id: item.id || `q${index + 1}`,
         query,
         language: item.language || item.lang || 'unknown',
-        duration_ms: Date.now() - startedAt,
+        category: item.category || item.type || 'unknown',
+        freshness: item.freshness || (item.type === 'news' ? 'dynamic' : 'evergreen'),
+        duration_ms: Date.now() - startedAtMs,
         error: error instanceof Error ? error.message : String(error),
       });
       console.error(`[${index + 1}/${queries.length}] ${query} — failed`);

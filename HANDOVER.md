@@ -8,6 +8,24 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 P2 search-quality benchmark handover
+
+- Live captures now preserve raw response hashes, latency, requested-engine
+  outcomes, and disclosed failures.
+- Added a pending-human label workflow and strict `human-verified` gate with
+  two distinct human reviewers.
+- Quality reports separate graded retrieval, answer correctness, citation
+  support, token efficiency, latency, trace coverage, and failure transparency;
+  they also include language/category/freshness slices.
+- The bootstrap fixture only verifies metric code and sets
+  `quality_claim_eligible: false`.
+- The real two-query pilot returned zero results after eight zero-key calls per
+  query. It remains checked in as failure evidence; do not promote it as search
+  quality.
+- Added the optional Slim Guard evidence handoff schema and validator without
+  modifying Slim Guard or adding a runtime dependency.
+- Remaining gate: non-empty pooled capture plus two-reviewer judgments.
+
 ## 2026-07-26 P1 query-aware evidence handover
 
 - Scope remains Agent Search only; Slim Guard was not modified.
