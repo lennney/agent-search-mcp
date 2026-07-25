@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { searchDuckDuckGo, isDdgsAvailable } from '../engines/duckduckgo.js';
+import { searchDuckDuckGo } from '../engines/duckduckgo.js';
 import { searchSogou } from '../engines/sogou.js';
 import { searchBing } from '../engines/bing.js';
 import { searchBaidu } from '../engines/baidu.js';
@@ -8,6 +8,10 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import { searchYouCom } from '../engines/youcom.js';
+import { searchWikipedia } from '../engines/wikipedia.js';
+import { searchStartpage } from '../engines/startpage.js';
+import { searchYandex } from '../engines/yandex.js';
+import { searchMojeek } from '../engines/mojeek.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 // ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
@@ -15,8 +19,7 @@ import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults
 import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
 
-const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom'];
-const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu'];
+const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
 const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
 
 // Engine weights (higher = more trusted)
@@ -25,6 +28,10 @@ const ENGINE_WEIGHTS: Record<string, number> = {
   sogou: 0.8,
   bing: 0.9,
   baidu: 0.75,
+  wikipedia: 0.93,
+  startpage: 0.86,
+  yandex: 0.82,
+  mojeek: 0.8,
   brave: 0.95,
   tavily: 0.9,
   exa: 0.92,
@@ -46,6 +53,10 @@ const PROVIDER_MAP: Record<string, string> = {
   sogou: 'sogou',
   bing: 'bing',
   baidu: 'baidu',
+  wikipedia: 'wikipedia',
+  startpage: 'startpage',
+  yandex: 'yandex',
+  mojeek: 'mojeek',
   brave: 'brave',
   tavily: 'tavily',
   exa: 'exa',
@@ -95,12 +106,6 @@ async function searchEngine(
   // Rate limit before making the request
   await rateLimiter.waitForSlot(engine);
 
-  // DDG-specific: throw early if ddgs is not available, so Promise.allSettled
-  // records it as a rejection → partialFailures gets the correct engine name
-  if (engine === 'duckduckgo' && !isDdgsAvailable()) {
-    throw new Error('DuckDuckGo unavailable: Python ddgs library not installed. Install with: pip install ddgs');
-  }
-
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -119,6 +124,18 @@ async function searchEngine(
           break;
         case 'baidu':
           results = await searchBaidu(query, limit);
+          break;
+        case 'wikipedia':
+          results = await searchWikipedia(query, limit);
+          break;
+        case 'startpage':
+          results = await searchStartpage(query, limit);
+          break;
+        case 'yandex':
+          results = await searchYandex(query, limit);
+          break;
+        case 'mojeek':
+          results = await searchMojeek(query, limit);
           break;
         case 'brave':
           results = await new BraveProvider().search(query, limit);
@@ -226,8 +243,9 @@ function hasApiKey(engine: SearchProvider): boolean {
     case 'exa':
       return !!process.env.EXA_API_KEY;
     case 'youcom':
+      return !!process.env.YDC_API_KEY;
     default:
-      return true; // free engines always available
+      return true; // zero-key engines are always eligible
   }
 }
 
@@ -237,6 +255,7 @@ export interface SearchWithFallbackOptions {
   count?: number;
   engines?: SearchProvider[];
   minConfidence?: number;
+  minSourceCount?: number;
   language?: string;
   includeDomains?: string[];
   excludeDomains?: string[];
@@ -246,13 +265,18 @@ export interface SearchWithFallbackOptions {
   enrich?: boolean;
   enrichMax?: number;
   enrichMinConfidence?: number;
+  /** Disable query-expansion recursion for deterministic benchmark capture. */
+  expandQueries?: boolean;
 }
 
 interface FormattedResult {
   title: string;
   url: string;
-  snippet: string;
-  confidence: number;
+  snippet?: string;
+  confidence?: number;
+  relevance?: number;
+  source_count?: number;
+  sources?: string[];
   security?: {
     injection_detected: boolean;
     url_safe: boolean;
@@ -269,6 +293,13 @@ interface SearchResponse {
     total: number;
     high_confidence: number;
     engines: string[];
+    execution?: {
+      mode: 'parallel' | 'waterfall';
+      engine_calls: number;
+      searched_engines: string[];
+      phases_completed: string[];
+      early_stop: boolean;
+    };
   };
   security_note: string;
   detected_language?: string;
@@ -285,9 +316,29 @@ const pendingRequests = new Map<string, Promise<SearchResponse>>();
  * Generate cache key for request collapsing.
  */
 function makeCollapseKey(options: SearchWithFallbackOptions): string {
-  const { query, count = 10, engines = [] } = options;
-  const sortedEngines = [...engines].sort().join(',');
-  return `${query}:${count}:${sortedEngines}`;
+  const {
+    query, count = 10, engines = [], minConfidence = 0, minSourceCount = 1,
+    language = 'auto', includeDomains = [], excludeDomains = [], waterfall = false,
+    waterfallMinResults = 3, waterfallMinConfidence = 0.6,
+    enrich = false, enrichMax, enrichMinConfidence, expandQueries = true,
+  } = options;
+  return JSON.stringify({
+    query,
+    count,
+    engines: [...engines].sort(),
+    minConfidence,
+    minSourceCount,
+    language,
+    includeDomains: [...includeDomains].sort(),
+    excludeDomains: [...excludeDomains].sort(),
+    waterfall,
+    waterfallMinResults,
+    waterfallMinConfidence,
+    enrich,
+    enrichMax,
+    enrichMinConfidence,
+    expandQueries,
+  });
 }
 
 // ─── Core search logic (fused patterns from ddgs) ──────────────────────
@@ -368,7 +419,8 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     query,
     count = 10,
     engines: userEngines = ['duckduckgo', 'sogou'] as SearchProvider[],
-    minConfidence = 1,
+    minConfidence = 0,
+    minSourceCount = 1,
     language,
     includeDomains,
     excludeDomains,
@@ -378,7 +430,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
 
   // Check cache first
-  const cacheKey = cache.makeKey(query, count, userEngines);
+  const cacheKey = cache.makeKey(makeCollapseKey(options), count, userEngines);
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
@@ -397,6 +449,9 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const freeToSearch = uniqueEngines.filter(e => FREE_ENGINES.includes(e));
   const allFree = FREE_ENGINES.filter(e => !uniqueEngines.includes(e));
   const phase1Engines = [...freeToSearch, ...allFree];
+  const paidToSearch = uniqueEngines.filter(
+    e => PAID_ENGINES.includes(e) && hasApiKey(e)
+  );
 
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
   const BATCH_SIZE = calculateAdaptiveConcurrency(phase1Engines, count);
@@ -411,8 +466,8 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     const batch = phase1Engines.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.allSettled(
       batch.map(async (engine) => {
-        const results = await searchEngine(engine, query, count);
         searchedEngines.push(engine);
+        const results = await searchEngine(engine, query, count);
         return { engine, results };
       })
     );
@@ -439,18 +494,14 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
 
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
   if (allResults.length < count) {
-    const paidToSearch = uniqueEngines.filter(
-      e => PAID_ENGINES.includes(e) && hasApiKey(e)
-    );
-
     if (paidToSearch.length > 0) {
       const remaining = Math.max(count - allResults.length, 1);
       logger.info({ engines: paidToSearch, remaining }, 'Phase 2: paid engines');
 
       const phase2Results = await Promise.allSettled(
         paidToSearch.map(async (engine) => {
-          const results = await searchEngine(engine, query, remaining);
           searchedEngines.push(engine);
+          const results = await searchEngine(engine, query, remaining);
           return { engine, results };
         })
       );
@@ -488,7 +539,7 @@ failures.push(
 
   // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
   const { formatted } = await applyPostProcessing(
-    scored, query, minConfidence,
+    scored, query, minConfidence, minSourceCount,
     includeDomains, excludeDomains,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
   );
@@ -496,8 +547,17 @@ failures.push(
   const response: SearchResponse = {
     query,
     engines: userEngines,
-    results: formatted.results as any,
-    meta: formatted.meta,
+    results: formatted.results,
+    meta: {
+      ...formatted.meta,
+      execution: {
+        mode: 'parallel',
+        engine_calls: searchedEngines.length,
+        searched_engines: [...searchedEngines],
+        phases_completed: searchedEngines.length > 0 ? ['free', ...(searchedEngines.some(e => PAID_ENGINES.includes(e as SearchProvider)) ? ['optional'] : [])] : [],
+        early_stop: searchedEngines.length < phase1Engines.length + paidToSearch.length,
+      },
+    },
     security_note: formatted.security_note,
     detected_language: detectedLang,
     ...(config.outputStyle !== 'compact' ? {
@@ -532,6 +592,7 @@ async function applyPostProcessing(
   scored: ScoredResult[],
   query: string,
   minConfidence: number,
+  minSourceCount: number,
   includeDomains: string[] | undefined,
   excludeDomains: string[] | undefined,
   enrich: boolean | undefined,
@@ -556,8 +617,11 @@ async function applyPostProcessing(
   }
 
   // Post-search filters
-  if (minConfidence > 1) {
+  if (minConfidence > 0) {
     scored = scored.filter(r => r.confidence >= minConfidence);
+  }
+  if (minSourceCount > 1) {
+    scored = scored.filter(r => r.source_count >= minSourceCount);
   }
 
   if (includeDomains && includeDomains.length > 0) {
@@ -600,6 +664,7 @@ async function applyPostProcessing(
     snippetMax: config.snippetLength,
     maxFullResults: config.maxFullResults,
     minConfidence: config.minConfidence,
+    minSourceCount: config.minSourceCount,
   };
   const formatted = formatResults(scored, fmtOptions);
 
@@ -609,7 +674,8 @@ async function applyPostProcessing(
 const WATERFALL_PHASES = {
   phase1a: ["duckduckgo", "sogou"],
   phase1b: ["bing", "baidu"],
-  phase2: ["brave", "tavily", "exa"],
+  phase1c: ["wikipedia", "startpage", "yandex", "mojeek"],
+  phase2: ["brave", "tavily", "exa", "youcom"],
 } as const;
 
 async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth: number = 0): Promise<SearchResponse> {
@@ -631,7 +697,8 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     language,
     includeDomains,
     excludeDomains,
-    minConfidence = 1,
+    minConfidence = 0,
+    minSourceCount = 1,
     waterfallMinResults = 3,
     waterfallMinConfidence = 0.6,
   } = options;
@@ -642,16 +709,18 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   const allResults: SearchResult[] = [];
   const allFailures: EngineError[] = [];
   const searchedEngines: string[] = [];
+  const phasesCompleted: string[] = [];
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
+    phasesCompleted.push(phaseLabel);
     const batchSize = calculateAdaptiveConcurrency(engines, count);
 
     for (let i = 0; i < engines.length; i += batchSize) {
       const batch = engines.slice(i, i + batchSize);
       const batchResults = await Promise.allSettled(
         batch.map(async (engine) => {
-          const results = await searchEngine(engine, query, count);
           searchedEngines.push(engine);
+          const results = await searchEngine(engine, query, count);
           return { engine, results };
         })
       );
@@ -709,19 +778,27 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   if (!basketFull) {
     basketFull = await searchBatch([...WATERFALL_PHASES.phase1b] as SearchProvider[], "1b");
     if (basketFull) {
-      logger.info("Phase 1b satisfied — skipping Phase 2");
+      logger.info("Phase 1b satisfied — skipping remaining phases");
+    }
+  }
+
+  if (!basketFull) {
+    basketFull = await searchBatch([...WATERFALL_PHASES.phase1c] as SearchProvider[], "1c");
+    if (basketFull) {
+      logger.info("Phase 1c satisfied — skipping Phase 2");
     }
   }
 
   if (!basketFull) {
     const paidAvailable = WATERFALL_PHASES.phase2.filter((e) => hasApiKey(e as SearchProvider));
     if (paidAvailable.length > 0) {
+      phasesCompleted.push('2');
       logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");
       const paidResults = await Promise.allSettled(
         paidAvailable.map(async (engine) => {
           const remaining = Math.max(count - allResults.length, 1);
-          const results = await searchEngine(engine as SearchProvider, query, remaining);
           searchedEngines.push(engine);
+          const results = await searchEngine(engine as SearchProvider, query, remaining);
           return { engine, results };
         })
       );
@@ -741,7 +818,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   }
 
   // ── Phase 3: Query Expansion (if confidence still low) ──────────
-  if (!basketFull) {
+  if (!basketFull && options.expandQueries !== false) {
     // 3a: Chinese query optimization — try character variants first
     let alternatives: string[] = [];
     if (hasChinese(query)) {
@@ -756,6 +833,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
       alternatives = expandQuery(query);
     }
     if (alternatives.length > 0) {
+      phasesCompleted.push('3');
       logger.info({ alternatives }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
         const altSearch = await executeWaterfallSearch({
@@ -764,12 +842,16 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
           waterfall: true,
           enrich: false,
         }, depth + 1);
+        const altExecution = altSearch.meta.execution;
+        if (altExecution) {
+          searchedEngines.push(...altExecution.searched_engines);
+        }
         if (altSearch.results && altSearch.results.length > 0) {
           for (const r of altSearch.results) {
             allResults.push({
               title: r.title,
               url: r.url,
-              snippet: r.snippet,
+              snippet: r.snippet || '',
               source: "expanded",
               engines: altSearch.meta?.engines || [],
             });
@@ -787,7 +869,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
 
   // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
   const { formatted } = await applyPostProcessing(
-    scored, query, minConfidence,
+    scored, query, minConfidence, minSourceCount,
     includeDomains, excludeDomains,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
   );
@@ -796,6 +878,16 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     query,
     engines: searchedEngines,
     ...formatted,
+    meta: {
+      ...formatted.meta,
+      execution: {
+        mode: 'waterfall',
+        engine_calls: searchedEngines.length,
+        searched_engines: [...searchedEngines],
+        phases_completed: phasesCompleted,
+        early_stop: basketFull,
+      },
+    },
     detected_language: detectedLang,
     ...(config.outputStyle !== 'compact' ? { rate_limits: rateLimiter.getAllRateLimits(searchedEngines) } : {}),
     ...(allFailures.length > 0 ? { partialFailures: allFailures } : {}),
@@ -826,16 +918,16 @@ export function setupFreeSearchTool(server: McpServer): void {
         'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
         'Not recommended for: Filtered or verified-only results — use free_search_advanced. ' +
         'For full page content — use free_extract.\n\n' +
-        'Phase 1: DuckDuckGo + Sogou + Bing + Baidu (free, no key required).\n' +
-        'Phase 2: Brave + Tavily + Exa (paid, requires BRAVE_API_KEY / TAVILY_API_KEY / EXA_API_KEY env vars).\n' +
-        'Results are deduplicated, scored by confidence (1-3), and include security metadata.\n\n' +
+        'Phase 1: 8 zero-key adapters (DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek).\n' +
+        'Phase 2: Brave + Tavily + Exa + You.com (optional API keys).\n' +
+        'Results are deduplicated and include separate confidence, relevance, and source-count signals.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
         'Injection detection and SSRF protection active.',
       inputSchema: {
         query: z.string().min(1, 'Search query must not be empty')
           .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese queries, Sogou and Baidu are used automatically.'),
         limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
-        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom']))
+        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom']))
           .min(1)
           .default(['duckduckgo', 'sogou'])
           .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +

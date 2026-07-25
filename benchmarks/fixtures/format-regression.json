@@ -1,0 +1,1467 @@
+{
+  "schema_version": 1,
+  "kind": "format-regression",
+  "captured_at": "2026-07-25T03:59:16.404Z",
+  "package_version": "3.1.3",
+  "query_set_sha256": "a65ec4034ca5eece226956d41f9b2642519c5685279616b9a5291ab709b6e08a",
+  "tokenizer": "gpt-tokenizer@3.4.0",
+  "zero_key_engine_baseline": 8,
+  "naive_engine_baseline": 8,
+  "samples": [
+    {
+      "id": "format-1",
+      "query": "latest AI news 2026",
+      "language": "en",
+      "duration_ms": 0,
+      "response": {
+        "query": "latest AI news 2026",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "latest AI news 2026 — Reference result 1",
+            "url": "https://benchmark.example/1/1",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1.",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 2",
+            "url": "https://benchmark.example/1/2",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2.",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 3",
+            "url": "https://benchmark.example/1/3",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3.",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 4",
+            "url": "https://benchmark.example/1/4",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4.",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 5",
+            "url": "https://benchmark.example/1/5",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5.",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 6",
+            "url": "https://benchmark.example/1/6",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6.",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 7",
+            "url": "https://benchmark.example/1/7",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7.",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 8",
+            "url": "https://benchmark.example/1/8",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8.",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 9",
+            "url": "https://benchmark.example/1/9",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9.",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "latest AI news 2026 — Reference result 10",
+            "url": "https://benchmark.example/1/10",
+            "snippet": "Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10. Frozen benchmark summary about “latest AI news 2026”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10.",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-2",
+      "query": "TypeScript vs Rust performance comparison",
+      "language": "en",
+      "duration_ms": 0,
+      "response": {
+        "query": "TypeScript vs Rust performance comparison",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 1",
+            "url": "https://benchmark.example/2/1",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1.",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 2",
+            "url": "https://benchmark.example/2/2",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2.",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 3",
+            "url": "https://benchmark.example/2/3",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3.",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 4",
+            "url": "https://benchmark.example/2/4",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4.",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 5",
+            "url": "https://benchmark.example/2/5",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5.",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 6",
+            "url": "https://benchmark.example/2/6",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6.",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 7",
+            "url": "https://benchmark.example/2/7",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7.",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 8",
+            "url": "https://benchmark.example/2/8",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8.",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 9",
+            "url": "https://benchmark.example/2/9",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9.",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "TypeScript vs Rust performance comparison — Reference result 10",
+            "url": "https://benchmark.example/2/10",
+            "snippet": "Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10. Frozen benchmark summary about “TypeScript vs Rust performance comparison”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10.",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-3",
+      "query": "MCP server best practices",
+      "language": "en",
+      "duration_ms": 0,
+      "response": {
+        "query": "MCP server best practices",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "MCP server best practices — Reference result 1",
+            "url": "https://benchmark.example/3/1",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1.",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 2",
+            "url": "https://benchmark.example/3/2",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2.",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 3",
+            "url": "https://benchmark.example/3/3",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3.",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 4",
+            "url": "https://benchmark.example/3/4",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4.",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 5",
+            "url": "https://benchmark.example/3/5",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5.",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 6",
+            "url": "https://benchmark.example/3/6",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6.",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 7",
+            "url": "https://benchmark.example/3/7",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7.",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 8",
+            "url": "https://benchmark.example/3/8",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8.",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 9",
+            "url": "https://benchmark.example/3/9",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9.",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "MCP server best practices — Reference result 10",
+            "url": "https://benchmark.example/3/10",
+            "snippet": "Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10. Frozen benchmark summary about “MCP server best practices”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10.",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-4",
+      "query": "Python async await tutorial",
+      "language": "en",
+      "duration_ms": 0,
+      "response": {
+        "query": "Python async await tutorial",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "Python async await tutorial — Reference result 1",
+            "url": "https://benchmark.example/4/1",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1.",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 2",
+            "url": "https://benchmark.example/4/2",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2.",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 3",
+            "url": "https://benchmark.example/4/3",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3.",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 4",
+            "url": "https://benchmark.example/4/4",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4.",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 5",
+            "url": "https://benchmark.example/4/5",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5.",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 6",
+            "url": "https://benchmark.example/4/6",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6.",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 7",
+            "url": "https://benchmark.example/4/7",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7.",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 8",
+            "url": "https://benchmark.example/4/8",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8.",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 9",
+            "url": "https://benchmark.example/4/9",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9.",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Python async await tutorial — Reference result 10",
+            "url": "https://benchmark.example/4/10",
+            "snippet": "Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10. Frozen benchmark summary about “Python async await tutorial”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10.",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-5",
+      "query": "Next.js 15 server components",
+      "language": "en",
+      "duration_ms": 0,
+      "response": {
+        "query": "Next.js 15 server components",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "Next.js 15 server components — Reference result 1",
+            "url": "https://benchmark.example/5/1",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 1.",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 2",
+            "url": "https://benchmark.example/5/2",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 2.",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 3",
+            "url": "https://benchmark.example/5/3",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 3.",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 4",
+            "url": "https://benchmark.example/5/4",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 4.",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 5",
+            "url": "https://benchmark.example/5/5",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 5.",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 6",
+            "url": "https://benchmark.example/5/6",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 6.",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 7",
+            "url": "https://benchmark.example/5/7",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 7.",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 8",
+            "url": "https://benchmark.example/5/8",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 8.",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 9",
+            "url": "https://benchmark.example/5/9",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 9.",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Next.js 15 server components — Reference result 10",
+            "url": "https://benchmark.example/5/10",
+            "snippet": "Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10. Frozen benchmark summary about “Next.js 15 server components”, used to verify progressive disclosure, field semantics, and token counts across environments. Result 10.",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-6",
+      "query": "2026年人工智能发展趋势",
+      "language": "zh",
+      "duration_ms": 0,
+      "response": {
+        "query": "2026年人工智能发展趋势",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 1",
+            "url": "https://benchmark.example/6/1",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 2",
+            "url": "https://benchmark.example/6/2",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 3",
+            "url": "https://benchmark.example/6/3",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 4",
+            "url": "https://benchmark.example/6/4",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 5",
+            "url": "https://benchmark.example/6/5",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 6",
+            "url": "https://benchmark.example/6/6",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 7",
+            "url": "https://benchmark.example/6/7",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 8",
+            "url": "https://benchmark.example/6/8",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 9",
+            "url": "https://benchmark.example/6/9",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "2026年人工智能发展趋势 — 参考结果 10",
+            "url": "https://benchmark.example/6/10",
+            "snippet": "这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。 这是关于“2026年人工智能发展趋势”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-7",
+      "query": "TypeScript 最佳实践",
+      "language": "zh",
+      "duration_ms": 0,
+      "response": {
+        "query": "TypeScript 最佳实践",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 1",
+            "url": "https://benchmark.example/7/1",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 2",
+            "url": "https://benchmark.example/7/2",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 3",
+            "url": "https://benchmark.example/7/3",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 4",
+            "url": "https://benchmark.example/7/4",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 5",
+            "url": "https://benchmark.example/7/5",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 6",
+            "url": "https://benchmark.example/7/6",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 7",
+            "url": "https://benchmark.example/7/7",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 8",
+            "url": "https://benchmark.example/7/8",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 9",
+            "url": "https://benchmark.example/7/9",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "TypeScript 最佳实践 — 参考结果 10",
+            "url": "https://benchmark.example/7/10",
+            "snippet": "这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。 这是关于“TypeScript 最佳实践”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-8",
+      "query": "MCP 服务器开发教程",
+      "language": "zh",
+      "duration_ms": 0,
+      "response": {
+        "query": "MCP 服务器开发教程",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 1",
+            "url": "https://benchmark.example/8/1",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 2",
+            "url": "https://benchmark.example/8/2",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 3",
+            "url": "https://benchmark.example/8/3",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 4",
+            "url": "https://benchmark.example/8/4",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 5",
+            "url": "https://benchmark.example/8/5",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 6",
+            "url": "https://benchmark.example/8/6",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 7",
+            "url": "https://benchmark.example/8/7",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 8",
+            "url": "https://benchmark.example/8/8",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 9",
+            "url": "https://benchmark.example/8/9",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "MCP 服务器开发教程 — 参考结果 10",
+            "url": "https://benchmark.example/8/10",
+            "snippet": "这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。 这是关于“MCP 服务器开发教程”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-9",
+      "query": "Python 异步编程入门",
+      "language": "zh",
+      "duration_ms": 0,
+      "response": {
+        "query": "Python 异步编程入门",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "Python 异步编程入门 — 参考结果 1",
+            "url": "https://benchmark.example/9/1",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 2",
+            "url": "https://benchmark.example/9/2",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 3",
+            "url": "https://benchmark.example/9/3",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 4",
+            "url": "https://benchmark.example/9/4",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 5",
+            "url": "https://benchmark.example/9/5",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 6",
+            "url": "https://benchmark.example/9/6",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 7",
+            "url": "https://benchmark.example/9/7",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 8",
+            "url": "https://benchmark.example/9/8",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 9",
+            "url": "https://benchmark.example/9/9",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Python 异步编程入门 — 参考结果 10",
+            "url": "https://benchmark.example/9/10",
+            "snippet": "这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。 这是关于“Python 异步编程入门”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    },
+    {
+      "id": "format-10",
+      "query": "Next.js 服务端组件详解",
+      "language": "zh",
+      "duration_ms": 0,
+      "response": {
+        "query": "Next.js 服务端组件详解",
+        "engines": [
+          "duckduckgo",
+          "sogou",
+          "bing",
+          "baidu",
+          "wikipedia",
+          "startpage",
+          "yandex",
+          "mojeek"
+        ],
+        "results": [
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 1",
+            "url": "https://benchmark.example/10/1",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 1。",
+            "confidence": 0.94,
+            "relevance": 0.91,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 2",
+            "url": "https://benchmark.example/10/2",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 2。",
+            "confidence": 0.905,
+            "relevance": 0.87,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 3",
+            "url": "https://benchmark.example/10/3",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 3。",
+            "confidence": 0.87,
+            "relevance": 0.83,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 4",
+            "url": "https://benchmark.example/10/4",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 4。",
+            "confidence": 0.835,
+            "relevance": 0.79,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 5",
+            "url": "https://benchmark.example/10/5",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 5。",
+            "confidence": 0.8,
+            "relevance": 0.75,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 6",
+            "url": "https://benchmark.example/10/6",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 6。",
+            "confidence": 0.765,
+            "relevance": 0.71,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 7",
+            "url": "https://benchmark.example/10/7",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 7。",
+            "confidence": 0.73,
+            "relevance": 0.67,
+            "source_count": 1,
+            "sources": [
+              "sogou"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 8",
+            "url": "https://benchmark.example/10/8",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 8。",
+            "confidence": 0.695,
+            "relevance": 0.63,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 9",
+            "url": "https://benchmark.example/10/9",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 9。",
+            "confidence": 0.66,
+            "relevance": 0.59,
+            "source_count": 2,
+            "sources": [
+              "duckduckgo",
+              "wikipedia"
+            ]
+          },
+          {
+            "title": "Next.js 服务端组件详解 — 参考结果 10",
+            "url": "https://benchmark.example/10/10",
+            "snippet": "这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。 这是关于“Next.js 服务端组件详解”的冻结基准摘要，用于验证渐进披露、字段语义和中文 Token 计算在不同环境中保持一致。结果编号 10。",
+            "confidence": 0.625,
+            "relevance": 0.55,
+            "source_count": 1,
+            "sources": [
+              "duckduckgo"
+            ]
+          }
+        ],
+        "meta": {
+          "total": 10,
+          "high_confidence": 5,
+          "engines": [
+            "duckduckgo",
+            "wikipedia",
+            "sogou"
+          ]
+        },
+        "security_note": "Frozen format-regression fixture; content is synthetic and contains no search-quality claim."
+      }
+    }
+  ],
+  "expected_summary": {
+    "successful_queries": 10,
+    "tokenizer": "gpt-tokenizer@3.4.0",
+    "average_tokens": {
+      "normal": 2122,
+      "compact": 1480.3,
+      "compact_aggressive": 1401.7
+    },
+    "savings_percent": {
+      "compact": 30.2,
+      "compact_aggressive": 33.9,
+      "waterfall_engine_calls": null
+    },
+    "average_engine_calls": null
+  }
+}

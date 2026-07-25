@@ -1,7 +1,7 @@
 # 分发渠道状态追踪 — Agent Search MCP
 
-> 最后更新: 2026-07-23
-> npm: v3.1.3 | GitHub Stars: 9 | 月下载: 1,876
+> 最后更新: 2026-07-25
+> npm: v3.1.3 | GitHub Stars: 10 | 近 30 天下载: 1,952
 
 ---
 
@@ -10,9 +10,9 @@
 | 指标 | 数值 |
 |------|------|
 | npm 版本 | v3.1.3 |
-| npm 月下载 | 1,876 |
-| npm 周下载 | 845 |
-| GitHub Stars | 9 |
+| npm 近 30 天下载 | 1,952 |
+| npm 近 7 天下载 | 1,049 |
+| GitHub Stars | 10 |
 | GitHub Topics | 20 |
 | npm keywords | 31 |
 
@@ -33,6 +33,7 @@
 | **mcpmarket.com** | 自动收录 | — |
 | **punkpeye/awesome-mcp-servers** | [PR #10383](https://github.com/punkpeye/awesome-mcp-servers/pull/10383) ✅ **已合并** | 条目已在主 README 中 |
 | **patriksimek/awesome-mcp-servers-2** | [PR #21](https://github.com/patriksimek/awesome-mcp-servers-2/pull/21) | ✅ |
+| **重复 PR #10640** | [已关闭](https://github.com/punkpeye/awesome-mcp-servers/pull/10640) | 已注明由 #10383 收录 |
 
 ### ⏳ 等待中
 
@@ -40,7 +41,6 @@
 |------|------|------|
 | **mcp.directory** | 你已提交，待收录 | 未在搜索中找到 (404) |
 | **mcpservers.org** | 你已提交，待收录 | 未在搜索中找到 (404) |
-| **duplicate PR #10640** | OPEN | PR #10383 已合并，这条是重复的，可以关掉 |
 
 ### ❌ 未提交
 
@@ -51,22 +51,22 @@
 | **PulseMCP** | 发邮件到 `hello@pulsemcp.com` 或提交表单 | 2min |
 | **FastMCP** | 打开 https://fastmcp.com/submit | 2min |
 | **awesome-remote-mcp-servers** | GitHub PR 加一行 | 5min |
+| **Rodert/awesome-mcp** | 已达到 10 Stars 门槛，重新检查提交规范 | 5min |
 
 ### 📝 内容营销待发布
 
 | 平台 | 文件 | 状态 |
 |------|------|:----:|
-| **掘金** (ZH) | `docs/geo/juejin-agent-search-mcp.md` | 📝 草稿就绪 |
-| **dev.to** (EN) | 未写 | ❌ |
-| **V2EX** (ZH) | 未写 | ❌ |
-| **Reddit r/mcp** (EN) | 未写 | ❌ |
-| **MCP Discord #showcase** | 未写 | ❌ |
+| **掘金** (ZH) | `docs/geo/juejin-agent-search-mcp.md` | ✅ 已按现状重写 |
+| **dev.to** (EN) | `docs/geo/PROMOTION_KIT.md` | ✅ 大纲就绪 |
+| **V2EX** (ZH) | `docs/geo/PROMOTION_KIT.md` | ✅ 短文就绪 |
+| **Reddit r/mcp** (EN) | `docs/geo/PROMOTION_KIT.md` | ✅ 短文就绪 |
+| **MCP Discord #showcase** | `docs/geo/PROMOTION_KIT.md` | ✅ 短文就绪 |
 
 ### 🚫 跳过
 
 | 渠道 | 原因 |
 |------|------|
-| Rodert/awesome-mcp | 要求 ≥10 stars |
 | Docker Hub | 本机无 Docker，需 Mac 操作 |
 
 ---
@@ -74,13 +74,13 @@
 ## 行动清单 (按优先级)
 
 ```
-P0 ─── Claim Glama → 打开 glama.ai 点 Claim
-    ├── 关掉重复 PR #10640
+P0 ─── 合并产品加固改动，等待 Linux/Windows CI 通过
+    ├── Claim Glama → 打开 glama.ai 点 Claim
     ├── PulseMCP 提交
     └── FastMCP 提交
 
-P1 ─── 发掘金文章（草稿已就绪）
-    ├── 写 dev.to / V2EX 草稿
+P1 ─── 发掘金文章（已按真实能力重写）
+    ├── 发 dev.to / V2EX / Reddit 短文
     ├── LobeHub 登录后提交
     └── Smithery 提交
 

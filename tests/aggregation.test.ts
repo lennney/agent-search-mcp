@@ -55,6 +55,15 @@ describe('dedupByUrl', () => {
     expect(frequencies.get('example.com/a')).toBe(2);
     expect(frequencies.get('example.com/b')).toBe(1);
   });
+
+  it('merges engine provenance for duplicate URLs', () => {
+    const { results } = dedupByUrl([
+      { title: 'A', url: 'https://example.com/a', snippet: 'first source snippet', source: 'duckduckgo', engines: ['duckduckgo'] },
+      { title: 'A', url: 'https://example.com/a', snippet: 'second source snippet is longer', source: 'wikipedia', engines: ['wikipedia'] },
+    ]);
+
+    expect(results[0].engines).toEqual(['duckduckgo', 'wikipedia']);
+  });
 });
 
 // ─── normalizeUrl ────────────────────────────────────────────────────────
@@ -198,8 +207,8 @@ describe('formatResults', () => {
 
   it('builds meta with total, high_confidence, and unique engines', () => {
     const results: ScoredResult[] = [
-      { title: 'A', url: 'a', snippet: 'A'.repeat(30), source: '', engines: ['duckduckgo', 'sogou'], confidence: 2, score: 0.8 },
-      { title: 'B', url: 'b', snippet: 'B'.repeat(30), source: '', engines: ['sogou'], confidence: 1, score: 0.5 },
+      { title: 'A', url: 'a', snippet: 'A'.repeat(30), source: '', engines: ['duckduckgo', 'sogou'], confidence: 0.9, relevance: 0.8, source_count: 2, score: 0.8 },
+      { title: 'B', url: 'b', snippet: 'B'.repeat(30), source: '', engines: ['sogou'], confidence: 0.5, relevance: 0.5, source_count: 1, score: 0.5 },
     ];
     const formatted = formatResults(results);
     expect(formatted.meta.total).toBe(2);

@@ -1,4 +1,5 @@
 import { SearchCache } from './cache.js';
+import { logger } from './logger.js';
 
 export interface ServerMetricsData {
   /** Server uptime in seconds */
@@ -117,7 +118,7 @@ export class HealthTracker {
       h.circuitState = 'closed';
       h.circuitOpenedAt = null;
       h.circuitCooldownMs = HealthTracker.INITIAL_COOLDOWN_MS;
-      console.log(`[Health] Circuit CLOSED for ${provider} (recovered, errors: ${h.errorCount})`);
+      logger.info({ provider, errors: h.errorCount }, 'Health circuit closed after recovery');
     }
     
     h.isHealthy = this.calculateHealth(h);
@@ -132,7 +133,7 @@ export class HealthTracker {
     if (h.errorCount >= HealthTracker.FAILURE_THRESHOLD && h.circuitState === 'closed') {
       h.circuitState = 'open';
       h.circuitOpenedAt = Date.now();
-      console.log(`[Health] Circuit OPENED for ${provider} (errors: ${h.errorCount})`);
+      logger.warn({ provider, errors: h.errorCount }, 'Health circuit opened');
     }
     
     // If half-open and failed again, re-open with longer cooldown
@@ -140,7 +141,10 @@ export class HealthTracker {
       h.circuitState = 'open';
       h.circuitOpenedAt = Date.now();
       h.circuitCooldownMs = Math.min(h.circuitCooldownMs * 2, HealthTracker.MAX_COOLDOWN_MS);
-      console.log(`[Health] Circuit RE-OPENED for ${provider} (cooldown: ${h.circuitCooldownMs}ms)`);
+      logger.warn(
+        { provider, cooldownMs: h.circuitCooldownMs },
+        'Health circuit re-opened after failed probe'
+      );
     }
     
     h.isHealthy = this.calculateHealth(h);
@@ -159,7 +163,7 @@ export class HealthTracker {
       const elapsed = Date.now() - h.circuitOpenedAt;
       if (elapsed >= h.circuitCooldownMs) {
         h.circuitState = 'half-open';
-        console.log(`[Health] Circuit HALF-OPEN for ${provider} (testing recovery)`);
+        logger.info({ provider }, 'Health circuit half-open; testing recovery');
         return true; // Allow one test request
       }
       return false; // Still in cooldown

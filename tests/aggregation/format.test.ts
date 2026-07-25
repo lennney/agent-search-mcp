@@ -4,7 +4,8 @@ import { ScoredResult } from '../../src/aggregation/scorer.js';
 
 // ─── Test helpers ──────────────────────────────────────────────────────────
 
-function makeResult(i: number, confidence: number = 3 - i * 0.3): ScoredResult {
+function makeResult(i: number, confidence: number = 0.98 - i * 0.05): ScoredResult {
+  const relevance = 0.9 - i * 0.05;
   return {
     title: `Test Result ${i + 1}`,
     url: `https://example.com/page/${i + 1}`,
@@ -12,13 +13,15 @@ function makeResult(i: number, confidence: number = 3 - i * 0.3): ScoredResult {
     source: 'duckduckgo',
     engines: ['duckduckgo'],
     confidence,
-    score: 0.9 - i * 0.05,
+    relevance,
+    source_count: 1,
+    score: relevance,
   };
 }
 
 function makeResults(n: number, confidences?: number[]): ScoredResult[] {
   return Array.from({ length: n }, (_, i) =>
-    makeResult(i, confidences?.[i] ?? (3 - i * 0.3))
+    makeResult(i, confidences?.[i] ?? (0.98 - i * 0.05))
   );
 }
 
@@ -155,20 +158,20 @@ describe('formatResults — progressive disclosure', () => {
 
 describe('formatResults — confidence filtering', () => {
   it('filters results below minConfidence in compact mode', () => {
-    const confidences = [3.0, 2.5, 1.8, 1.2, 0.8, 0.5, 0.3];
+    const confidences = [0.95, 0.85, 0.75, 0.65, 0.55, 0.45, 0.35];
     const results = makeResults(7, confidences);
 
     const formatted = formatResults(results, {
       style: 'compact',
-      minConfidence: 1.5,
+      minConfidence: 0.7,
       maxFullResults: 10, // no progressive disclosure to isolate filtering
     });
 
-    // Only results with confidence >= 1.5 should remain: 3.0, 2.5, 1.8 → 3 results
+    // Only results with confidence >= 0.7 should remain.
     expect(formatted.results).toHaveLength(3);
-    expect(formatted.results[0].confidence).toBeCloseTo(3.0);
-    expect(formatted.results[1].confidence).toBeCloseTo(2.5);
-    expect(formatted.results[2].confidence).toBeCloseTo(1.8);
+    expect(formatted.results[0].confidence).toBeCloseTo(0.95);
+    expect(formatted.results[1].confidence).toBeCloseTo(0.85);
+    expect(formatted.results[2].confidence).toBeCloseTo(0.75);
     expect((formatted.meta as any).filtered_count).toBe(4);
   });
 
@@ -185,26 +188,26 @@ describe('formatResults — confidence filtering', () => {
   });
 
   it('does not filter in normal mode', () => {
-    const results = makeResults(5, [3.0, 2.0, 0.5, 0.3, 0.1]);
+    const results = makeResults(5, [0.9, 0.8, 0.5, 0.3, 0.1]);
     const formatted = formatResults(results, {
       style: 'normal',
-      minConfidence: 1.0,
+      minConfidence: 0.8,
     });
 
     expect(formatted.results).toHaveLength(5);
   });
 
   it('applies filtering BEFORE progressive disclosure', () => {
-    const confidences = [3.0, 2.8, 2.5, 2.0, 1.5, 1.0, 0.5, 0.3];
+    const confidences = [0.98, 0.9, 0.85, 0.8, 0.75, 0.6, 0.5, 0.3];
     const results = makeResults(8, confidences);
 
     const formatted = formatResults(results, {
       style: 'compact',
-      minConfidence: 1.5,
+      minConfidence: 0.75,
       maxFullResults: 3,
     });
 
-    // After filter: 3.0, 2.8, 2.5, 2.0, 1.5 → 5 results
+    // After filter: five results remain.
     // Then progressive: first 3 full, last 2 compacted
     expect(formatted.results).toHaveLength(5);
     expect((formatted.meta as any).filtered_count).toBe(3); // 0.5, 0.3 removed
@@ -225,7 +228,7 @@ describe('formatResults — confidence filtering', () => {
     const results = makeResults(3, [0.5, 0.3, 0.1]);
     const formatted = formatResults(results, {
       style: 'compact',
-      minConfidence: 1.0,
+      minConfidence: 0.8,
     });
 
     expect(formatted.results).toHaveLength(0);
@@ -259,12 +262,28 @@ describe('formatResults — backward compatibility', () => {
     const formatted = formatResults(results, {
       style: 'normal',
       maxFullResults: 3,
-      minConfidence: 2.0,
+      minConfidence: 0.8,
     });
 
     // normal mode ignores progressive disclosure and filtering
     expect(formatted.results).toHaveLength(5);
     const compactedCount = formatted.results.filter((r: any) => r.compacted).length;
     expect(compactedCount).toBe(0);
+  });
+
+  it('filters source count independently from confidence', () => {
+    const results = makeResults(3, [0.9, 0.9, 0.9]);
+    results[0].source_count = 3;
+    results[1].source_count = 2;
+    results[2].source_count = 1;
+
+    const formatted = formatResults(results, {
+      style: 'compact',
+      minSourceCount: 2,
+      maxFullResults: 10,
+    });
+
+    expect(formatted.results).toHaveLength(2);
+    expect(formatted.results.map(result => result.source_count)).toEqual([3, 2]);
   });
 });

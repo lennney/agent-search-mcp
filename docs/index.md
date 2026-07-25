@@ -37,6 +37,10 @@
 
 | 文档 | 说明 |
 |------|------|
+| [../benchmarks/README.md](../benchmarks/README.md) | 探索性基准、方法限制与历史报告 |
+| [geo/DISTRIBUTION_STATUS.md](geo/DISTRIBUTION_STATUS.md) | 分发渠道和公开指标状态 |
+| [geo/PROMOTION_KIT.md](geo/PROMOTION_KIT.md) | 已校准口径的中英文推广素材 |
+| [geo/juejin-agent-search-mcp.md](geo/juejin-agent-search-mcp.md) | 掘金长文草稿 |
 | `plans/YYYY-MM-DD-title.md` | 功能计划与评审 |
 | `reviews/` | 安全/多平台/功能评审 |
 

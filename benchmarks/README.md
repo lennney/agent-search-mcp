@@ -1,66 +1,57 @@
 # Benchmarks
 
-Reproducible benchmarks measuring search quality, engine efficiency, and token optimization.
+Agent Search MCP keeps two complementary evidence tracks: a historical live-search measurement and a deterministic formatting regression benchmark.
 
-## Latest Results (2026-07-24)
+## Historical live result (2026-07-24)
 
-30 queries (15 EN + 15 ZH), default config, no API keys. Token counts via character estimation (~1 token per 3 chars).
+The original runner completed 30 queries (15 EN + 15 ZH), with no paid API keys. It measured:
 
 | Metric | Normal | Compact | Compact+ |
-|--------|--------|---------|----------|
-| **Success rate** | 100% | 100% | 96.7% |
-| **Avg engines** | 2.0 | 2.0 | 2.0 |
-| **Waterfall phase 1** | 100% | 100% | 100% |
-| **Avg tokens** | 1582 | 1128 | 1020 |
-| **Token savings vs Normal** | — | **28.7%** | **35.5%** |
-| **Avg latency** | 15.2s | 16.6s | 16.2s |
-| **P50 latency** | 14.8s | 16.3s | 15.9s |
-| **P95 latency** | 18.4s | 19.9s | 19.3s |
+|--------|-------:|--------:|---------:|
+| Success rate | 100% | 100% | 96.7% |
+| Average estimated tokens | 1582 | 1128 | 1020 |
+| Savings vs Normal | — | **28.7%** | **35.5%** |
+| Average latency | 15.2s | 16.6s | 16.2s |
 
-→ [Full report](./reports/2026-07-24.md) · [JSON data](./reports/2026-07-24.json)
+The run also reported two average engines per query, equivalent to **75% fewer calls than naive eight-engine fan-out**. These are real measurements for that query set, runner, and network environment. The raw responses were not frozen, the token fallback was `characters / 3`, and the output scenarios used separate live requests, so the exact figures are retained as scoped historical evidence rather than universal guarantees.
 
-Key findings:
-- **100% waterfall efficiency** — every query satisfied at phase 1 (2 engines). Saves 75% vs naive 8-engine search.
-- **28.7% token reduction** with compact mode (progressive disclosure + metadata stripping)
-- **35.5% token reduction** with aggressive settings (compact + 120-char snippets)
-- **0% URL overlap** between DDG and Sogou — genuine multi-source diversity
+[Full report](./reports/2026-07-24.md) · [JSON data](./reports/2026-07-24.json)
 
-### Historical
+## Reproducible fixture replay
 
-| Date | Success | Tokens (Normal) | Compact Savings | Report |
-|------|---------|-----------------|-----------------|--------|
-| 2026-07-24 | 100% | 1582 | 28.7% | [report](./reports/2026-07-24.md) |
-| 2026-07-23 | 100% | — | 6.7% (bytes) | [report](./reports/2026-07-23.md) |
+The current runner replays the same frozen results through all output styles with the locked in-process `gpt-tokenizer`. CI compares the generated summary with the fixture's expected values.
 
-## How to Run
+| Metric | Normal | Compact | Compact+ |
+|--------|-------:|--------:|---------:|
+| Average tokens | 2122.0 | 1480.3 | 1401.7 |
+| Savings vs Normal | — | **30.2%** | **33.9%** |
+
+This synthetic bilingual fixture verifies formatting, field semantics, and token-count regressions. It makes no search-quality or live engine-efficiency claim.
 
 ```bash
-# Build first
-npm run build
+# Deterministic replay; fails if the expected summary changes
+npm run benchmark:verify
 
-# Run benchmarks (3 scenarios: normal, compact, compact+aggressive)
-node benchmarks/run.cjs
+# Replay and write a report
+npm run benchmark
+
+# Capture real search responses and execution telemetry (network required)
+npm run benchmark:capture
 ```
 
-**Optional: install tiktoken for precise token counts** (otherwise falls back to character estimation):
+Live capture records searched engines, calls, completed phases, early stop, raw results, and tokenizer identity once per query. A captured fixture can then be replayed without network variance:
 
 ```bash
-pip install tiktoken
+node benchmarks/run.mjs --fixture benchmarks/fixtures/live-latest.json
 ```
-
-## Scenarios Tested
-
-| Scenario | OUTPUT_STYLE | MAX_FULL_RESULTS | SNIPPET_LENGTH |
-|----------|-------------|-----------------|----------------|
-| Normal | (default) | — | 200 |
-| Compact | compact | 3 | 200 |
-| Compact Aggressive | compact | 3 | 120 |
 
 ## Contents
 
 | File | Description |
 |------|-------------|
-| [`queries.json`](./queries.json) | 30 test queries (15 EN + 15 ZH, tech/news/general) |
-| [`run.cjs`](./run.cjs) | Benchmark runner with optional tiktoken support |
-| [`methodology.md`](./methodology.md) | Testing methodology |
-| [`reports/`](./reports) | Published benchmark reports |
+| [`queries.json`](./queries.json) | 30 bilingual live-search queries |
+| [`run.mjs`](./run.mjs) | Current capture/replay runner |
+| [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
+| [`methodology.md`](./methodology.md) | Evidence model and limitations |
+| [`run.cjs`](./run.cjs) | Legacy historical runner |
+| [`reports/`](./reports) | Historical and replay reports |

@@ -9,6 +9,19 @@ tags:
 ---
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
+- Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
+- Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
+- Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
+
+### Documentation
+
+- Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
+
 ## v3.3.0 (2026-07-24)
 
 > **Headline: Semantic dedup + rerank via Model2Vec. <10ms latency. Optional, opt-in.**
@@ -20,6 +33,23 @@ tags:
 - **Model2Vec bridge**: Persistent Python child process (`src/aggregation/semantic_bridge.py`) running `minishlab/M2V_base_output` (256-dim, 7.2MB model). Embedding speed ~35µs/text, dedup + rerank <5ms total latency.
 - **Zero dependency by default**: Semantic features are OFF by default. No Python/model2vec required unless explicitly enabled.
 - **Graceful degradation**: If the Python bridge is unavailable (no model2vec installed, process crash, etc.), results pass through unchanged — no broken searches.
+
+### 🔧 Fixes
+
+- **Restored zero-Python DDG fallback**: The search orchestrator no longer rejects DuckDuckGo before its Node.js HTML fallback can run.
+- **Protected stdio JSON-RPC**: Circuit-breaker transitions now use the stderr logger instead of writing to stdout.
+- **Closed CSDN SSRF path**: `fetch_csdn_article` now accepts only HTTPS `blog.csdn.net` URLs and rejects redirects.
+- **Cross-platform build**: Replaced POSIX-only `mkdir`/`cp` commands with a Node.js build helper; `npm run build` now works on Windows.
+- **CI coverage**: Restored Node.js 18/20/22 runtime coverage, added a Node.js 22 quality gate, disabled matrix fail-fast, and added a Windows build job.
+- **Node.js 18 compatibility**: Pinned Cheerio to its Node 18-compatible release and close idle HTTP connections during shutdown.
+- **Lint compatibility**: Pinned TypeScript to the supported 6.x API until `typescript-eslint` supports TypeScript 7.
+- **Runtime metadata**: MCP initialization, HTTP health, and capabilities now report v3.1.3 / Apache-2.0 consistently with the published package.
+
+### 📚 Documentation
+
+- Replaced volatile competitor pricing claims with a capability-based comparison linked to official repositories.
+- Marked historical benchmark percentages as exploratory until engine-call telemetry and frozen fixtures are implemented.
+- Added a reusable English/Chinese promotion kit and rewrote the Juejin draft around verified capabilities.
 
 ### 🔧 Env vars
 
@@ -34,8 +64,8 @@ tags:
 
 ### 📊 Stats
 
-- **Tests**: 480 passing (+17: 6 semantic + 11 config)
-- **Files**: 42 test files (+1: semantic.test.ts)
+- **Tests**: 498 passing
+- **Files**: 43 test files
 
 ## v3.2.0 (2026-07-24)
 

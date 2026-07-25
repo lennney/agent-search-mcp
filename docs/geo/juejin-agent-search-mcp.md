@@ -1,104 +1,23 @@
-# Tavily 太贵？我搭了一个 11 引擎的免费 MCP 搜索服务器，开源了
+# 免费起步，还能省 Token：我给 AI Agent 做了一个搜索路由器
 
-> AI Agent 每天搜上百次技术文档，Tavily 月费 $100+ 吃不消？花 15 分钟搭一个自己的搜索服务器，**11 个引擎聚合、8 个完全免费、零 API Key**。刚开源，求 Star 🙏
+> `npx agent-search-mcp`：8 个零密钥来源免费起步，用瀑布停止和渐进披露节省 token，同时保留中文原生搜索和多源证据。
 
----
+很多 AI Agent 的搜索接入都从“注册账号、创建 API Key、绑定额度”开始；搜到之后，又会把大段重复摘要塞进 Agent 上下文。这个项目先解决两个最直接的问题：**搜索免费起步，输出尽量少花 token**。
 
-## 一、先算一笔账
+但“省”不是粗暴删掉结果。Agent 还需要一个搜索控制层：去哪里搜、什么时候停、花多少上下文、哪些证据值得信。
 
-如果你在用 AI Agent（Claude Code、Cursor、Cline 等）做开发，大概率绕不开搜索。查 API 文档、搜技术方案、验证新闻事实——Agent 每天都在搜。
+所以这个项目选的不是“再做一个 Tavily/Exa”，而是一条不同的路线：
 
-一开始我用 Tavily，质量确实不错。但用了两个月看账单：
+- 不注册账号也能开始搜索；
+- 能直接覆盖搜狗、百度等中文来源；
+- 一个 MCP Server 里做多源聚合、去重、排序和自动降级；
+- 需要更强商业搜索时，再选择性接入 Brave、Tavily、Exa 或 You.com。
 
-| 方案 | 免费额度 | 月费(1000次/天) |
-|------|---------|----------------|
-| Tavily | 1000/月 | ~$240/月 |
-| Exa | $10 额度 | $50/月起 |
-| Brave Search | 2000/月 | ~$84/月 |
-| Serper | 2500/月 | ~$9/月 |
-| **agent-search-mcp** | **无限** | **$0** |
+于是有了开源项目 [agent-search-mcp](https://github.com/lennney/agent-search-mcp)。
 
-**每年轻轻松松省下几千美元。** 而且 agent-search-mcp 不单是便宜的替代品——它把 11 个引擎的结果做了多源交叉验证，比单引擎更可靠。
+## 一分钟接入
 
----
-
-## 二、市场方案全景对比
-
-| 方案 | 免费额度 | 引擎数 | 内容提取 | 自托管 | Token 优化 | API Key |
-|------|---------|:------:|:--------:|:------:|:----------:|:-------:|
-| Tavily | 1000/月 | 单源 | ✅ | ❌ | ❌ | 必填 |
-| Exa | $10/月 | 单源 | ✅ | ❌ | ❌ | 必填 |
-| Brave | 2000/月 | 单源 | ❌ | ❌ | ❌ | 必填 |
-| Serper | 2500/月 | 单源 | ❌ | ❌ | ❌ | 必填 |
-| DDG MCP | 无限 | 单源 | ❌ | ✅ | ❌ | 非必须 |
-| **agent-search-mcp** | **无限** | **11 引擎** | **✅** | **✅** | **✅** | **非必须** |
-
-唯一一个在「免费」「多引擎」「自托管」「Token 优化」「内容提取」五个维度同时满足的方案。
-
----
-
-## 三、凭什么免费？8 个免费引擎
-
-核心思路很简单：**聚合已有的免费搜索接口，不做昂贵的中间层。**
-
-```
-你的 Agent → agent-search-mcp → 11 个引擎并发搜索
-                    ↓
-             去重 + 评分 + 排序
-                    ↓
-              返回最优结果
-```
-
-### 8 个免费引擎（零 API Key）
-
-| 引擎 | 用途 |
-|------|------|
-| DuckDuckGo | 通用搜索，隐私优先 |
-| Bing | 微软必应，英文技术内容 |
-| Sogou | 搜狗搜索——中文技术博客/文档 |
-| Baidu | 百度搜索——国内信息 |
-| Wikipedia | 百科知识 |
-| Startpage | Google 结果，匿名代理 |
-| Yandex | 俄语/东欧内容 |
-| Mojeek | 独立爬虫，不跟踪 |
-
-### 3 个付费引擎（可选增强）
-
-Brave / Tavily / Exa —— 填写 API Key 后自动作为 fallback 增强层。
-
-**实际使用中，8 个免费引擎已经覆盖了 95% 的需求。**
-
----
-
-## 四、多源交叉验证——Agent 不会被骗
-
-单引擎搜索的最大问题是：**你不知道结果靠不靠谱。**
-
-agent-search-mcp 把同一个查询同时发到多个引擎，跨源对比：
-
-- 每个结果附带**置信度评分**（1-3 分）
-- ≥2 分 = 至少被两个不同引擎独立验证过
-- 跨语言去重（中英文结果自动融合）
-
-比如说搜 "React 19 新特性"，DuckDuckGo 和 Bing 和 Sogou 各返回一堆链接。agent-search-mcp 会：
-1. URL 去重 → 去掉重复的
-2. 标题相似去重 → 去掉换源转载的
-3. 频次评分 → 同时出现在多个引擎的排前面
-4. 域名权威加分 → GitHub/官方文档权重更高
-
----
-
-## 五、5 分钟跑起来
-
-```bash
-# 直接 npx 跑（零安装）
-npx -y agent-search-mcp
-
-# 或者全局安装
-npm install -g agent-search-mcp
-```
-
-然后在 Claude Desktop / Cursor / Cline 的配置里加：
+项目要求 Node.js 18 或更高版本。
 
 ```json
 {
@@ -111,30 +30,112 @@ npm install -g agent-search-mcp
 }
 ```
 
-重启 Agent，你的 AI 就有 11 个搜索引擎了。
+不需要预先全局安装，也不需要 API Key。保存配置、重启 MCP 客户端即可。
 
-**中文搜索直接搜，不用任何配置** —— agent-search-mcp 自动检测语言，中文查询自动启用 Sogou + Baidu。
+项目还提供 CLI：
 
----
+```bash
+fasm search "MCP Server 中文搜索"
+fasm extract "https://example.com"
+```
 
-## 六、进阶功能
+## 它和 Tavily、Exa、Brave 的关系
 
-| 功能 | 说明 |
-|------|------|
-| **瀑布搜索** | 先搜免费引擎，结果不够自动切换到付费引擎 |
-| **内容丰富化** | 对低置信度结果自动提取页面全文 |
-| **新闻搜索** | 专用新闻搜索模式（DDG News + Bing News） |
-| **Token 优化** | 自动裁剪冗余内容，节省 ~40-50% token |
-| **安全防护** | SSRF 保护 + 注入检测 + 速率限制 |
-| **Docker 部署** | 一键 `docker pull`，生产环境友好 |
+这不是“谁替代谁”的关系，而是不同产品边界：
 
----
+| 方案 | 主要优势 | 更适合 |
+|------|----------|--------|
+| Agent Search MCP | 本地、零密钥起步、中文引擎、多源聚合 | 本地 Agent、中文检索、开源自托管 |
+| Tavily MCP | 托管 Search/Extract/Map/Crawl | 需要完整托管采集工作流 |
+| Exa MCP | 语义、代码、企业研究 | 高相关语义检索和研究任务 |
+| Brave Search MCP | 独立索引、新闻/图片/视频等垂直搜索 | 需要稳定商业索引和垂直结果 |
 
-## 七、总结
+商业服务通常提供免费额度，但仍需要账号或凭证。价格和额度会变化，所以项目不再用容易过期的“每月省多少钱”作为卖点。
 
-**agent-search-mcp 是给 AI Agent 用的免费多引擎搜索服务器。** 不需要 API Key，不需要付费，15 分钟搭好就能用。
+## 当前搜索架构
 
-- ⭐ GitHub：[lennney/agent-search-mcp](https://github.com/lennney/agent-search-mcp)（点个 Star 支持一下 🙏）
-- 📦 npm：[agent-search-mcp](https://www.npmjs.com/package/agent-search-mcp)
-- 📖 英文版：[Read in English](https://gh.l-web.com/blog/tavily-alternative-agent-search-mcp-en)
-- 438 个测试，MIT 协议
+包内有 12 个搜索适配器，其中 8 个不需要凭证，4 个为可选商业 API。
+
+当前 `free_search`、`free_search_advanced`、CLI 和瀑布模式已统一路由全部 12 个适配器：
+
+- DuckDuckGo
+- 搜狗
+- Bing
+- 百度
+- Wikipedia
+- Startpage
+- Yandex
+- Mojeek
+- Brave（可选 Key）
+- Tavily（可选 Key）
+- Exa（可选 Key）
+- You.com（可选 Key）
+
+一次搜索会经过：
+
+```text
+查询
+  → 语言识别与引擎选择
+  → 并行或瀑布编排
+  → URL/标题去重
+  → 排序与安全标记
+  → normal / compact 输出
+```
+
+如果 Python `ddgs` 不可用，DuckDuckGo 会自动回退到纯 Node.js HTML 路径。这个回退刚补上了主编排层的回归测试。
+
+## 为 Agent 控制上下文体积
+
+搜索工具很容易把大量摘要和元数据塞进上下文。项目提供几组可选配置：
+
+```bash
+OUTPUT_STYLE=compact
+MAX_FULL_RESULTS=3
+SNIPPET_LENGTH=160
+MIN_CONFIDENCE=0
+```
+
+Compact 模式会完整展示前几个结果，其余结果只保留标题和 URL；Agent 需要时再调用 `free_extract`。历史 30 查询真实运行实测 Compact 节省 28.7% token、Compact+ 节省 35.5%，瀑布调用数相比 8 引擎全并发少 75%。这些是当时查询集和环境的实测，不是生产保证。新的冻结 fixture + 锁定 tokenizer 回放可稳定验证 30.2% / 33.9% 的格式化节省。
+
+## 可靠性和安全边界
+
+当前版本包含：
+
+- stdio 与 Streamable HTTP，HTTP 默认要求 Bearer Token 并校验浏览器 Origin；
+- MCP read-only / idempotent annotations；
+- 引擎限速、健康状态与熔断；
+- URL 安全检查和搜索内容注入标记；
+- 510 项 Vitest 测试；
+- Linux、macOS、Windows 通用构建脚本。
+
+最近还修复了两个容易被忽略的问题：
+
+1. 熔断日志从 stdout 移到 stderr，避免污染 stdio JSON-RPC；
+2. CSDN 抓取只允许 `https://blog.csdn.net`，并拒绝重定向，封住直接 SSRF 入口。
+
+## 适合与不适合
+
+适合：
+
+- 想让本地 Agent 先获得无需账号的网页搜索；
+- 经常搜索中文技术资料；
+- 希望保留自托管和多上游选择权；
+- 愿意用开源项目换取更低的接入门槛。
+
+不适合：
+
+- 需要企业 SLA、稳定高并发和统一托管；
+- 需要站点 Crawl/Map、浏览器交互或图片/视频垂直搜索；
+- 要求搜索质量由人工标注 benchmark 或商业合同保证。
+
+## 接下来
+
+下一阶段会优先做三件事：
+
+1. 给真实搜索 benchmark 增加人工相关性标签和稳定的网络 runner；
+2. 为 HTTP 部署补充反向代理、密钥轮换和部署指南；
+3. 继续用真实失败查询校准 relevance、confidence 和 `source_count`。
+
+项目地址：[github.com/lennney/agent-search-mcp](https://github.com/lennney/agent-search-mcp)
+
+如果你正在用 Claude Code、Cursor 或 Codex，欢迎试一下；Issue、测试样例和失败查询，比一句“好用”更有帮助。

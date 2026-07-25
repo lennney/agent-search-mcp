@@ -88,6 +88,17 @@ describe('scoreAndRank', () => {
       'test', weights
     );
     expect(multi[0].confidence).toBeGreaterThan(single[0].confidence);
+    expect(multi[0].source_count).toBe(3);
+    expect(single[0].source_count).toBe(1);
+  });
+
+  it('does not treat duplicate rows from one adapter as independent sources', () => {
+    const frequencies = new Map([['example.com/same', 3]]);
+    const scored = scoreAndRank(
+      [makeResult({ url: 'https://example.com/same', engines: ['ddg'] })],
+      'test', weights, frequencies
+    );
+    expect(scored[0].source_count).toBe(1);
   });
 
   it('empty tokens returns default score 0.3', () => {
@@ -108,6 +119,8 @@ describe('checkConfidenceBasket', () => {
       snippet: 'snippet',
       source: 'ddg',
       confidence,
+      relevance: 0.5,
+      source_count: 1,
       score: 0.5,
     };
   }

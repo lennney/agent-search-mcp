@@ -23,7 +23,7 @@ async function main() {
   const server = new McpServer(
     {
       name: 'agent-search-mcp',
-      version: '3.1.1',
+      version: '3.1.3',
     },
     {
       capabilities: {
@@ -60,10 +60,17 @@ async function main() {
   }
 
   if (config.mode === 'http' || config.mode === 'both') {
+    if (!config.httpAuthToken && !config.httpAllowUnauthenticated) {
+      throw new Error(
+        'HTTP mode requires HTTP_AUTH_TOKEN. Set HTTP_ALLOW_UNAUTHENTICATED=true only on a trusted local network.'
+      );
+    }
     const httpServer = createHttpServer(server, {
       port: config.port,
       enableCors: config.enableCors,
       corsOrigin: config.corsOrigin,
+      allowedOrigins: config.allowedOrigins,
+      authToken: config.httpAuthToken,
     });
     await httpServer.listen();
     console.error('✅ agent-search-mcp ready (HTTP)');

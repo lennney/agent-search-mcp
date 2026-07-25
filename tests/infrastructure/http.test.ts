@@ -21,7 +21,7 @@ describe('createHttpServer', () => {
       
       const body = await res.json();
       expect(body.status).toBe('ok');
-      expect(body.version).toBe('3.1.1');
+      expect(body.version).toBe('3.1.3');
     } finally {
       await server.close();
     }
@@ -41,12 +41,65 @@ it('GET /mcp without transport returns 404', async () => {
   });
 
   it('CORS headers present when enableCors=true', async () => {
-    const server = createHttpServer(null, { port: 0, enableCors: true, corsOrigin: 'https://example.com' });
+    const server = createHttpServer(null, {
+      port: 0,
+      enableCors: true,
+      corsOrigin: 'https://example.com',
+      allowedOrigins: ['https://example.com'],
+    });
     await server.listen();
     
     try {
-      const res = await fetch(`http://localhost:${server.getPort()}/health`);
+      const res = await fetch(`http://localhost:${server.getPort()}/health`, {
+        headers: { Origin: 'https://example.com' },
+      });
       expect(res.headers.get('access-control-allow-origin')).toBe('https://example.com');
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('rejects browser requests from an untrusted Origin', async () => {
+    const server = createHttpServer(null, {
+      port: 0,
+      enableCors: true,
+      corsOrigin: 'https://example.com',
+      allowedOrigins: ['https://example.com'],
+    });
+    await server.listen();
+
+    try {
+      const res = await fetch(`http://localhost:${server.getPort()}/health`, {
+        headers: { Origin: 'https://evil.example' },
+      });
+      expect(res.status).toBe(403);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('requires a valid Bearer token for MCP routes when configured', async () => {
+    const server = createHttpServer(null, {
+      port: 0,
+      enableCors: false,
+      corsOrigin: '*',
+      authToken: 'test-secret',
+    });
+    await server.listen();
+
+    try {
+      const missing = await fetch(`http://localhost:${server.getPort()}/mcp`);
+      expect(missing.status).toBe(401);
+
+      const wrong = await fetch(`http://localhost:${server.getPort()}/mcp`, {
+        headers: { Authorization: 'Bearer wrong-secret' },
+      });
+      expect(wrong.status).toBe(401);
+
+      const valid = await fetch(`http://localhost:${server.getPort()}/mcp`, {
+        headers: { Authorization: 'bearer test-secret' },
+      });
+      expect(valid.status).toBe(404);
     } finally {
       await server.close();
     }

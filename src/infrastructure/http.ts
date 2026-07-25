@@ -1,4 +1,5 @@
 import * as http from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -6,6 +7,8 @@ export interface HttpServerOptions {
   port: number;
   enableCors: boolean;
   corsOrigin: string;
+  allowedOrigins?: string[];
+  authToken?: string;
 }
 
 export interface HttpServer {
@@ -26,7 +29,8 @@ export interface HttpServer {
  *   - Only health check endpoint is available
  */
 export function createHttpServer(mcpServer: McpServer | null, options: HttpServerOptions): HttpServer {
-  const { port, enableCors, corsOrigin } = options;
+  const { port, enableCors, corsOrigin, authToken = '' } = options;
+  const allowedOrigins = options.allowedOrigins ?? (corsOrigin ? [corsOrigin] : []);
 
   let transport: StreamableHTTPServerTransport | null = null;
 
@@ -41,10 +45,19 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
     req.on('error', () => { /* swallow */ });
     res.on('error', () => { /* swallow */ });
 
-    // CORS headers
-    if (enableCors) {
-      res.setHeader('Access-Control-Allow-Origin', corsOrigin);
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Mcp-Session-Id');
+    const requestOrigin = req.headers.origin;
+    const originAllowed = !requestOrigin || allowedOrigins.includes('*') || allowedOrigins.includes(requestOrigin);
+    if (!originAllowed) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Origin not allowed' }));
+      return;
+    }
+
+    // CORS headers are emitted only for an allowed browser origin.
+    if (enableCors && requestOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', allowedOrigins.includes('*') ? '*' : requestOrigin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Mcp-Session-Id');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
       res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
     }
@@ -59,12 +72,22 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
     // Health check
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', version: '3.1.1' }));
+      res.end(JSON.stringify({ status: 'ok', version: '3.1.3' }));
+      return;
+    }
+
+    const isMcpRoute = req.url === '/mcp' || req.url?.startsWith('/mcp?');
+    if (isMcpRoute && authToken && !hasValidBearerToken(req.headers.authorization, authToken)) {
+      res.writeHead(401, {
+        'Content-Type': 'application/json',
+        'WWW-Authenticate': 'Bearer',
+      });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
 
     // MCP Streamable HTTP — route GET/POST/DELETE /mcp to transport
-    if (transport && (req.url === '/mcp' || req.url?.startsWith('/mcp?'))) {
+    if (transport && isMcpRoute) {
       try {
         await transport.handleRequest(req, res);
       } catch (err) {
@@ -116,8 +139,18 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
           if (err) reject(err);
           else resolve();
         });
+        // Node.js 18 otherwise waits for the keep-alive timeout before closing.
+        httpServer.closeIdleConnections();
       });
     },
     getPort: () => actualPort,
   };
+}
+
+function hasValidBearerToken(authorization: string | undefined, expectedToken: string): boolean {
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  if (!match) return false;
+  const supplied = Buffer.from(match[1]);
+  const expected = Buffer.from(expectedToken);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }

@@ -8,6 +8,7 @@ dist/
 .pi/
 .github/prompts
 coverage/
+benchmarks/fixtures/live-latest.json
 # Claude Code hooks (不要提交到 repo, 因为路径可能不同)
 .claude/hooks/
 .claude/session_state/

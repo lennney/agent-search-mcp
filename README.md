@@ -1,7 +1,7 @@
 # Agent Search MCP
 
-> **12 search engines (8 free, zero API keys), one MCP server.**
-> Chinese search via Sogou + Baidu. Multi-source verification with confidence scoring. Waterfall progressive search. Content extraction. `npx agent-search-mcp` is all you need.
+> **Free, token-efficient web search for AI agents.**
+> Start with eight zero-key sources. Spend less context through waterfall stopping and compact output. Route Chinese queries natively and escalate to optional commercial APIs only when needed. `npx agent-search-mcp` is all you need.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -16,35 +16,32 @@
 
 ## Why Agent Search MCP
 
-Most MCP search servers wrap a single paid API — one engine, one bill. Agent Search MCP is built differently.
+The immediate value is simple: **search without paying for an API, and return fewer tokens without blindly throwing away evidence**. The mechanism behind that promise is a search policy for **where to search, when to stop, how much context to spend, and what evidence to trust**. Agent Search MCP is that control layer: a local-first search router, not another single-backend search API.
 
-| | Agent Search MCP | Tavily | Exa | Brave |
+The route is deliberate: **zero-key start → Chinese-native routing → inspectable multi-source evidence → token-aware progressive search → optional commercial escalation**. The 12 adapters serve this route; adapter count is not the product story by itself.
+
+| | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
 |---|:---:|:---:|:---:|:---:|
-| **Price** | **$0** | ~$30/mo | $50/mo | ~$15/mo |
-| **Free engines** | **8** | 0 | 0 | 1 (2K/mo cap) |
-| **API key required** | No | Yes | Yes | Yes |
-| **Multi-source verify** | ✅ 8 engines | ❌ | ❌ | ❌ |
-| **Chinese search** | ✅ Sogou+Baidu | ❌ | ❌ | ❌ |
-| **Self-hosted** | ✅ | ❌ | ❌ | ❌ |
+| **Search without account/API key** | **Yes** | No | No | No |
+| **Search backends** | **8 zero-key + 4 optional APIs** | Tavily API | Exa index | Brave index |
+| **Cross-engine aggregation** | **Yes** | Single upstream | Single upstream | Single upstream |
+| **Dedicated Chinese engines** | **Sogou + Baidu** | No | No | No |
+| **Local MCP server** | Yes | Yes | Yes | Yes |
+| **Best fit** | Zero-key, multilingual verification | Hosted search/extract/map/crawl | Semantic, code, and company research | Independent index + vertical search |
 
-### Free, forever
+Comparison last checked 2026-07-25 against the linked official repositories. Commercial services have useful free allowances, but still require an account or credential; pricing changes, so this table intentionally avoids monthly-price claims.
 
-8 engines work with zero configuration — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek. No API keys, no signup, no credit card. At 100 searches/day, that saves $30–50/month vs paid alternatives.
+### Zero-key by default
 
-### 75% fewer engine calls
+Eight adapters need no credentials — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, and Mojeek. Brave, Tavily, Exa, and You.com remain optional when you want their APIs.
 
-Benchmarked on [30 diverse queries](./benchmarks/) (15 English + 15 Chinese): **100% satisfied at waterfall phase 1** with just 2 engines. A naive multi-search would call all 8 every time. The waterfall stops early when confidence is sufficient — fewer calls, less latency, less data fed to the LLM.
+### Progressive multi-source search
 
-### Multi-source verification
+Parallel and waterfall orchestration, URL/title deduplication, ranking, and graceful fallback are built in. Compact mode supports progressive disclosure so agents can inspect the top results first and call `free_extract` only when deeper content is needed.
 
-DDG and Sogou return **zero-overlap result sets** — you get genuinely broader coverage than any single engine can provide. Each result is scored 1–3 based on how many sources agree. Confidence-2+ results have been cross-checked by multiple engines.
+### Token control is a product feature
 
-### Token-efficient architecture
-
-Two layers of savings, benchmarked on 30 EN+ZH queries:
-- **Waterfall stops early** → 2 engines instead of 8 → **75% fewer engine calls**
-- **Compact mode** → strips metadata noise + progressive disclosure → **28.7% fewer tokens** (1582 → 1128)
-- **Compact Aggressive** (`SNIPPET_LENGTH=120`) → **35.5% fewer tokens** (1582 → 1020)
+`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `MIN_CONFIDENCE`, and `MIN_SOURCE_COUNT` let operators trade context size against detail. A historical 30-query live run measured **28.7% fewer tokens in Compact mode**, **35.5% in Compact+**, and **75% fewer engine calls than naive eight-engine fan-out**. These are scoped measurements for that query set and environment, not universal guarantees. The new frozen-fixture replay uses an in-process tokenizer and currently measures 30.2% / 33.9% formatting savings reproducibly.
 
 ### Native Chinese search
 
@@ -123,6 +120,8 @@ mcp_servers:
 
 ## Engines
 
+The package contains 12 engine adapters, all selectable through `free_search`, `free_search_advanced`, the CLI, and waterfall routing. Eight work without credentials; Brave, Tavily, Exa, and You.com are enabled when their API keys are present.
+
 | Engine | Free | Strengths |
 |--------|:----:|-----------|
 | **DuckDuckGo** | ✅ | Privacy-focused, English web |
@@ -173,7 +172,11 @@ All tools are read-only and idempotent with MCP 2025 annotations.
 | `OUTPUT_STYLE` | `normal` | `compact` for token-optimized output |
 | `SNIPPET_LENGTH` | `200` | Max snippet characters (60–500) |
 | `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
-| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–3.0) |
+| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
+| `MIN_SOURCE_COUNT` | `1` | Minimum number of independent engine sources (1–12) |
+| `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
+| `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
+| `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
 | `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
 | `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
 | `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |
@@ -192,6 +195,10 @@ DISABLED_TOOLS=free_extract,fetch_github_readme
 ```
 
 `DISABLED_TOOLS` takes priority over `ENABLED_TOOLS`.
+
+### HTTP deployment
+
+HTTP mode is secure-by-default: `/mcp` requires `Authorization: Bearer <token>`, and browser requests with an `Origin` header must match `ALLOWED_ORIGINS`. Keep `/health` available for probes, terminate TLS at a trusted reverse proxy, and rotate the token as a secret. See the [HTTP deployment guide](./docs/http-deployment.md).
 
 ### Engine Filtering
 
@@ -215,28 +222,17 @@ fasm search "query" --count 5 --engines bing,baidu,youcom --json
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
 
-# HTTP server
-fasm serve --port 8080
+# HTTP server (Bearer auth is required for MCP HTTP mode)
+HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
 
 ---
 
 ## Benchmark
 
-Benchmarked on [30 queries](./benchmarks/queries.json) (15 EN + 15 ZH, covering tech, news, and general knowledge) with default config, no API keys.
+The benchmark has two evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. Its raw responses were not frozen, so those figures remain historical environment-scoped measurements. The current runner captures actual execution telemetry and replays a frozen fixture through every output style with locked `gpt-tokenizer`; CI verifies the expected summary (currently 30.2% / 33.9%). Neither track is a cross-product quality ranking or a production guarantee.
 
-| Metric | Result |
-|--------|--------|
-| **Success rate** | **30/30 (100%)** |
-| **Waterfall efficiency** | **100%** stopped at phase 1 |
-| **Avg engines per query** | **2.0** (vs 8 in naive = **75% fewer calls**) |
-| **Multi-source diversity** | **0% URL overlap** DDG vs Sogou |
-| **Avg confidence** | 0.64 / 1.0 |
-| **Avg latency** | 15.2s (P50: 14.8s, P95: 18.4s) |
-| **Token savings (compact)** | **28.7%** (1582 → 1128 tokens) |
-| **Token savings (aggressive)** | **35.5%** (1582 → 1020 tokens) |
-
-→ [Full methodology & reports](./benchmarks/)
+→ [Methodology, queries, limitations, and reports](./benchmarks/)
 
 ---
 
@@ -276,6 +272,8 @@ npm test
 npm run dev        # stdio mode
 npm run dev:http   # HTTP mode (port 3000)
 ```
+
+The build helper is cross-platform; CI checks Node.js 18/20/22 on Linux and performs a Windows build smoke test.
 
 ---
 

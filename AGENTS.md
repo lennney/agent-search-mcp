@@ -9,19 +9,19 @@ tags:
 ---
 # Agent Search MCP — 多引擎统一搜索 MCP Server
 
-一句话：11 引擎搜索（ddg/sogou/bing/baidu/brave/tavily/exa/wikipedia/startpage/yandex/mojeek），MCP 协议接入，**免费 + 多源验证 + Token 优化**。
+一句话：12 个搜索适配器（8 个零密钥 + 4 个可选 API），MCP 协议接入，**中文原生 + 多源聚合 + Token 可控**。
 
 ## 当前阶段
 
 **版本**: v3.1.0（已发布 npm + GitHub Release）— [查看完整路线图](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-**测试**: 438 passed, 38 files | **引擎**: 11 (8 免费, 3 付费) | **Python**: 可选（DDG 自动 HTML 回退）
+**测试**: 510 passed, 43 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
 
 当前优先事项：
-1. **Phase A: Agent UX** — `setupFetchTools` 拆分、MCP annotations、错误区分度
-2. **Phase C: 性能** — DDG News HTML 回退、lite.ddg 第三层回退
-3. **Phase D: 测试** — brave/tavily mock、E2E 集成测试、SSRF 安全测试
-4. **分发推广** — awesome-mcp-servers PR、掘金文章（持续）
+1. **搜索质量证据** — 在稳定网络 runner 上捕获真实 fixture 并增加人工相关性标签
+2. **HTTP 部署指南** — Bearer 密钥轮换、Origin allowlist 与反向代理配置
+3. **信号校准** — 用真实失败查询持续校准 relevance/confidence/source_count
+4. **分发推广** — 发布已校准口径的掘金/Reddit/V2EX 素材（持续）
 
 ## 常用命令
 
@@ -55,7 +55,7 @@ fasm extract "https://..."                  # CLI 提取
 
 ## 架构
 
-`src/` 下按职责分层：`tools/`（MCP 工具定义）、`engines/`（11 引擎适配）、`aggregation/`（评分/去重/丰富）、`synthesis/`（结果合成）、`infrastructure/`（安全/缓存/限速）。Agent 自己探索 `src/` 目录获取最新结构。
+`src/` 下按职责分层：`tools/`（MCP 工具定义）、`engines/`（12 个引擎适配器）、`aggregation/`（评分/去重/丰富）、`synthesis/`（结果合成）、`infrastructure/`（安全/缓存/限速）。Agent 自己探索 `src/` 目录获取最新结构。
 
 ## 编码规范
 
@@ -92,12 +92,16 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 
 - **Bing/Baidu 测试**: 实际搜索需要网络，单测用 mock 模拟 HTTP 响应
 - **ddgs 依赖**: Python 库 `ddgs` 为可选依赖。未安装时 DDG 引擎自动回退到 Node.js HTML 引擎（cheerio 解析）。Docker 镜像不含 Python，仅使用 HTML 引擎。`isDdgsAvailable()` 检测可用性，结果缓存在进程生命周期内
-- **cheerio 依赖**: DuckDuckGo HTML 引擎依赖 cheerio（纯 JS，无 native binding），npm install 自动安装
+- **cheerio 依赖**: DuckDuckGo HTML 引擎依赖 cheerio（纯 JS，无 native binding）。必须固定在 `1.0.0` 以维持 Node 18 支持；Cheerio 1.2+ 要求 Node 20.18.1+
 - **中文搜索**: Sogou + Baidu 专供中文搜索，不要用 Google Translate 翻译替代
 - **请求合并**: 相同查询在 100ms 内自动合并，避免并发重复请求
 - **Env 变量**: API key 通过环境变量传入，不走配置文件
 - **npm publish**: 当前 registry 是腾讯镜像（mirrors.tencentyun.com），publish 前必须切到 registry.npmjs.org
 - **工具可见性**: `ENABLED_TOOLS` / `DISABLED_TOOLS` 环境变量控制 MCP 工具注册。`DISABLED_TOOLS` 优先级高于 `ENABLED_TOOLS`。默认全部启用。资源（capabilities/health）不受此策略影响。
+- **路由能力面**: 12 个适配器已统一进入 MCP / CLI / 瀑布路由；You.com 必须有 `YDC_API_KEY`，不要把“包内存在”与“当前凭证可用”混淆。
+- **Benchmark 口径**: 可保留 2026-07-24 历史 30 查询实测的 28.7% / 35.5% / 75%，但必须限定当时查询集和环境。当前冻结 fixture + `gpt-tokenizer` 用于可重现的格式化回归，不代表搜索质量。
+- **HTTP 安全默认值**: HTTP / both 模式必须配置 `HTTP_AUTH_TOKEN`；只有显式 `HTTP_ALLOW_UNAUTHENTICATED=true` 才允许无认证运行。带 Origin 的浏览器请求必须命中 `ALLOWED_ORIGINS`。
+- **stdio 日志**: stdout 只用于 MCP JSON-RPC。运行日志必须走 `logger`（stderr）或 `console.error`，禁止在服务路径使用 `console.log`。
 
 ## 文档索引
 

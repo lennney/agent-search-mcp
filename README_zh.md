@@ -1,7 +1,7 @@
 # Agent Search MCP
 
-> **12 个搜索引擎（8 个免费，无需 API Key），一个 MCP Server。**
-> 搜狗 + 百度原生中文搜索。多源交叉验证 + 置信度评分。瀑布式渐进搜索。内容提取。`npx agent-search-mcp` 即可使用。
+> **给 AI Agent 的免费、省 Token 网页搜索。**
+> 8 个零密钥来源直接起步；用瀑布停止和紧凑输出减少上下文；中文查询原生路由，只在需要时升级商业 API。`npx agent-search-mcp` 即可使用。
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -16,35 +16,32 @@
 
 ## 为什么选择 Agent Search MCP
 
-大多数 MCP 搜索服务器只是封装单个付费 API — 一个引擎，一张账单。Agent Search MCP 架构完全不同。
+用户第一眼能感受到的价值很直接：**不买搜索 API 也能搜，不盲目丢证据也能少花 token**。支撑这两个卖点的机制，是一套决定**去哪里搜、什么时候停、花多少上下文、哪些证据值得信**的搜索策略。Agent Search MCP 做的就是这个控制层。
 
-| | Agent Search MCP | Tavily | Exa | Brave |
+这条路线是：**零密钥起步 → 中文原生路由 → 多源证据可检查 → 按 token 预算渐进搜索 → 必要时升级商业 API**。12 个适配器是这条路线的实现，适配器数量本身不是产品故事。
+
+| | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
 |---|:---:|:---:|:---:|:---:|
-| **价格** | **$0** | ~$30/月 | $50/月 | ~$15/月 |
-| **免费引擎数** | **8** | 0 | 0 | 1（2K/月封顶） |
-| **需要 API Key** | 不需要 | 需要 | 需要 | 需要 |
-| **多源验证** | ✅ 8 引擎交叉验证 | ❌ | ❌ | ❌ |
-| **中文搜索** | ✅ 搜狗+百度 | ❌ | ❌ | ❌ |
-| **自托管** | ✅ | ❌ | ❌ | ❌ |
+| **无需账号/API Key 搜索** | **是** | 否 | 否 | 否 |
+| **搜索后端** | **8 个零密钥 + 4 个可选 API** | Tavily API | Exa 索引 | Brave 索引 |
+| **跨引擎聚合** | **支持** | 单一上游 | 单一上游 | 单一上游 |
+| **专用中文引擎** | **搜狗 + 百度** | 无 | 无 | 无 |
+| **本地 MCP Server** | 支持 | 支持 | 支持 | 支持 |
+| **最适合** | 零密钥、多语种互补搜索 | 托管搜索/提取/Map/Crawl | 语义、代码、企业研究 | 独立索引 + 垂直搜索 |
 
-### 完全免费
+对比信息于 2026-07-25 按上述官方仓库核对。商业服务也提供免费额度，但仍需要账号或凭证；价格变化快，因此这里不再使用容易过期的月费对比。
 
-8 个引擎零配置即可使用 — DuckDuckGo、搜狗、Bing、百度、Wikipedia、Startpage、Yandex、Mojeek。无需 API Key，无需注册，无需信用卡。按每天 100 次搜索算，比付费方案省 $30–50/月。
+### 默认零密钥
 
-### 减少 75% 引擎调用
+8 个适配器无需凭证：DuckDuckGo、搜狗、Bing、百度、Wikipedia、Startpage、Yandex、Mojeek。需要商业 API 时，可选启用 Brave、Tavily、Exa 和 You.com。
 
-基于 [30 条多样化查询](./benchmarks/)（15 条英文 + 15 条中文）的基准测试：**100% 在瀑布阶段一即满足要求**，仅需 2 个引擎。简单多引擎搜索每次都调全部 8 个引擎。瀑布式搜索在置信度足够时提前停止 — 更少调用、更低延迟、更少数据喂给 LLM。
+### 渐进式多源搜索
 
-### 多源交叉验证
+内置并行/瀑布编排、URL/标题去重、排序与自动降级。Compact 模式支持渐进披露，让 Agent 先看高优先级结果，只在需要时调用 `free_extract` 深挖正文。
 
-DDG 和搜狗返回**零重叠结果集** — 覆盖面真正比单一引擎更广。每个结果经多源比对后给出 1–3 分置信度评分。置信度 ≥2 的结果经过至少 2 个引擎交叉验证。
+### Token 控制是产品能力
 
-### Token 省在架构里
-
-两层节省机制，基于 30 条 EN+ZH 查询的基准测试：
-- **瀑布提前停止** → 调 2 个而非 8 个引擎 → **减少 75% 引擎调用**
-- **Compact 模式** → 去除元数据噪声 + 渐进式披露 → **减少 28.7% token**（1582 → 1128）
-- **Compact Aggressive**（`SNIPPET_LENGTH=120`）→ **减少 35.5% token**（1582 → 1020）
+通过 `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`MIN_CONFIDENCE`和 `MIN_SOURCE_COUNT`，使用者可在上下文体积和信息细节间主动取舍。历史 30 查询真实运行实测了 **Compact 节省 28.7% token**、**Compact+ 节省 35.5%**，以及相比 8 引擎全并发 **少 75% 引擎调用**。这是特定查询集和环境的实测，不是通用保证。新的冻结 fixture 回放使用进程内 tokenizer，当前可重现 30.2% / 33.9% 的格式化节省。
 
 ### 原生中文搜索
 
@@ -123,6 +120,8 @@ mcp_servers:
 
 ## 搜索引擎
 
+包内包含 12 个引擎适配器，现在均可从 `free_search`、`free_search_advanced`、CLI 和瀑布路由选择。8 个零密钥引擎直接可用；Brave、Tavily、Exa 和 You.com 在配置 API Key 后启用。
+
 | 引擎 | 免费 | 优势 |
 |------|:----:|------|
 | **DuckDuckGo** | ✅ | 隐私保护，英文搜索 |
@@ -173,7 +172,11 @@ mcp_servers:
 | `OUTPUT_STYLE` | `normal` | `compact` 开启 token 优化输出 |
 | `SNIPPET_LENGTH` | `200` | 摘要最大字符数（60–500） |
 | `MAX_FULL_RESULTS` | `3` | compact 模式下的完整结果数 |
-| `MIN_CONFIDENCE` | `0` | 置信度过滤阈值（0.0–3.0） |
+| `MIN_CONFIDENCE` | `0` | 置信度阈值（0.0–1.0）；历史值 2–3 自动映射为来源数 |
+| `MIN_SOURCE_COUNT` | `1` | 最少独立引擎来源数（1–12） |
+| `HTTP_AUTH_TOKEN` | — | HTTP 模式必需的 Bearer Token |
+| `HTTP_ALLOW_UNAUTHENTICATED` | `false` | 显式关闭 HTTP 认证（仅限受信任本地网络） |
+| `ALLOWED_ORIGINS` | — | 允许访问 HTTP 端点的浏览器 Origin，逗号分隔 |
 | `SEMANTIC_DEDUP` | `false` | 语义去重（需 `pip install model2vec`） |
 | `DEDUP_THRESHOLD` | `0.85` | 语义去重的余弦相似度阈值 |
 | `SEMANTIC_RERANK` | `false` | 语义重排（需 `pip install model2vec`） |
@@ -192,6 +195,10 @@ DISABLED_TOOLS=free_extract,fetch_github_readme
 ```
 
 `DISABLED_TOOLS` 优先级高于 `ENABLED_TOOLS`。
+
+### HTTP 部署
+
+HTTP 模式采用安全默认值：`/mcp` 要求 `Authorization: Bearer <token>`，带 `Origin` 请求头的浏览器请求必须命中 `ALLOWED_ORIGINS`。`/health` 保留给健康检查；生产环境应在受信反向代理终止 TLS，并把 Token 当作密钥轮换。详见 [HTTP 部署指南](./docs/http-deployment.md)。
 
 ### 引擎过滤
 
@@ -215,28 +222,17 @@ fasm search "关键词" --count 5 --engines bing,baidu,youcom --json
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
 
-# HTTP 服务
-fasm serve --port 8080
+# HTTP MCP 服务（默认要求 Bearer 认证）
+HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
 
 ---
 
 ## 基准测试
 
-基于 [30 条查询](./benchmarks/queries.json)（15 EN + 15 ZH，覆盖技术、新闻、通用知识），默认配置，无 API Key。
+基准现在分两条证据线。2026-07-24 历史真实运行覆盖 30 条中英文查询，实测 Compact 28.7%、Compact+ 35.5%，以及相比 8 引擎全并发少 75% 调用；由于当时没有保存原始响应 fixture，它们仍是限定查询集和环境的历史实测。新 runner 记录真实执行遥测，并用锁定的 `gpt-tokenizer` 对同一冻结 fixture 进行三种输出回放；CI 校验当前 30.2% / 33.9% 的预期摘要。两者都不是跨产品质量排名或生产保证。
 
-| 指标 | 结果 |
-|------|------|
-| **成功率** | **30/30 (100%)** |
-| **瀑布效率** | **100%** 在阶段一停止 |
-| **平均引擎数** | **2.0**（对比 8 引擎全量 = **减少 75% 调用**）|
-| **多源多样性** | DDG 与搜狗 **0% URL 重叠** |
-| **平均置信度** | 0.64 / 1.0 |
-| **平均延迟** | 15.2s（P50: 14.8s, P95: 18.4s）|
-| **Token 节省（compact）** | **28.7%**（1582 → 1128 tokens）|
-| **Token 节省（aggressive）** | **35.5%**（1582 → 1020 tokens）|
-
-→ [完整方法与报告](./benchmarks/)
+→ [方法、查询、限制与报告](./benchmarks/)
 
 ---
 
@@ -276,6 +272,8 @@ npm test
 npm run dev        # stdio 模式
 npm run dev:http   # HTTP 模式（端口 3000）
 ```
+
+构建脚本支持跨平台；CI 在 Linux 上覆盖 Node.js 18/20/22，并执行 Windows 构建冒烟测试。
 
 ---
 

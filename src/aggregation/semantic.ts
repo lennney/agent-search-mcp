@@ -23,7 +23,7 @@ export interface SemanticOptions {
 // ── Bridge process singleton ────────────────────────────────────────────────
 
 let _process: ChildProcess | null = null;
-let _pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
+const _pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
 let _requestId = 0;
 let _availability: boolean | null = null; // null = unchecked
 let _spawnLock = false; // prevents concurrent spawn attempts

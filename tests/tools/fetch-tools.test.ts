@@ -59,6 +59,10 @@ describe('Fetch tools', () => {
 
       const content = await fetchCsdnArticle('https://blog.csdn.net/test/article/details/123');
       expect(content).toContain('Test Article');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://blog.csdn.net/test/article/details/123',
+        expect.objectContaining({ redirect: 'error' })
+      );
     });
 
     it('throws on HTTP error', async () => {
@@ -68,6 +72,17 @@ describe('Fetch tools', () => {
       });
 
       await expect(fetchCsdnArticle('https://blog.csdn.net/test/article/details/123')).rejects.toThrow();
+    });
+
+    it.each([
+      'http://blog.csdn.net/test/article/details/123',
+      'https://localhost/admin',
+      'https://169.254.169.254/latest/meta-data',
+      'https://blog.csdn.net.evil.example/article',
+      'https://blog.csdn.net:8443/article',
+    ])('rejects unsafe or non-CSDN URL %s before fetching', async (url) => {
+      await expect(fetchCsdnArticle(url)).rejects.toThrow('Invalid CSDN article URL');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

@@ -10,13 +10,13 @@ export function registerCapabilities(server: McpServer) {
 **Agent Search MCP** — Free & open-source multi-engine MCP search server.
 - GitHub: https://github.com/lennney/agent-search-mcp ⭐
 - npm: npx agent-search-mcp / npm install -g agent-search-mcp
-- Version: 3.1.1 | MIT | 5 deps | 448+ tests
+- Version: 3.1.3 | Apache-2.0 | 5 runtime deps | 498+ tests
 
 ## Quick Usage
 free_search(query) — search the web for free
 
 ## High Quality
-free_search_advanced(query, min_confidence=2) — verified results only
+free_search_advanced(query) — filtering, waterfall search, and optional enrichment
 
 ## Smart Answer
 search_with_synthesis(query) — deep search with waterfall verification + prompt hint for LLM synthesis
@@ -30,11 +30,9 @@ free_search_advanced(query, language="zh") — Chinese sources
 ## Content Extraction
 free_extract(url) — get full page as markdown
 
-## Confidence Scores
-Each result has confidence 1-3 based on multi-source verification.
-- 1: Single source
-- 2: Verified by 2 sources (recommended)
-- 3: Highly verified by 3+ sources
+## Result Signals
+Each result exposes relevance (query match), confidence (source reliability and corroboration), and source_count (independent engines).
+Use these as ranking and verification aids; inspect result URLs before treating a claim as verified.
 
 ## Engines
 - DuckDuckGo (free)
@@ -44,6 +42,7 @@ Each result has confidence 1-3 based on multi-source verification.
 - Brave Search (paid, 2000 free/month)
 - Tavily (paid, 1000 free/month)
 - Exa (paid)
+- You.com (paid)
 - Yandex (free, Russian)
 - Mojeek (free, privacy-focused)
 - Wikipedia (free)
