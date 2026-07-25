@@ -34,6 +34,10 @@ tags:
   system's original ranking and report nDCG@5, Precision@5, pool-relative
   Recall@5, reciprocal rank, Success@5, citation support, latency, failure
   disclosure, and slices without inventing answer-correctness metrics.
+- Added pre-adjudication reviewer reliability evidence: raw agreement,
+  pairwise quadratic-weighted Cohen's kappa for relevance, and pairwise
+  Cohen's kappa for citation support. Undefined no-variance pairs remain
+  explicit instead of being reported as perfect agreement.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the

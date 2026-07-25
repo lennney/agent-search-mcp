@@ -673,6 +673,8 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
         completed-review import, and disagreement/adjudication validation.
   - [x] Generate per-system pooled-qrels comparison reports from completed
         adjudication without inferring unmeasured answer correctness.
+  - [x] Report pre-adjudication reviewer reliability with raw agreement and
+        pairwise kappa without hiding low-agreement queries.
   - [ ] Complete two-reviewer human labels on a non-empty pooled capture.
 - [x] Measure quality, citation support, tokens per correct answer, latency, and
       failure transparency as separate dimensions.

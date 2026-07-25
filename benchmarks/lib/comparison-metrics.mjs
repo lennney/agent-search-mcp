@@ -259,6 +259,7 @@ export function evaluatePooledComparison(pool, adjudication) {
     source_captures: pool.source_captures,
     reviewers: adjudication.reviewers,
     adjudicator: adjudication.adjudicator,
+    reviewer_agreement: adjudication.reviewer_agreement,
     metric_scope: {
       cutoff: CUTOFF,
       relevance_threshold: 2,

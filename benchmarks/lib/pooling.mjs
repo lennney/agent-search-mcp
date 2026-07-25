@@ -22,6 +22,11 @@ function sha256(value) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
+function round(value, digits = 2) {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
 export function canonicalizePoolUrl(value) {
   let url;
   try {
@@ -279,6 +284,7 @@ export function prepareReviewAdjudication(pool, packets) {
       agreements,
       disagreements,
     },
+    reviewer_agreement: calculateReviewerAgreement(samples, reviewers.map(reviewer => reviewer.id)),
     samples,
   };
 }
@@ -300,6 +306,11 @@ export function validateCompletedAdjudication(adjudication) {
     || adjudication.reviewers.length < 2
     || !Array.isArray(adjudication.samples)) {
     poolError('completed adjudication must retain two reviewers and samples');
+  }
+  const sampleIds = adjudication.samples.map(sample => sample?.id);
+  if (sampleIds.some(id => typeof id !== 'string' || id.length === 0)
+    || new Set(sampleIds).size !== sampleIds.length) {
+    poolError('completed adjudication sample IDs must be unique');
   }
   const reviewerIds = adjudication.reviewers.map(reviewer => reviewer?.id);
   if (reviewerIds.some(id => typeof id !== 'string' || id.length === 0)
@@ -331,7 +342,102 @@ export function validateCompletedAdjudication(adjudication) {
       }
     }
   }
+  const expectedAgreement = calculateReviewerAgreement(adjudication.samples, reviewerIds);
+  if (JSON.stringify(adjudication.reviewer_agreement) !== JSON.stringify(expectedAgreement)) {
+    poolError('completed adjudication reviewer agreement does not match retained judgments');
+  }
   return adjudication;
+}
+
+function calculateReviewerAgreement(samples, reviewerIds) {
+  const relevanceRows = [];
+  const citationRows = [];
+  for (const sample of samples) {
+    for (const candidate of sample.candidates) {
+      const byReviewer = new Map(
+        candidate.judgments.map(judgment => [judgment.reviewer_id, judgment]),
+      );
+      relevanceRows.push(reviewerIds.map(id => byReviewer.get(id).relevance));
+      citationRows.push(reviewerIds.map(id => byReviewer.get(id).citation_supported));
+    }
+  }
+  const reviewerPairs = [];
+  for (let left = 0; left < reviewerIds.length; left += 1) {
+    for (let right = left + 1; right < reviewerIds.length; right += 1) {
+      reviewerPairs.push([left, right]);
+    }
+  }
+  const relevanceKappas = reviewerPairs
+    .map(([left, right]) => quadraticWeightedKappa(
+      relevanceRows.map(row => row[left]),
+      relevanceRows.map(row => row[right]),
+      0,
+      3,
+    ))
+    .filter(value => value !== null);
+  const citationKappas = reviewerPairs
+    .map(([left, right]) => cohensKappa(
+      citationRows.map(row => row[left]),
+      citationRows.map(row => row[right]),
+    ))
+    .filter(value => value !== null);
+  return {
+    reviewer_pairs: reviewerPairs.length,
+    judged_candidates: relevanceRows.length,
+    relevance: {
+      raw_agreement_percent: rawAgreementPercent(relevanceRows),
+      mean_pairwise_quadratic_weighted_kappa: meanOrNull(relevanceKappas),
+      defined_pairs: relevanceKappas.length,
+    },
+    citation_support: {
+      raw_agreement_percent: rawAgreementPercent(citationRows),
+      mean_pairwise_cohens_kappa: meanOrNull(citationKappas),
+      defined_pairs: citationKappas.length,
+    },
+  };
+}
+
+function rawAgreementPercent(rows) {
+  if (rows.length === 0) return null;
+  const agreements = rows.filter(row => row.every(value => value === row[0])).length;
+  return round(agreements / rows.length * 100, 1);
+}
+
+function meanOrNull(values) {
+  return values.length === 0
+    ? null
+    : round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function cohensKappa(left, right) {
+  if (left.length === 0 || left.length !== right.length) return null;
+  const categories = [...new Set([...left, ...right])];
+  const observed = left.filter((value, index) => value === right[index]).length / left.length;
+  const expected = categories.reduce((sum, category) => {
+    const leftRate = left.filter(value => value === category).length / left.length;
+    const rightRate = right.filter(value => value === category).length / right.length;
+    return sum + leftRate * rightRate;
+  }, 0);
+  return expected === 1 ? null : (observed - expected) / (1 - expected);
+}
+
+function quadraticWeightedKappa(left, right, minimum, maximum) {
+  if (left.length === 0 || left.length !== right.length || minimum === maximum) return null;
+  const range = maximum - minimum;
+  const disagreement = (a, b) => ((a - b) / range) ** 2;
+  const observed = left.reduce(
+    (sum, value, index) => sum + disagreement(value, right[index]),
+    0,
+  ) / left.length;
+  let expected = 0;
+  for (let leftValue = minimum; leftValue <= maximum; leftValue += 1) {
+    const leftRate = left.filter(value => value === leftValue).length / left.length;
+    for (let rightValue = minimum; rightValue <= maximum; rightValue += 1) {
+      const rightRate = right.filter(value => value === rightValue).length / right.length;
+      expected += leftRate * rightRate * disagreement(leftValue, rightValue);
+    }
+  }
+  return expected === 0 ? null : 1 - observed / expected;
 }
 
 function validateCapture(capture, systemId) {

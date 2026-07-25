@@ -130,6 +130,15 @@ fewer results cannot inflate the score. Because the search tool returns evidence
 synthesized answer, answer accuracy and tokens per correct answer are marked
 unmeasured instead of inferred from retrieval relevance.
 
+Before adjudication, the artifact also reports reviewer reliability:
+all-reviewer raw agreement, mean pairwise quadratic-weighted Cohen's kappa for
+the ordinal 0-3 relevance labels, and mean pairwise Cohen's kappa for binary
+citation support. A kappa is `null` when a reviewer pair has no label variance;
+the report keeps the raw agreement and `defined_pairs` count instead of
+converting an undefined statistic to perfect agreement. Low agreement remains
+visible and is resolved through adjudication rather than silently dropping
+queries.
+
 For the current single-system qualification artifact, generate separate
 blinded packets with:
 

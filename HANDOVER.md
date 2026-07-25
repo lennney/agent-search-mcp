@@ -23,6 +23,9 @@ tags:
 - Completed adjudication can now produce a per-system comparison that
   reconstructs protected original rankings. Recall is pool-relative; answer
   accuracy and tokens per correct answer stay explicitly unmeasured.
+- Adjudication now records reviewer reliability before final labels: raw
+  agreement, ordinal weighted kappa, binary citation kappa, and defined-pair
+  counts. The validator recomputes these values from retained judgments.
 - CLI: `node benchmarks/pool.mjs`; workflow and limitations are documented in
   `benchmarks/README.md`.
 - This closes the tooling portion only. Still required: capture a genuinely

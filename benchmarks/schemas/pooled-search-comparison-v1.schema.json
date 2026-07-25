@@ -11,6 +11,7 @@
     "source_pool_sha256",
     "source_adjudication_sha256",
     "metric_scope",
+    "reviewer_agreement",
     "systems",
     "unmeasured"
   ],
@@ -58,6 +59,49 @@
         }
       }
     },
+    "reviewer_agreement": {
+      "type": "object",
+      "required": [
+        "reviewer_pairs",
+        "judged_candidates",
+        "relevance",
+        "citation_support"
+      ],
+      "properties": {
+        "reviewer_pairs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "judged_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "relevance": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/agreementMetric"
+            },
+            {
+              "required": [
+                "mean_pairwise_quadratic_weighted_kappa"
+              ]
+            }
+          ]
+        },
+        "citation_support": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/agreementMetric"
+            },
+            {
+              "required": [
+                "mean_pairwise_cohens_kappa"
+              ]
+            }
+          ]
+        }
+      }
+    },
     "systems": {
       "type": "object",
       "minProperties": 2,
@@ -80,6 +124,42 @@
         "answer_accuracy",
         "tokens_per_correct_answer"
       ]
+    }
+  },
+  "$defs": {
+    "agreementMetric": {
+      "type": "object",
+      "required": [
+        "raw_agreement_percent",
+        "defined_pairs"
+      ],
+      "properties": {
+        "raw_agreement_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "mean_pairwise_quadratic_weighted_kappa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "mean_pairwise_cohens_kappa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "defined_pairs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     }
   }
 }

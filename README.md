@@ -299,6 +299,8 @@ adjudication.
 Once that gate is satisfied, the same toolchain reconstructs each system's
 protected ranking and emits per-system pooled-qrels metrics. Reported Recall is
 candidate-pool-relative; answer accuracy is not inferred from result relevance.
+Reviewer raw agreement and pairwise kappa remain attached to the comparison so
+adjudication does not erase evidence about labeling difficulty.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

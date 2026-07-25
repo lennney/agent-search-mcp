@@ -226,6 +226,20 @@ describe('multi-system search result pooling', () => {
       agreements: 2,
       disagreements: 1,
     });
+    expect(adjudication.reviewer_agreement).toEqual({
+      reviewer_pairs: 1,
+      judged_candidates: 3,
+      relevance: {
+        raw_agreement_percent: 66.7,
+        mean_pairwise_quadratic_weighted_kappa: 0.87,
+        defined_pairs: 1,
+      },
+      citation_support: {
+        raw_agreement_percent: 100,
+        mean_pairwise_cohens_kappa: 1,
+        defined_pairs: 1,
+      },
+    });
     const disagreement = adjudication.samples[0].candidates
       .find((candidate: any) => candidate.agreement === false);
     expect(disagreement.judgments).toHaveLength(2);
@@ -252,6 +266,36 @@ describe('multi-system search result pooling', () => {
     }
 
     expect(validateCompletedAdjudication(completed).status).toBe('completed');
+
+    const tamperedAgreement = structuredClone(completed);
+    tamperedAgreement.reviewer_agreement.relevance.raw_agreement_percent = 100;
+    expect(() => validateCompletedAdjudication(tamperedAgreement))
+      .toThrow(/reviewer agreement/);
+  });
+
+  it('reports undefined kappa when both reviewers use only one category', () => {
+    const pooled = poolLiveCaptures([
+      { systemId: 'system-a', capture: systemA },
+      { systemId: 'system-b', capture: systemB },
+    ]);
+    const reviews = ['reviewer-a', 'reviewer-b'].map(reviewerSlot =>
+      completedPacket(
+        prepareBlindedReviewPacket(pooled, { reviewerSlot }),
+        new Map(),
+      ));
+
+    const adjudication = prepareReviewAdjudication(pooled, reviews);
+
+    expect(adjudication.reviewer_agreement.relevance).toEqual({
+      raw_agreement_percent: 100,
+      mean_pairwise_quadratic_weighted_kappa: null,
+      defined_pairs: 0,
+    });
+    expect(adjudication.reviewer_agreement.citation_support).toEqual({
+      raw_agreement_percent: 100,
+      mean_pairwise_cohens_kappa: null,
+      defined_pairs: 0,
+    });
   });
 
   it('rejects incomplete reviews and mismatched source pools', () => {

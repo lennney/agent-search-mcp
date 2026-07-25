@@ -78,6 +78,13 @@ citation support, latency, failure disclosure, and language/category/freshness
 slices. It marks answer accuracy and tokens per correct answer unmeasured,
 because no synthesized answer was independently judged.
 
+The adjudication artifact also retains pre-adjudication reviewer reliability.
+It records raw agreement, mean pairwise quadratic-weighted Cohen's kappa for
+ordinal relevance, and mean pairwise Cohen's kappa for binary citation
+support. The completed-artifact validator recomputes these values from the
+retained judgments, so they cannot be edited independently. Undefined
+no-variance pairs remain `null` and are counted separately.
+
 ## Remaining external gate
 
 1. Capture Agent Search and a genuinely independent comparison system against

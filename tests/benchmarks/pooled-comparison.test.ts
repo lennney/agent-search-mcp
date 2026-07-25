@@ -145,6 +145,20 @@ describe('pooled search comparison metrics', () => {
         recall: 'adjudicated-candidate-pool',
         queries_without_relevant_pool: 'scored-as-zero',
       },
+      reviewer_agreement: {
+        reviewer_pairs: 1,
+        judged_candidates: 3,
+        relevance: {
+          raw_agreement_percent: 100,
+          mean_pairwise_quadratic_weighted_kappa: 1,
+          defined_pairs: 1,
+        },
+        citation_support: {
+          raw_agreement_percent: 100,
+          mean_pairwise_cohens_kappa: 1,
+          defined_pairs: 1,
+        },
+      },
     }));
     expect(report.systems['system-a']).toEqual(expect.objectContaining({
       evaluated_queries: 1,
@@ -211,6 +225,6 @@ describe('pooled search comparison metrics', () => {
     adjudication.samples.push(structuredClone(adjudication.samples[0]));
 
     expect(() => evaluatePooledComparison(pool, adjudication))
-      .toThrow(/sample set/);
+      .toThrow(/sample/);
   });
 });
