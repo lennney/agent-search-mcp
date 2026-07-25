@@ -2,6 +2,19 @@ import * as http from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { getProtocolReadiness } from './protocol.js';
+
+const CORS_REQUEST_HEADERS = [
+  'Authorization',
+  'Content-Type',
+  'Mcp-Session-Id',
+  'MCP-Protocol-Version',
+  'Mcp-Method',
+  'Mcp-Name',
+  'traceparent',
+  'tracestate',
+  'baggage',
+].join(', ');
 
 export interface HttpServerOptions {
   port: number;
@@ -57,7 +70,7 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
     if (enableCors && requestOrigin) {
       res.setHeader('Access-Control-Allow-Origin', allowedOrigins.includes('*') ? '*' : requestOrigin);
       res.setHeader('Vary', 'Origin');
-      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Mcp-Session-Id');
+      res.setHeader('Access-Control-Allow-Headers', CORS_REQUEST_HEADERS);
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
       res.setHeader('Access-Control-Expose-Headers', 'Mcp-Session-Id');
     }
@@ -72,7 +85,11 @@ export function createHttpServer(mcpServer: McpServer | null, options: HttpServe
     // Health check
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', version: '3.1.3' }));
+      res.end(JSON.stringify({
+        status: 'ok',
+        version: '3.1.3',
+        protocol: getProtocolReadiness(),
+      }));
       return;
     }
 

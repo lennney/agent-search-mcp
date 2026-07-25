@@ -22,6 +22,11 @@ describe('createHttpServer', () => {
       const body = await res.json();
       expect(body.status).toBe('ok');
       expect(body.version).toBe('3.1.3');
+      expect(body.protocol).toEqual({
+        stable: '2025-11-25',
+        target: '2026-07-28',
+        target_status: 'experimental',
+      });
     } finally {
       await server.close();
     }
@@ -54,6 +59,10 @@ it('GET /mcp without transport returns 404', async () => {
         headers: { Origin: 'https://example.com' },
       });
       expect(res.headers.get('access-control-allow-origin')).toBe('https://example.com');
+      expect(res.headers.get('access-control-allow-headers')).toContain('MCP-Protocol-Version');
+      expect(res.headers.get('access-control-allow-headers')).toContain('Mcp-Method');
+      expect(res.headers.get('access-control-allow-headers')).toContain('Mcp-Name');
+      expect(res.headers.get('access-control-allow-headers')).toContain('traceparent');
     } finally {
       await server.close();
     }

@@ -13,7 +13,7 @@ tags:
 
 **版本**: npm v3.1.3；main 含 v3.3.0 候选功能，尚未发布
 **引擎**: 12 个适配器；`free_search`/`free_search_advanced`/CLI/瀑布模式已全部统一路由
-**测试**: vitest — 510 passed, 43 test files
+**测试**: vitest — 514 passed, 44 test files
 **最后更新**: 2026-07-25
 **npm**: https://www.npmjs.com/package/agent-search-mcp
 **Python 依赖**: 可选（DDG 自动回退到 cheerio HTML 引擎；语义层需 `pip install model2vec`）
@@ -58,3 +58,16 @@ tags:
 - **Benchmark 边界**：冻结 fixture 只验证格式和 token 回归，暂无人工相关性标签；历史精确数字必须带当时查询集/环境限定
 - **HTTP 部署**：已有 Bearer/Origin 防护，但生产环境仍需 TLS、密钥轮换和反向代理限流
 - **依赖审计**：本次安装报告 5 项（1 low / 2 moderate / 2 high）；当前 runner 访问 npm audit endpoint 被 EACCES 拦截，未能刷新 advisory 明细。不要为清零审计而盲目降级 MCP/测试协议栈。
+
+## 2026-07-25 补充交接
+
+- 修复 `search_with_synthesis`：`confidence` 统一为 0-1，
+  `min_source_count` 独立表达多源验证；兼容旧的 2-3 输入。
+- 合成结果现在保留每条结果自己的来源，不再把所有结果标成首个搜索引擎。
+- `/health` 明确区分稳定协议 `2025-11-25` 与实验目标
+  `2026-07-28`；CORS 已放行新路由头和 W3C Trace Context。
+- 完整 2026 协议需要 SDK v2 和 Node 20+，当前只做双轨准备，未宣称生产兼容。
+- 新路线图：
+  `docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md`。
+- 新 ADR：Git 中的 ADR/Plan 是唯一权威源；腾讯 Hermes 只保存带 commit/path
+  的可搜索投影。SSH 检查时 `tencent` 主机主动关闭连接，尚未创建远端目录或任务。

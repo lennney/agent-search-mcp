@@ -154,6 +154,11 @@ The package contains 12 engine adapters, all selectable through `free_search`, `
 
 All tools are read-only and idempotent with MCP 2025 annotations.
 
+`search_with_synthesis.min_confidence` uses the same normalized `0-1`
+source-reliability scale as the other search tools. Use `min_source_count` for
+independent-engine corroboration. Legacy `min_confidence=2/3` inputs remain
+accepted and are mapped to source count.
+
 ---
 
 ## Configuration
@@ -199,6 +204,15 @@ DISABLED_TOOLS=free_extract,fetch_github_readme
 ### HTTP deployment
 
 HTTP mode is secure-by-default: `/mcp` requires `Authorization: Bearer <token>`, and browser requests with an `Origin` header must match `ALLOWED_ORIGINS`. Keep `/health` available for probes, terminate TLS at a trusted reverse proxy, and rotate the token as a secret. See the [HTTP deployment guide](./docs/http-deployment.md).
+
+### MCP 2026-07-28 readiness
+
+The production entrypoint currently speaks MCP `2025-11-25`. `/health` reports
+that stable version separately from the experimental `2026-07-28` target, and
+HTTP CORS allows the new routing and W3C trace headers. Full 2026 wire support
+requires the TypeScript SDK v2 and Node.js 20+, so it will remain an isolated
+opt-in track until official conformance passes. See the
+[2026 readiness plan](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md).
 
 ### Engine Filtering
 

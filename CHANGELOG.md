@@ -15,12 +15,23 @@ tags:
 
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
+- Added explicit MCP protocol readiness metadata to `/health` and allowed the
+  `2026-07-28` routing and W3C trace headers through HTTP CORS without claiming
+  production wire compatibility.
 - Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
 - Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
+
+### Fixes
+
+- Corrected `search_with_synthesis` to use normalized 0-1 confidence, keep
+  source-count filtering separate, preserve legacy 2-3 inputs, and report each
+  result's actual source provenance.
 
 ### Documentation
 
 - Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
+- Added the MCP ecosystem/2026 readiness plan and the Git-authoritative,
+  Hermes-projection decision for multi-device planning.
 
 ## v3.3.0 (2026-07-24)
 
