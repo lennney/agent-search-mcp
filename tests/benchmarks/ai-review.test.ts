@@ -263,14 +263,16 @@ describe('AI search-quality review', () => {
         .find((candidate: Record<string, any>) =>
           candidate.candidate_id === disagreement.candidate_id).judge_evidence);
 
+    const adjudicatorJudge = judge();
     const completed = await runAiAdjudication(
       sourcePool,
       pending,
       config('adjudicator', 'family-c'),
-      judge(),
+      adjudicatorJudge,
       { completedAt: '2026-07-26T02:00:00.000Z' },
     );
 
+    expect(adjudicatorJudge).toHaveBeenCalledTimes(pending.summary.disagreements);
     expect(completed.status).toBe('completed');
     expect(completed.adjudicator).toEqual(expect.objectContaining({
       kind: 'ai',

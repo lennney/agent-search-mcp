@@ -2,6 +2,13 @@
 
 Date: 2026-07-26
 
+Status note: this document records the original human-gated pilot. The current
+default is the auditable AI path documented in
+[`2026-07-26-search-pooling-contract.md`](./2026-07-26-search-pooling-contract.md):
+two different model families judge blinded candidates and a third family
+resolves only disagreements. The pending-human fixtures remain as historical
+and compatibility artifacts.
+
 ## What is implemented
 
 - Live capture stores the untouched search response, SHA-256 response hash,
@@ -15,9 +22,10 @@ Date: 2026-07-26
 - Reports include language, category, and freshness slices.
 - `bootstrap` fixtures test metric regressions but set
   `quality_claim_eligible: false`.
-- Public quality claims require `human-verified`, two distinct human reviewers,
-  retained independent judgments, completed adjudication, a verification
-  timestamp, and at least one returned result in the pooled capture.
+- Current automated evidence uses `ai-reviewed` / `ai-judged`, two distinct
+  judge model families, a third-family disagreement adjudicator, retained
+  verdict evidence, completion timestamps, and a non-empty pooled capture.
+  Legacy `human-verified` review remains optional.
 
 ## Real network pilot
 
@@ -51,15 +59,15 @@ npm run benchmark:quality:verify
 ```
 
 `benchmark:quality:verify` checks only the deterministic bootstrap fixture. It
-does not turn that fixture into human evidence.
+does not turn that fixture into completed review evidence.
 
-## Remaining human gate
+## Current remaining gate
 
 1. Capture a non-empty pooled run on a stable network runner.
 2. Hide engine identity during review.
-3. Have two people independently judge every returned URL.
-4. Adjudicate disagreements and retain reviewer metadata.
-5. Change the final fixture to `human-verified` and run with
-   `--require-human`.
+3. Run two different AI model families over every blinded candidate.
+4. Use a third model family only for disagreements and retain its evidence.
+5. Validate the final `ai-reviewed` artifact and disclose the `ai-judged`
+   claim scope.
 
-Until this gate closes, the roadmap's human-labeled dataset item remains open.
+Until this gate closes, the roadmap's adjudicated dataset item remains open.

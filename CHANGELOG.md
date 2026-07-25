@@ -17,7 +17,7 @@ tags:
   budgets. Full results now expose separate passage, publication, extraction,
   provenance, relevance, and corroboration signals while compact placeholders
   retain their source list.
-- Added a human-gated search-quality benchmark with hashed raw traces,
+- Added a review-gated search-quality benchmark with hashed raw traces,
   per-engine outcomes, graded ranking metrics, citation support, tokens per
   correct answer, latency/failure dimensions, and slice reporting. Bootstrap
   fixtures are explicitly ineligible for public quality claims.
@@ -28,8 +28,9 @@ tags:
   remains ineligible for quality claims.
 - Added deterministic multi-system result pooling with canonical URL
   deduplication, retained per-system ranks and trace hashes, provenance-blinded
-  reviewer packets, distinct-human reviewer validation, and an explicit
-  disagreement/adjudication gate.
+  reviewer packets, mode-aware reviewer validation, and an explicit
+  disagreement/adjudication gate. Human review remains a legacy-compatible
+  option while AI review is the default path.
 - Added completed-adjudication comparison reports that reconstruct each
   system's original ranking and report nDCG@5, Precision@5, pool-relative
   Recall@5, reciprocal rank, Success@5, citation support, latency, failure
@@ -38,7 +39,7 @@ tags:
   pairwise quadratic-weighted Cohen's kappa for relevance, and pairwise
   Cohen's kappa for citation support. Undefined no-variance pairs remain
   explicit instead of being reported as perfect agreement.
-- Added claim-readiness gates that keep human-verified small pilots
+- Added claim-readiness gates that keep completed small pilots
   ineligible for public quality headlines below 30 adjudicated rows and 30
   distinct queries, and mark slices ineligible below 10 rows/distinct queries.
 - Added deterministic 2,000-resample paired-bootstrap 95% confidence intervals

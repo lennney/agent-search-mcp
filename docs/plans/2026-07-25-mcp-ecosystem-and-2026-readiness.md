@@ -70,14 +70,21 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../evidence/2026-07-2
 - [x] Prevent bootstrap fixtures from becoming public quality claims.
 - [x] Define and test an optional Slim Guard evidence handoff without adding a
       runtime dependency.
-- [ ] Complete two-reviewer human judgments on a non-empty pooled capture.
+- [x] Replace the default two-human-reviewer path with two blinded AI judges
+      from different model families and a third family for disagreements.
+- [ ] Run the two AI judges and disagreement adjudicator on a non-empty
+      multi-system pooled capture.
 
-Evidence: [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../evidence/2026-07-26-p2-quality-pilot.md).
+Evidence:
+
+- [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../evidence/2026-07-26-p2-quality-pilot.md)
+- [`docs/evidence/2026-07-26-search-pooling-contract.md`](../evidence/2026-07-26-search-pooling-contract.md)
 
 Reviewer-pipeline qualification:
 [`docs/evidence/2026-07-26-reviewer-pilot.md`](../evidence/2026-07-26-reviewer-pilot.md).
-The non-empty single-engine capture and two blinded packets are ready; a
-multi-system pool, two actual human judgments, and adjudication remain open.
+The non-empty single-engine capture qualifies the capture and blinding path.
+A real multi-system pool and credentialed model calls remain open. Human review
+is retained only as an optional compatibility path.
 
 ## P0 - credibility and compatibility
 

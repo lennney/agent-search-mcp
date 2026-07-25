@@ -49,8 +49,10 @@ try {
     await writeJson(output, prepareReviewAdjudication(pool, reviews));
     console.error(`Wrote pending adjudication to ${resolve(output)}`);
   } else if (verifySource !== undefined) {
-    validateCompletedAdjudication(await readJson(verifySource));
-    console.error(`Verified completed human adjudication at ${resolve(verifySource)}`);
+    const adjudication = validateCompletedAdjudication(await readJson(verifySource));
+    console.error(
+      `Verified completed ${adjudication.review_mode} adjudication at ${resolve(verifySource)}`,
+    );
   } else {
     const output = requiredOption('--output');
     const adjudicationPath = requiredOption('--adjudication');
@@ -59,7 +61,7 @@ try {
       await readJson(adjudicationPath),
     );
     await writeJson(output, report);
-    console.error(`Wrote human-verified pooled comparison to ${resolve(output)}`);
+    console.error(`Wrote ${report.label_status} pooled comparison to ${resolve(output)}`);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

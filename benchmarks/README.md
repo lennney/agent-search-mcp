@@ -60,10 +60,12 @@ node benchmarks/run.mjs \
   --engines wikipedia
 ```
 
-## Human-gated search quality
+## Review-gated search quality
 
 Live capture now preserves a response SHA-256, per-engine outcomes, latency,
-and disclosed failures. Prepare a label file without inventing judgments:
+and disclosed failures. The automated AI path starts from the pooled captures
+below. For the optional legacy human workflow, prepare a label file without
+inventing judgments:
 
 ```bash
 node benchmarks/quality.mjs \

@@ -668,7 +668,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 
 - [ ] Add benchmark datasets with adjudicated relevance labels and raw traces.
   - [x] Capture raw response hashes, engine outcomes, latency, and failures.
-  - [x] Generate a pending label template without synthetic human claims.
+  - [x] Generate a pending label template without inventing judgments.
   - [x] Add deterministic multi-system URL pooling, provenance-blinded packets,
         completed-review import, and disagreement/adjudication validation.
   - [x] Generate per-system pooled-qrels comparison reports from completed
