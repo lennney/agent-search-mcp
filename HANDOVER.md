@@ -8,6 +8,24 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 multi-system review-pool handover
+
+- Added a deterministic pool contract for two or more traced captures of the
+  same query set. It rejects trace tampering, duplicate system IDs, and query
+  metadata drift.
+- Canonical URL deduplication keeps protected per-system ranks and result
+  hashes while reviewer packets hide system/rank/internal provenance.
+- A reviewer slot is no longer treated as human identity. Completed packets
+  require distinct human reviewer IDs and timestamps.
+- Review import retains both judgments, exposes agreements/disagreements, and
+  refuses completed status until every candidate has a final judgment and a
+  named human adjudicator.
+- CLI: `node benchmarks/pool.mjs`; workflow and limitations are documented in
+  `benchmarks/README.md`.
+- This closes the tooling portion only. Still required: capture a genuinely
+  independent second system, obtain two human reviews, and adjudicate.
+- Evidence: `docs/evidence/2026-07-26-search-pooling-contract.md`.
+
 ## 2026-07-26 non-empty reviewer-pipeline handover
 
 - Fixed two core search defects exposed by live qualification: waterfall now

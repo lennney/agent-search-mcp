@@ -171,25 +171,37 @@ export function prepareBlindedReviewPacket(fixture, options = {}) {
     ...(isRecord(fixture.content_licenses)
       && { content_licenses: fixture.content_licenses }),
     reviewer_slot: reviewerSlot,
+    reviewer: {
+      id: null,
+      kind: 'human',
+      completed_at: null,
+    },
     instructions: [
       'Judge candidates independently without consulting another reviewer.',
       'Use relevance 0 for irrelevant, 1 for marginal, 2 for relevant, and 3 for highly relevant.',
       'Set citation_supported only when the candidate supports the reference answer.',
       'Do not add engine or ranking-system identity to this packet.',
+      'On completion, set reviewer.id and reviewer.completed_at; keep reviewer.kind as human.',
     ],
     samples: fixture.samples.map((sample, sampleIndex) => {
+      const sourceCandidates = Array.isArray(sample?.candidates)
+        ? sample.candidates
+        : isRecord(sample?.response) && Array.isArray(sample.response.results)
+          ? sample.response.results
+          : null;
       if (!isRecord(sample)
         || typeof sample.id !== 'string'
-        || !isRecord(sample.response)
-        || !Array.isArray(sample.response.results)) {
+        || sourceCandidates === null) {
         fixtureError(`review sample ${sampleIndex} is invalid`);
       }
-      const candidates = sample.response.results
+      const candidates = sourceCandidates
         .map(result => {
-          const candidateId = `c-${createHash('sha256')
-            .update(`${sample.id}\0${result.url}`)
-            .digest('hex')
-            .slice(0, 12)}`;
+          const candidateId = typeof result.candidate_id === 'string'
+            ? result.candidate_id
+            : `c-${createHash('sha256')
+                .update(`${sample.id}\0${result.url}`)
+                .digest('hex')
+                .slice(0, 12)}`;
           return {
             candidate_id: candidateId,
             title: result.title,

@@ -195,6 +195,11 @@ describe('quality benchmark metrics', () => {
 
     expect(packet.kind).toBe('blinded-search-review');
     expect(packet.reviewer_slot).toBe('reviewer-a');
+    expect(packet.reviewer).toEqual({
+      id: null,
+      kind: 'human',
+      completed_at: null,
+    });
     expect(packet.content_licenses).toEqual(fixture.content_licenses);
     expect(packet.samples[0]).toEqual(expect.objectContaining({
       question: 'Which result supports the answer?',

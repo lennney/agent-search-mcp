@@ -77,7 +77,46 @@ rank@5, Success@5, answer correctness, citation support, tokens per correct
 answer, latency, trace coverage, and failure disclosure. Language, category,
 and freshness slices are emitted in JSON reports.
 
-Generate separate blinded packets after preparing the pending fixture:
+Build a deterministic pool from captures of the same query set. Every capture
+must retain a valid raw-response trace. `system-id` is stored in the protected
+pool, but is removed from reviewer packets:
+
+```bash
+node benchmarks/pool.mjs \
+  --capture agent-search=benchmarks/fixtures/agent-search-live.json \
+  --capture comparison=benchmarks/fixtures/comparison-live.json \
+  --output benchmarks/fixtures/search-pool.json
+
+node benchmarks/quality.mjs \
+  --prepare-reviewer-packet benchmarks/fixtures/search-pool.json \
+  --reviewer-slot reviewer-a \
+  --output benchmarks/reviews/search-pool.reviewer-a.pending.json
+
+node benchmarks/quality.mjs \
+  --prepare-reviewer-packet benchmarks/fixtures/search-pool.json \
+  --reviewer-slot reviewer-b \
+  --output benchmarks/reviews/search-pool.reviewer-b.pending.json
+```
+
+Each person must fill `reviewer.id`, keep `reviewer.kind` as `human`, fill
+`reviewer.completed_at`, and judge every candidate. Reviewer slots are packet
+labels, not proof of a human identity. Create the disagreement artifact only
+after both reviews are complete:
+
+```bash
+node benchmarks/pool.mjs \
+  --prepare-adjudication benchmarks/fixtures/search-pool.json \
+  --review benchmarks/reviews/search-pool.reviewer-a.completed.json \
+  --review benchmarks/reviews/search-pool.reviewer-b.completed.json \
+  --output benchmarks/reviews/search-pool.adjudication.pending.json
+
+# After a human resolves every final judgment and records the adjudicator:
+node benchmarks/pool.mjs \
+  --verify-adjudication benchmarks/reviews/search-pool.adjudication.completed.json
+```
+
+For the current single-system qualification artifact, generate separate
+blinded packets with:
 
 ```bash
 npm run benchmark:reviewer-pilot:prepare
@@ -118,6 +157,8 @@ headline number.
 | [`queries.json`](./queries.json) | 30 bilingual live-search queries |
 | [`run.mjs`](./run.mjs) | Current capture/replay runner |
 | [`quality.mjs`](./quality.mjs) | Label preparation and quality evaluator |
+| [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and human adjudication gate |
+| [`lib/pooling.mjs`](./lib/pooling.mjs) | Pool URL normalization, trace preservation, and completed-review validation |
 | [`lib/quality-metrics.mjs`](./lib/quality-metrics.mjs) | Trace, validation, and independent metrics |
 | [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
 | [`fixtures/quality-bootstrap.json`](./fixtures/quality-bootstrap.json) | Synthetic metric regression; never quality evidence |

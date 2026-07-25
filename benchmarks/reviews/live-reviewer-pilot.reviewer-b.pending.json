@@ -11,11 +11,17 @@
     }
   },
   "reviewer_slot": "reviewer-b",
+  "reviewer": {
+    "id": null,
+    "kind": "human",
+    "completed_at": null
+  },
   "instructions": [
     "Judge candidates independently without consulting another reviewer.",
     "Use relevance 0 for irrelevant, 1 for marginal, 2 for relevant, and 3 for highly relevant.",
     "Set citation_supported only when the candidate supports the reference answer.",
-    "Do not add engine or ranking-system identity to this packet."
+    "Do not add engine or ranking-system identity to this packet.",
+    "On completion, set reviewer.id and reviewer.completed_at; keep reviewer.kind as human."
   ],
   "samples": [
     {

@@ -34,6 +34,11 @@ for (const packet of packets) {
   assert.equal(packet.kind, 'blinded-search-review');
   assert.equal(packet.source_fixture_sha256, pendingHash);
   assert.equal(packet.content_licenses?.wikipedia?.license, 'CC BY-SA 4.0');
+  assert.deepEqual(packet.reviewer, {
+    id: null,
+    kind: 'human',
+    completed_at: null,
+  });
   assert.deepEqual(findForbiddenKeys(packet), []);
 
   for (const sample of packet.samples) {

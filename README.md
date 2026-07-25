@@ -289,6 +289,13 @@ candidates for each of two bilingual questions and generates two blinded
 reviewer packets. It validates the reviewer workflow only: it is single-engine,
 not yet a multi-system pool, and contains no human judgments.
 
+The benchmark toolchain can now combine two or more traced system captures
+into a deterministic URL pool, create provenance-blinded reviewer packets, and
+validate completed human review/adjudication artifacts. This is infrastructure,
+not a quality result: no public comparison is eligible until a real
+multi-system capture has two independent human reviews and completed
+adjudication.
+
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 
 ---

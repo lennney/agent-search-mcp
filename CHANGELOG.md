@@ -26,6 +26,10 @@ tags:
   packets. A CI verifier checks hashes, license metadata, candidate coverage,
   opaque IDs, shuffled rank, and pending-human status. The single-engine pilot
   remains ineligible for quality claims.
+- Added deterministic multi-system result pooling with canonical URL
+  deduplication, retained per-system ranks and trace hashes, provenance-blinded
+  reviewer packets, distinct-human reviewer validation, and an explicit
+  disagreement/adjudication gate.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the

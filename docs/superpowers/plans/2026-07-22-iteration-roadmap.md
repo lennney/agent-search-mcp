@@ -669,6 +669,8 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 - [ ] Add benchmark datasets with human relevance labels and raw traces.
   - [x] Capture raw response hashes, engine outcomes, latency, and failures.
   - [x] Generate a pending label template without synthetic human claims.
+  - [x] Add deterministic multi-system URL pooling, provenance-blinded packets,
+        completed-review import, and disagreement/adjudication validation.
   - [ ] Complete two-reviewer human labels on a non-empty pooled capture.
 - [x] Measure quality, citation support, tokens per correct answer, latency, and
       failure transparency as separate dimensions.
@@ -678,6 +680,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 Evidence:
 
 - [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../../evidence/2026-07-26-p2-quality-pilot.md)
+- [`docs/evidence/2026-07-26-search-pooling-contract.md`](../../evidence/2026-07-26-search-pooling-contract.md)
 - [`docs/research/2026-07-26-search-quality-evaluation.md`](../../research/2026-07-26-search-quality-evaluation.md)
 - [`docs/contracts/slim-guard-evidence-handoff-v1.md`](../../contracts/slim-guard-evidence-handoff-v1.md)
 
