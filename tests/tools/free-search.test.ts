@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
+const infrastructureState = vi.hoisted(() => ({
+  cacheGet: vi.fn(() => null as unknown),
+  cacheSet: vi.fn(),
+  cacheMakeKey: vi.fn((q: string, c: number, e: string[]) => `${q}:${c}:${[...e].sort().join(',')}`),
+}));
+
 // ── Module-level mocks (ALL factories are hoisted — no variable refs) ─
 vi.mock('../../src/engines/duckduckgo.js', () => ({
   searchDuckDuckGo: vi.fn(),
@@ -47,9 +53,9 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
   return {
     ...actual,
     SearchCache: vi.fn(() => ({
-      get: vi.fn(() => null),
-      set: vi.fn(),
-      makeKey: vi.fn((q, c, e) => `${q}:${c}:${[...e].sort().join(',')}`),
+      get: infrastructureState.cacheGet,
+      set: infrastructureState.cacheSet,
+      makeKey: infrastructureState.cacheMakeKey,
     })),
     RateLimiter: vi.fn(() => ({
       waitForSlot: vi.fn(async () => {}),
@@ -101,6 +107,7 @@ beforeAll(async () => {
 describe('searchWithFallback — parallel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    infrastructureState.cacheGet.mockReturnValue(null);
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
     (searchBing as any).mockResolvedValue(makeResults(3, 'bing'));
@@ -135,11 +142,45 @@ describe('searchWithFallback — parallel', () => {
     expect(a).not.toBe(b);
   });
 
-  it('handles engine failure gracefully', async () => {
-    (searchBing as any).mockRejectedValue(new Error('ECONNRESET'));
-    await expect(
-      searchWithFallback({ query: 'fail', engines: ['duckduckgo', 'sogou', 'bing' as any] })
-    ).resolves.toBeDefined();
+  it('continues fallback and reports a thrown engine failure', async () => {
+    (searchBing as any).mockRejectedValue(new Error('HTTP 401 unauthorized'));
+    const result = await searchWithFallback({
+      query: 'fail',
+      count: 50,
+      engines: ['duckduckgo', 'sogou', 'bing' as any],
+    });
+
+    expect(result.results.length).toBeGreaterThan(0);
+    expect(result.partialFailures).toEqual(expect.arrayContaining([
+      expect.objectContaining({ engine: 'bing', type: 'permission_denied' }),
+    ]));
+  });
+
+  it('propagates cancellation without sharing the pending request', async () => {
+    (searchDuckDuckGo as any).mockImplementation(
+      async (_query: string, _count: number, options?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          if (options?.signal?.aborted) {
+            reject(options.signal.reason);
+            return;
+          }
+          options?.signal?.addEventListener('abort', () => reject(options.signal?.reason), { once: true });
+        })
+    );
+    const controller = new AbortController();
+    const pending = searchWithFallback({
+      query: 'cancelled-search',
+      engines: ['duckduckgo'],
+      signal: controller.signal,
+    });
+    controller.abort(new DOMException('cancelled', 'AbortError'));
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(searchDuckDuckGo).toHaveBeenCalledWith(
+      'cancelled-search',
+      expect.any(Number),
+      expect.objectContaining({ signal: controller.signal }),
+    );
   });
 
   it('detects language in search', async () => {
@@ -178,6 +219,7 @@ describe('searchWithFallback — parallel', () => {
 describe('searchWithFallback — waterfall', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    infrastructureState.cacheGet.mockReturnValue(null);
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
   });
@@ -186,6 +228,27 @@ describe('searchWithFallback — waterfall', () => {
     const res = await searchWithFallback({ query: 'wf', waterfall: true });
     expect(res).toBeDefined();
     expect(res.query).toBe('wf');
+  });
+
+  it('reads the same cache-key contract used by parallel search', async () => {
+    const cached = {
+      query: 'cached-waterfall',
+      engines: ['duckduckgo'],
+      results: [],
+      meta: { total: 0, high_confidence: 0, engines: [] },
+      security_note: '',
+    };
+    infrastructureState.cacheGet.mockReturnValueOnce(cached);
+
+    const result = await searchWithFallback({ query: 'cached-waterfall', waterfall: true });
+
+    expect(result.cache_hit).toBe(true);
+    expect(searchDuckDuckGo).not.toHaveBeenCalled();
+    expect(infrastructureState.cacheMakeKey).toHaveBeenCalledWith(
+      expect.stringContaining('"waterfall":true'),
+      10,
+      ['duckduckgo', 'sogou'],
+    );
   });
 });
 

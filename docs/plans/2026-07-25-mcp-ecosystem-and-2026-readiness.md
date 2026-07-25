@@ -33,6 +33,19 @@ Migration is therefore deliberately dual-track.
 
 # Work packages
 
+## P0A - Agent Search core evidence semantics
+
+Scope: Agent Search only. Slim Guard is not changed in this package.
+
+- [x] Preserve explicit per-engine outcomes and expose thrown upstream failures
+      through `partialFailures` without stopping fallback.
+- [x] Carry request cancellation through orchestration, waits, retries, engine
+      calls, and enrichment.
+- [x] Keep enrichment confidence-neutral; extraction quality is not independent
+      source corroboration.
+- [x] Share one cache-key contract across parallel and waterfall execution and
+      read the cache in both modes.
+
 ## P0 - credibility and compatibility
 
 - [x] Correct `search_with_synthesis` confidence semantics: confidence is 0-1,

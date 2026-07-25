@@ -1,5 +1,6 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export const bingProvider = {
   id: 'bing' as const,
@@ -8,7 +9,7 @@ export const bingProvider = {
   languages: ['en', 'zh'],
 };
 
-export async function searchBing(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchBing(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${limit}`;
     const res = await fetch(url, {
@@ -17,10 +18,11 @@ export async function searchBing(query: string, limit: number = 10): Promise<Sea
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!res.ok) {
+      if (options?.throwOnError) throw new Error(`Bing HTTP ${res.status}`);
       console.error(`Bing: HTTP ${res.status}`);
       return [];
     }
@@ -28,6 +30,8 @@ export async function searchBing(query: string, limit: number = 10): Promise<Sea
     const html = await res.text();
     return parseBingResults(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('timeout')) {
       console.error('Bing: Search timed out');

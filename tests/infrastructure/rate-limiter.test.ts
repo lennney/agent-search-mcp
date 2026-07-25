@@ -80,4 +80,14 @@ describe('RateLimiter', () => {
     const elapsed = Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(150);
   });
+
+  it('aborts while waiting for the next slot', async () => {
+    const rl = new RateLimiter({ defaultIntervalMs: 10_000 });
+    await rl.waitForSlot('cancel-me');
+    const controller = new AbortController();
+    const pending = rl.waitForSlot('cancel-me', controller.signal);
+    controller.abort(new DOMException('cancelled', 'AbortError'));
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
 });

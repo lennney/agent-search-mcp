@@ -1,4 +1,5 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export const wikipediaProvider = {
   id: 'wikipedia' as const,
@@ -7,14 +8,15 @@ export const wikipediaProvider = {
   languages: ['en', 'zh', 'ja', 'de', 'fr', 'es', 'auto'],
 };
 
-export async function searchWikipedia(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchWikipedia(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const maxLimit = Math.min(limit, 10);
     const url = `https://en.wikipedia.org/w/api.php?action=opensearch&profile=fuzzy&limit=${maxLimit}&search=${encodeURIComponent(query)}&format=json&origin=*`;
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const res = await fetch(url, { signal: withTimeout(options?.signal, 10000) });
 
     if (!res.ok) {
+      if (options?.throwOnError) throw new Error(`Wikipedia HTTP ${res.status}`);
       console.error(`Wikipedia: HTTP ${res.status}`);
       return [];
     }
@@ -42,6 +44,8 @@ export async function searchWikipedia(query: string, limit: number = 10): Promis
 
     return results;
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
       console.error('Wikipedia: Search timed out');

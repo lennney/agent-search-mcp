@@ -85,7 +85,11 @@ describe('DDG without Python ddgs', () => {
       engines: ['duckduckgo', 'sogou'],
     });
 
-    expect(searchDuckDuckGo).toHaveBeenCalledWith('test query', 5);
+    expect(searchDuckDuckGo).toHaveBeenCalledWith(
+      'test query',
+      5,
+      expect.objectContaining({ throwOnError: true }),
+    );
     const ddgFailure = response.partialFailures?.find(
       (f) => f.engine === 'duckduckgo'
     );

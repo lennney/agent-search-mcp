@@ -1,5 +1,6 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export const mojeekProvider = {
   id: 'mojeek' as const,
@@ -8,17 +9,18 @@ export const mojeekProvider = {
   languages: ['en', 'auto'],
 };
 
-export async function searchMojeek(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchMojeek(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://www.mojeek.com/search?q=${encodeURIComponent(query)}`;
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!res.ok) {
+      if (options?.throwOnError) throw new Error(`Mojeek HTTP ${res.status}`);
       console.error(`Mojeek: HTTP ${res.status}`);
       return [];
     }
@@ -26,6 +28,8 @@ export async function searchMojeek(query: string, limit: number = 10): Promise<S
     const html = await res.text();
     return parseMojeekHTML(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
       console.error('Mojeek: Search timed out');

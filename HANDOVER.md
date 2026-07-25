@@ -8,6 +8,25 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 Agent Search core evidence handover
+
+- Scope was limited to Agent Search. Slim Guard was not modified.
+- Added explicit `success` / `skipped` / `failed` engine outcomes. Thrown
+  adapter failures now populate `partialFailures` while fallback continues.
+- Stable MCP handlers pass their request cancellation signal through search
+  orchestration, rate-limit waits, retry delays, HTTP adapters, and enrichment.
+  Signalled requests bypass in-flight request sharing so one caller cannot
+  cancel another caller's work.
+- The experimental SDK v2 tool passes its handler cancellation signal as a
+  separate execution context; public search arguments and results remain
+  JSON-shaped across the stable-domain boundary.
+- Enrichment is confidence-neutral and preserves `source_count`.
+- Parallel and waterfall execution now share the same cache key, and waterfall
+  reads cached responses before calling engines.
+- Direct adapter calls retain their legacy soft-failure behavior. The
+  orchestrator opts into thrown errors with `throwOnError` to obtain reliable
+  failure evidence without breaking adapter consumers.
+
 ## 2026-07-25 P1 experimental MCP 2026 handover
 
 - Added private `experiments/mcp-2026` package: Node.js 20+, exact SDK v2
@@ -53,8 +72,8 @@ tags:
 
 **版本**: npm v3.1.3；main 含 v3.3.0 候选功能，尚未发布
 **引擎**: 12 个适配器；`free_search`/`free_search_advanced`/CLI/瀑布模式已全部统一路由
-**测试**: vitest — 514 passed, 44 test files
-**最后更新**: 2026-07-25
+**测试**: vitest — 515 passed, 44 test files
+**最后更新**: 2026-07-26
 **npm**: https://www.npmjs.com/package/agent-search-mcp
 **Python 依赖**: 可选（DDG 自动回退到 cheerio HTML 引擎；语义层需 `pip install model2vec`）
 

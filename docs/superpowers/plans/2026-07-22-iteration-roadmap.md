@@ -636,3 +636,38 @@ cheerio 解析器依赖 CSS 类名（`.result`, `.result__a`, `.result__snippet`
 | ~~Phase 6~~ | ~~插件系统~~ | 🚫 跳过 | 加引擎比加系统更有价值 |
 
 **成果总结**: 旧路线图从 140 测试→438 测试，4→8 免费引擎，6→8 MCP 工具，4 生产依赖不变。
+## 2026-07-26: Agent Search core evidence track
+
+This track belongs to **Agent Search only**. Slim Guard remains a separate
+product and is not modified by this work. The integration contract will be
+designed after the search entrypoint can expose reliable evidence and failure
+semantics on its own.
+
+### P0 - trustworthy execution semantics
+
+- [x] Preserve per-engine outcomes (`success`, `skipped`, `failed`) so fallback
+      continues while real upstream failures appear in `partialFailures`.
+- [x] Propagate MCP request cancellation through search orchestration, retry
+      backoff, rate-limit waits, engine HTTP calls, and content enrichment.
+- [x] Stop treating successful content extraction as corroboration: enrichment
+      may improve the snippet, but must not add a fixed confidence bonus.
+- [x] Use one cache-key contract for parallel and waterfall reads/writes, and
+      make waterfall searches consume cached responses.
+
+### P1 - evidence-first retrieval
+
+- [ ] Introduce query-aware passage selection and explicit output budgets.
+- [ ] Separate provenance, relevance, corroboration, freshness, and extraction
+      quality instead of compressing them into one opaque score.
+- [ ] Return compact evidence packets that Slim Guard can later transform
+      without losing source or failure metadata.
+
+### P2 - measurable ecosystem contract
+
+- [ ] Add benchmark datasets with human relevance labels and raw traces.
+- [ ] Measure quality, citation support, tokens per correct answer, latency, and
+      failure transparency as separate dimensions.
+- [ ] Define an optional Slim Guard integration contract without making direct
+      Agent Search installation depend on the gateway.
+
+---

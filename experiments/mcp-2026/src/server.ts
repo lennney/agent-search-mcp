@@ -50,7 +50,14 @@ export interface SearchResponse {
   security_note: string;
 }
 
-export type SearchExecutor = (options: SearchOptions) => Promise<SearchResponse>;
+export interface SearchExecutionContext {
+  signal?: AbortSignal;
+}
+
+export type SearchExecutor = (
+  options: SearchOptions,
+  context?: SearchExecutionContext,
+) => Promise<SearchResponse>;
 export type ExperimentalHandler = McpHttpHandler;
 
 export interface ExperimentalServerOptions {
@@ -67,20 +74,29 @@ let rootSearchExecutor: SearchExecutor | undefined;
  * Only JSON-shaped arguments and results cross this boundary. No SDK v1
  * Client, Server, Transport, or error object is passed into the v2 package.
  */
-export async function executeStableSearch(options: SearchOptions): Promise<SearchResponse> {
+export async function executeStableSearch(
+  options: SearchOptions,
+  context?: SearchExecutionContext,
+): Promise<SearchResponse> {
   if (!rootSearchExecutor) {
     const moduleUrl = new URL('../../../dist/tools/free-search.js', import.meta.url);
     const loaded = await import(moduleUrl.href) as {
-      searchWithFallback?: SearchExecutor;
+      searchWithFallback?: (
+        options: SearchOptions & { signal?: AbortSignal },
+      ) => Promise<SearchResponse>;
     };
     if (typeof loaded.searchWithFallback !== 'function') {
       throw new Error(
         'Stable search build is missing. Run `npm run build` at the repository root first.',
       );
     }
-    rootSearchExecutor = loaded.searchWithFallback;
+    rootSearchExecutor = (searchOptions, executionContext) =>
+      loaded.searchWithFallback!({
+        ...searchOptions,
+        signal: executionContext?.signal,
+      });
   }
-  return rootSearchExecutor(options);
+  return rootSearchExecutor(options, context);
 }
 
 /**
@@ -128,7 +144,7 @@ export function createExperimentalServer(
         openWorldHint: true,
       },
     },
-    async ({ query, limit, engines, language }) => {
+    async ({ query, limit, engines, language }, toolContext) => {
       try {
         const response = await search({
           query,
@@ -137,7 +153,7 @@ export function createExperimentalServer(
           language,
           waterfall: true,
           enrich: false,
-        });
+        }, { signal: toolContext.mcpReq.signal });
         return {
           content: [{
             type: 'text',
@@ -146,6 +162,7 @@ export function createExperimentalServer(
           structuredContent: response,
         };
       } catch (error) {
+        if (toolContext.mcpReq.signal.aborted) throw error;
         const message = error instanceof Error ? error.message : String(error);
         return {
           content: [{

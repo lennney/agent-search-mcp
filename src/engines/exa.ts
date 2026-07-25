@@ -1,4 +1,5 @@
 import { SearchProvider, SearchProviderInfo, SearchResult } from '../types.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export const exaProvider: SearchProviderInfo = {
   id: 'exa',
@@ -33,8 +34,10 @@ export async function searchExa(options: {
   query: string;
   count?: number;
   apiKey?: string;
+  signal?: AbortSignal;
+  throwOnError?: boolean;
 }): Promise<SearchResult[]> {
-  const { query, count = 10, apiKey } = options;
+  const { query, count = 10, apiKey, signal, throwOnError } = options;
 
   if (!apiKey) {
     console.warn('Exa: No API key provided');
@@ -55,10 +58,11 @@ export async function searchExa(options: {
           highlights: true,
         },
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: withTimeout(signal, 15000),
     });
 
     if (!response.ok) {
+      if (throwOnError) throw new Error(`Exa HTTP ${response.status}`);
       console.error(`Exa: HTTP ${response.status}`);
       return [];
     }
@@ -73,6 +77,8 @@ export async function searchExa(options: {
       engines: ['exa'] as SearchProvider[],
     }));
   } catch (error) {
+    signal?.throwIfAborted();
+    if (throwOnError) throw error;
     console.error('Exa search failed:', error);
     return [];
   }

@@ -42,7 +42,7 @@ Not recommended for: Simple queries — use free_search instead.
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async (input) => {
+    async (input, extra) => {
       try {
         const legacySourceCount = input.min_confidence > 1 ? Math.ceil(input.min_confidence) : 1;
         const results = await searchWithFallback({
@@ -59,9 +59,11 @@ Not recommended for: Simple queries — use free_search instead.
           waterfallMinConfidence: input.waterfall_min_confidence,
           enrich: input.enrich,
           enrichMax: input.enrich_max,
+          signal: extra?.signal,
         });
         return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
       } catch (error) {
+        if (extra?.signal.aborted) throw error;
         return {
           content: [{ type: 'text', text: `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}` }],
           isError: true,

@@ -20,3 +20,4 @@ export { ToolPolicy } from './tool-policy.js';
 export { createHttpServer } from './http.js';
 export type { HttpServerOptions, HttpServer } from './http.js';
 export { decodeHTMLTags } from './html-utils.js';
+export { abortableDelay, withTimeout } from './abort.js';

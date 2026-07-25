@@ -85,11 +85,14 @@ describe('experimental MCP 2026 server', () => {
       arguments: { query: 'MCP 2026', limit: 5, engines: ['wikipedia'] },
     });
 
-    expect(search).toHaveBeenCalledWith(expect.objectContaining({
-      query: 'MCP 2026',
-      count: 5,
-      engines: ['wikipedia'],
-    }));
+    expect(search).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: 'MCP 2026',
+        count: 5,
+        engines: ['wikipedia'],
+      }),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(result.content).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: 'text' }),
     ]));

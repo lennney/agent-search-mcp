@@ -2,7 +2,7 @@ import { execFileSync } from 'child_process';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { logger } from '../infrastructure/logger.js';
 import { searchDuckDuckGoHtml, searchDuckDuckGoNewsHtml } from './duckduckgo-html.js';
 
@@ -94,12 +94,15 @@ function getPythonBinOrNull(): string | null {
  * Search DuckDuckGo using ddgs Python library (bypasses anti-bot).
  * Falls back to Node.js HTML engine if Python/ddgs not available.
  */
-export async function searchDuckDuckGo(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchDuckDuckGo(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
+  options?.signal?.throwIfAborted();
   const pythonBin = getPythonBinOrNull();
   if (!pythonBin) {
     // Python/ddgs not available — use Node.js HTML fallback
     logger.info('DDG: Falling back to Node.js HTML engine');
-    return searchDuckDuckGoHtml(query, limit);
+    return options
+      ? searchDuckDuckGoHtml(query, limit, options)
+      : searchDuckDuckGoHtml(query, limit);
   }
   try {
     const output = execFileSync(
@@ -113,6 +116,7 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
     );
 
     const results = JSON.parse(output.trim());
+    options?.signal?.throwIfAborted();
     return results.map((r: any) => ({
       title: r.title || '',
       url: r.url || '',
@@ -121,6 +125,7 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
       engines: ['duckduckgo'],
     }));
   } catch (error) {
+    options?.signal?.throwIfAborted();
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('ENOENT')) {
       logger.warn({ python: pythonBin, script: SCRIPT_PATH }, 'DDG: Python binary not found, falling back to HTML engine');
@@ -130,7 +135,9 @@ export async function searchDuckDuckGo(query: string, limit: number = 10): Promi
       logger.warn({ err: msg.slice(0, 200) }, 'DDG Python search failed, falling back to HTML engine');
     }
     // Fall back to HTML engine on Python errors
-    return searchDuckDuckGoHtml(query, limit);
+    return options
+      ? searchDuckDuckGoHtml(query, limit, options)
+      : searchDuckDuckGoHtml(query, limit);
   }
 }
 

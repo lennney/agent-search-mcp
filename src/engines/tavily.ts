@@ -1,4 +1,5 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export class TavilyProvider {
   id = 'tavily';
@@ -6,7 +7,7 @@ export class TavilyProvider {
   isFree = false;
   languages = ['en', 'zh'];
 
-  async search(query: string, count: number): Promise<SearchResult[]> {
+  async search(query: string, count: number, options?: EngineSearchOptions): Promise<SearchResult[]> {
     const apiKey = process.env.TAVILY_API_KEY;
     if (!apiKey) return [];
 
@@ -19,7 +20,7 @@ export class TavilyProvider {
         max_results: count,
         search_depth: 'basic',
       }),
-      signal: AbortSignal.timeout(5000),
+      signal: withTimeout(options?.signal, 5000),
     });
 
     if (!res.ok) throw new Error(`Tavily returned ${res.status}`);

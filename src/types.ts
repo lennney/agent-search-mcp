@@ -6,6 +6,12 @@ export interface SearchResult {
   engines?: string[];  // populated by aggregation layer, or set by single-engine searches
 }
 
+export interface EngineSearchOptions {
+  signal?: AbortSignal;
+  /** Orchestrators set this to preserve upstream failures for partialFailures. */
+  throwOnError?: boolean;
+}
+
 export type SearchProvider = 'duckduckgo' | 'sogou' | 'brave' | 'tavily' | 'bing' | 'baidu' | 'exa' | 'wikipedia' | 'startpage' | 'yandex' | 'mojeek' | 'youcom';
 
 export interface SearchProviderInfo {

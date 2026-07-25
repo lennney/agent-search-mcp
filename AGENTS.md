@@ -102,6 +102,14 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 - **Benchmark 口径**: 可保留 2026-07-24 历史 30 查询实测的 28.7% / 35.5% / 75%，但必须限定当时查询集和环境。当前冻结 fixture + `gpt-tokenizer` 用于可重现的格式化回归，不代表搜索质量。
 - **HTTP 安全默认值**: HTTP / both 模式必须配置 `HTTP_AUTH_TOKEN`；只有显式 `HTTP_ALLOW_UNAUTHENTICATED=true` 才允许无认证运行。带 Origin 的浏览器请求必须命中 `ALLOWED_ORIGINS`。
 - **stdio 日志**: stdout 只用于 MCP JSON-RPC。运行日志必须走 `logger`（stderr）或 `console.error`，禁止在服务路径使用 `console.log`。
+- **失败证据**: 适配器直接调用仍保留空数组软失败兼容；搜索编排器必须传
+  `throwOnError`，将真实上游异常记录到 `partialFailures`，不能再把异常当成
+  “零结果”。
+- **取消隔离**: 带 `AbortSignal` 的请求不得复用全局 pending promise；取消
+  必须继续传入限速等待、重试退避、HTTP 适配器和 enrichment。
+- **丰富化语义**: Jina/正文提取只能改进 snippet，不能增加 `confidence` 或
+  `source_count`；提取不是独立来源佐证。
+- **缓存键**: parallel 与 waterfall 必须通过同一个搜索选项键读写缓存。
 
 ## 文档索引
 

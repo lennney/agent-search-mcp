@@ -159,6 +159,16 @@ source-reliability scale as the other search tools. Use `min_source_count` for
 independent-engine corroboration. Legacy `min_confidence=2/3` inputs remain
 accepted and are mapped to source count.
 
+Search execution keeps fallback resilient without hiding operational evidence:
+thrown adapter failures are returned in `partialFailures`, while successful and
+skipped engines continue normally. MCP request cancellation is propagated into
+rate-limit waits, retries, engine HTTP calls, and optional enrichment.
+
+Enrichment only replaces a weak snippet with extracted page content. It does
+not increase `confidence` or `source_count`, because extraction is not an
+independent source. Parallel and waterfall modes use the same cache contract,
+including cache reads in waterfall mode.
+
 ---
 
 ## Configuration

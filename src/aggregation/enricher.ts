@@ -1,4 +1,5 @@
 import { validateUrl } from "../infrastructure/url-validator.js";
+import { withTimeout } from "../infrastructure/abort.js";
 import type { ScoredResult } from "./scorer.js";
 
 export interface EnrichOptions {
@@ -6,6 +7,7 @@ export interface EnrichOptions {
   minConfidence?: number;
   minSnippetLength?: number;
   maxLength?: number;
+  signal?: AbortSignal;
 }
 
 export interface EnrichResult {
@@ -30,8 +32,10 @@ export async function enrichResults(
     minConfidence = 0.33,
     minSnippetLength = 80,
     maxLength = 3000,
+    signal,
   } = options ?? {};
 
+  signal?.throwIfAborted();
   if (results.length === 0) {
     return { enriched: 0, failures: 0, results: [] };
   }
@@ -58,13 +62,14 @@ export async function enrichResults(
 
       const res = await fetch(`https://r.jina.ai/${result.url}`, {
         headers: { Accept: "text/markdown" },
-        signal: AbortSignal.timeout(5000),
+        signal: withTimeout(signal, 5000),
       });
 
       if (!res.ok) return null;
       return { url: result.url, content: await res.text() };
     })
   );
+  signal?.throwIfAborted();
 
   let enriched = 0;
   let failures = 0;
@@ -89,7 +94,6 @@ export async function enrichResults(
     return {
       ...r,
       snippet: truncated,
-      confidence: Math.min(r.confidence + 0.33, 1.0),
     };
   });
 

@@ -1,11 +1,6 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
-
-function createTimeoutSignal(ms: number): AbortSignal {
-  const controller = new AbortController();
-  setTimeout(() => controller.abort(), ms);
-  return controller.signal;
-}
+import { withTimeout } from '../infrastructure/abort.js';
 
 export const baiduProvider = {
   id: 'baidu' as const,
@@ -14,7 +9,7 @@ export const baiduProvider = {
   languages: ['zh'],
 };
 
-export async function searchBaidu(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchBaidu(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}&rn=${limit}`;
     const res = await fetch(url, {
@@ -23,10 +18,11 @@ export async function searchBaidu(query: string, limit: number = 10): Promise<Se
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'zh-CN,zh;q=0.9',
       },
-      signal: createTimeoutSignal(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!res.ok) {
+      if (options?.throwOnError) throw new Error(`Baidu HTTP ${res.status}`);
       console.error(`Baidu: HTTP ${res.status}`);
       return [];
     }
@@ -34,6 +30,8 @@ export async function searchBaidu(query: string, limit: number = 10): Promise<Se
     const html = await res.text();
     return parseBaiduHTML(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('timeout')) {
       console.error('Baidu: Search timed out');

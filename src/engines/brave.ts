@@ -1,4 +1,5 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export class BraveProvider {
   id = 'brave';
@@ -6,7 +7,7 @@ export class BraveProvider {
   isFree = false;
   languages = ['en', 'zh'];
 
-  async search(query: string, count: number): Promise<SearchResult[]> {
+  async search(query: string, count: number, options?: EngineSearchOptions): Promise<SearchResult[]> {
     const apiKey = process.env.BRAVE_API_KEY;
     if (!apiKey) return [];
 
@@ -20,7 +21,7 @@ export class BraveProvider {
         'Accept-Encoding': 'gzip',
         'X-Subscription-Token': apiKey,
       },
-      signal: AbortSignal.timeout(5000),
+      signal: withTimeout(options?.signal, 5000),
     });
 
     if (!res.ok) throw new Error(`Brave returned ${res.status}`);

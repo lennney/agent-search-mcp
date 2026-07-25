@@ -26,7 +26,7 @@ export function registerSearchWithSynthesis(server: McpServer) {
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async (input) => {
+    async (input, extra) => {
       try {
         const legacySourceCount = input.min_confidence > 1 ? Math.ceil(input.min_confidence) : 1;
         const options: SearchWithFallbackOptions = {
@@ -37,6 +37,7 @@ export function registerSearchWithSynthesis(server: McpServer) {
           minConfidence: input.min_confidence <= 1 ? input.min_confidence : 0,
           minSourceCount: Math.max(input.min_source_count, legacySourceCount),
           language: input.language,
+          signal: extra?.signal,
         };
         const response = await searchWithFallback(options);
 
@@ -63,6 +64,7 @@ export function registerSearchWithSynthesis(server: McpServer) {
           }],
         };
       } catch (error) {
+        if (extra?.signal.aborted) throw error;
         logger.error({ err: error instanceof Error ? error.message : String(error) }, 'search_with_synthesis failed');
         return {
           content: [{ type: 'text', text: `Search failed: ${error instanceof Error ? error.message : 'Unknown error'}` }],

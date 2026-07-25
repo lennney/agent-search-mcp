@@ -26,6 +26,17 @@ tags:
 
 ### Fixes
 
+- Preserved explicit engine outcomes in the search orchestrator so thrown
+  upstream errors no longer disappear as empty result sets and are reported in
+  `partialFailures` while fallback continues.
+- Propagated MCP cancellation through search orchestration, rate-limit waits,
+  retry backoff, adapter HTTP requests, and content enrichment. Requests with a
+  caller-owned signal bypass in-flight request sharing. The isolated SDK v2
+  entry forwards its handler signal through a separate execution context.
+- Made content enrichment confidence-neutral: extracted text improves snippets
+  but does not count as independent corroboration.
+- Unified parallel and waterfall cache keys and enabled cache reads for
+  waterfall execution.
 - Corrected `search_with_synthesis` to use normalized 0-1 confidence, keep
   source-count filtering separate, preserve legacy 2-3 inputs, and report each
   result's actual source provenance.
@@ -36,6 +47,8 @@ tags:
 
 ### Documentation
 
+- Added the Agent Search-only core evidence track to both active roadmaps;
+  Slim Guard remains a separate, unchanged product in this implementation.
 - Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
 - Added the MCP ecosystem/2026 readiness plan and the Git-authoritative,
   Hermes-projection decision for multi-device planning.

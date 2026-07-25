@@ -52,13 +52,27 @@ export class RateLimiter {
     return this.engineRates[engine] ?? this.defaultIntervalMs;
   }
 
-  async waitForSlot(provider: string): Promise<void> {
+  async waitForSlot(provider: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     const interval = this.intervalFor(provider);
     const last = this.lastRequest.get(provider) || 0;
     const wait = interval - (Date.now() - last);
     if (wait > 0) {
-      await new Promise(r => setTimeout(r, wait));
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => signal?.removeEventListener('abort', abort);
+        const timer = setTimeout(() => {
+          cleanup();
+          resolve();
+        }, wait);
+        const abort = () => {
+          clearTimeout(timer);
+          cleanup();
+          reject(signal?.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+        };
+        signal?.addEventListener('abort', abort, { once: true });
+      });
     }
+    signal?.throwIfAborted();
     this.lastRequest.set(provider, Date.now());
   }
 

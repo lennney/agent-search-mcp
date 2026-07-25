@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { logger } from '../infrastructure/logger.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 export const duckduckgoHtmlProvider = {
   id: 'duckduckgo' as const,
@@ -60,7 +61,7 @@ function extractRealUrl(href: string): string | null {
  * Search DuckDuckGo using direct HTML parsing (no Python dependency).
  * Uses POST to https://html.duckduckgo.com/html/ (matches DDG's own form + ddgs).
  */
-export async function searchDuckDuckGoHtml(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchDuckDuckGoHtml(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const body = new URLSearchParams({
       q: query,
@@ -78,23 +79,30 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10): P
         'Referer': 'https://html.duckduckgo.com/html/',
       },
       body: body.toString(),
-      signal: AbortSignal.timeout(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     // DDG returns 202 for rate limits (gajae-code pattern)
     if (res.status === 202) {
+      if (options?.throwOnError) throw new Error('DuckDuckGo HTTP 202 rate limit');
       logger.warn('DDG HTML: Rate limited (HTTP 202)');
       return [];
     }
 
     if (!res.ok) {
+      if (options?.throwOnError) throw new Error(`DuckDuckGo HTTP ${res.status}`);
       logger.warn({ status: res.status }, 'DDG HTML: HTTP error');
       return [];
     }
 
     const html = await res.text();
+    if (options?.throwOnError && html.includes('id="challenge-form"')) {
+      throw new Error('DuckDuckGo captcha challenge');
+    }
     return parseDdgHtml(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('timeout')) {
       logger.warn('DDG HTML: Search timed out');

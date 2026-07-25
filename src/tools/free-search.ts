@@ -17,7 +17,7 @@ import { getSecurityNote } from '../infrastructure/security.js';
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
 import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank, type ScoredResult } from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
-import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
+import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics, abortableDelay } from '../infrastructure/index.js';
 
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
 const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
@@ -89,22 +89,24 @@ async function searchEngine(
   engine: SearchProvider,
   query: string,
   limit: number,
-  maxRetries: number = 2
-): Promise<SearchResult[]> {
+  maxRetries: number = 2,
+  signal?: AbortSignal,
+): Promise<EngineOutcome> {
+  signal?.throwIfAborted();
   // Skip engines blocked by policy
   if (!enginePolicy.isAllowed(engine)) {
     logger.info({ engine }, 'Engine blocked by policy');
-    return [];
+    return { engine, status: 'skipped', results: [] };
   }
 
   // Skip unhealthy providers
   if (!healthTracker.isHealthy(engine)) {
     logger.warn({ engine }, 'Skipping unhealthy provider');
-    return [];
+    return { engine, status: 'skipped', results: [] };
   }
 
   // Rate limit before making the request
-  await rateLimiter.waitForSlot(engine);
+  await rateLimiter.waitForSlot(engine, signal);
 
   let lastError: Error | null = null;
 
@@ -112,51 +114,60 @@ async function searchEngine(
     const startTime = Date.now();
     try {
       let results: SearchResult[];
+      const engineOptions = { signal, throwOnError: true };
       switch (engine) {
         case 'duckduckgo':
-          results = await searchDuckDuckGo(query, limit);
+          results = await searchDuckDuckGo(query, limit, engineOptions);
           break;
         case 'sogou':
-          results = await searchSogou(query, limit);
+          results = await searchSogou(query, limit, engineOptions);
           break;
         case 'bing':
-          results = await searchBing(query, limit);
+          results = await searchBing(query, limit, engineOptions);
           break;
         case 'baidu':
-          results = await searchBaidu(query, limit);
+          results = await searchBaidu(query, limit, engineOptions);
           break;
         case 'wikipedia':
-          results = await searchWikipedia(query, limit);
+          results = await searchWikipedia(query, limit, engineOptions);
           break;
         case 'startpage':
-          results = await searchStartpage(query, limit);
+          results = await searchStartpage(query, limit, engineOptions);
           break;
         case 'yandex':
-          results = await searchYandex(query, limit);
+          results = await searchYandex(query, limit, engineOptions);
           break;
         case 'mojeek':
-          results = await searchMojeek(query, limit);
+          results = await searchMojeek(query, limit, engineOptions);
           break;
         case 'brave':
-          results = await new BraveProvider().search(query, limit);
+          results = await new BraveProvider().search(query, limit, engineOptions);
           break;
         case 'tavily':
-          results = await new TavilyProvider().search(query, limit);
+          results = await new TavilyProvider().search(query, limit, engineOptions);
           break;
         case 'exa':
-          results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY || '' });
+          results = await searchExa({
+            query,
+            count: limit,
+            apiKey: process.env.EXA_API_KEY || '',
+            signal,
+            throwOnError: true,
+          });
           break;
         case 'youcom':
-          results = await searchYouCom(query, limit);
+          results = await searchYouCom(query, limit, engineOptions);
           break;
         default:
-          return [];
+          return { engine, status: 'skipped', results: [] };
       }
+      signal?.throwIfAborted();
       const latency = Date.now() - startTime;
       healthTracker.recordSuccess(engine, latency);
       logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
-      return results;
+      return { engine, status: 'success', results };
     } catch (err) {
+      signal?.throwIfAborted();
       lastError = err instanceof Error ? err : new Error(String(err));
       const latency = Date.now() - startTime;
 
@@ -167,20 +178,32 @@ async function searchEngine(
         // Exponential backoff: 500ms, 1000ms, 2000ms...
         const delay = Math.min(500 * Math.pow(2, attempt), 5000);
         logger.warn({ engine, attempt, delay, err: lastError.message }, 'Retryable error, retrying...');
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await abortableDelay(delay, signal);
         continue;
       }
 
       // Non-retryable or max retries exceeded
       healthTracker.recordFailure(engine);
       logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
-      return [];
+      return { engine, status: 'failed', results: [], error: lastError };
     }
   }
 
   // All retries exhausted
   logger.error({ engine, lastError: lastError?.message }, 'All retries exhausted');
-  return [];
+  return {
+    engine,
+    status: 'failed',
+    results: [],
+    error: lastError ?? new Error('All retries exhausted'),
+  };
+}
+
+interface EngineOutcome {
+  engine: SearchProvider;
+  status: 'success' | 'skipped' | 'failed';
+  results: SearchResult[];
+  error?: Error;
 }
 
 /**
@@ -267,6 +290,8 @@ export interface SearchWithFallbackOptions {
   enrichMinConfidence?: number;
   /** Disable query-expansion recursion for deterministic benchmark capture. */
   expandQueries?: boolean;
+  /** Internal request cancellation propagated from the MCP request context. */
+  signal?: AbortSignal;
 }
 
 interface FormattedResult {
@@ -341,6 +366,33 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
   });
 }
 
+function makeSearchCacheKey(options: SearchWithFallbackOptions): string {
+  const count = options.count ?? 10;
+  const engines = options.engines ?? ['duckduckgo', 'sogou'];
+  return cache.makeKey(makeCollapseKey(options), count, engines);
+}
+
+function collectEngineOutcomes(
+  settled: PromiseSettledResult<EngineOutcome>[],
+  engines: SearchProvider[],
+  allResults: SearchResult[],
+  failures: EngineError[],
+  signal?: AbortSignal,
+): void {
+  signal?.throwIfAborted();
+  settled.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      const error = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+      failures.push(classifyEngineError(engines[index], error));
+      return;
+    }
+    allResults.push(...result.value.results);
+    if (result.value.status === 'failed' && result.value.error) {
+      failures.push(classifyEngineError(result.value.engine, result.value.error));
+    }
+  });
+}
+
 // ─── Core search logic (fused patterns from ddgs) ──────────────────────
 
 /**
@@ -353,6 +405,10 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
  * 4. Frequency scoring: count how many engines returned each result
  */
 export async function searchWithFallback(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+  options.signal?.throwIfAborted();
+  if (options.signal) {
+    return executeSearch(options);
+  }
   const collapseKey = makeCollapseKey(options);
   
   // Check if same request is already in-flight
@@ -365,13 +421,12 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
   // Start new request and track it
   const searchPromise = executeSearch(options);
   pendingRequests.set(collapseKey, searchPromise);
-  
-  // Clean up when done
-  searchPromise.finally(() => {
+
+  try {
+    return await searchPromise;
+  } finally {
     pendingRequests.delete(collapseKey);
-  });
-  
-  return searchPromise;
+  }
 }
 
 /**
@@ -430,7 +485,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
 
   // Check cache first
-  const cacheKey = cache.makeKey(makeCollapseKey(options), count, userEngines);
+  const cacheKey = makeSearchCacheKey(options);
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
@@ -467,21 +522,11 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     const batchResults = await Promise.allSettled(
       batch.map(async (engine) => {
         searchedEngines.push(engine);
-        const results = await searchEngine(engine, query, count);
-        return { engine, results };
+        return searchEngine(engine, query, count, 2, options.signal);
       })
     );
 
-    for (let idx = 0; idx < batchResults.length; idx++) {
-      const result = batchResults[idx];
-      if (result.status === 'fulfilled') {
-        allResults.push(...result.value.results);
-      } else {
-        failures.push(
-            classifyEngineError(batch[idx], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-      }
-    }
+    collectEngineOutcomes(batchResults, batch, allResults, failures, options.signal);
 
     // Early exit: stop if we have enough results
     if (allResults.length >= count * 1.5) {
@@ -501,21 +546,11 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       const phase2Results = await Promise.allSettled(
         paidToSearch.map(async (engine) => {
           searchedEngines.push(engine);
-          const results = await searchEngine(engine, query, remaining);
-          return { engine, results };
+          return searchEngine(engine, query, remaining, 2, options.signal);
         })
       );
 
-      for (let i = 0; i < phase2Results.length; i++) {
-        const result = phase2Results[i];
-        if (result.status === 'fulfilled') {
-          allResults.push(...result.value.results);
-        } else {
-failures.push(
-            classifyEngineError(paidToSearch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-        }
-      }
+      collectEngineOutcomes(phase2Results, paidToSearch, allResults, failures, options.signal);
 
       logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
@@ -542,6 +577,7 @@ failures.push(
     scored, query, minConfidence, minSourceCount,
     includeDomains, excludeDomains,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
+    options.signal,
   );
 
   const response: SearchResponse = {
@@ -598,7 +634,9 @@ async function applyPostProcessing(
   enrich: boolean | undefined,
   enrichMax: number | undefined,
   enrichMinConfidence: number | undefined,
+  signal?: AbortSignal,
 ): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
+  signal?.throwIfAborted();
   // Semantic dedup (optional)
   if (config.semanticDedup || config.semanticRerank) {
     try {
@@ -612,6 +650,7 @@ async function applyPostProcessing(
         logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
       }
     } catch (err) {
+      signal?.throwIfAborted();
       logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
     }
   }
@@ -651,12 +690,14 @@ async function applyPostProcessing(
     const enriched = await enrichResults(scored, {
       maxEnrich: enrichMax,
       minConfidence: enrichMinConfidence,
+      signal,
     });
     scored = enriched.results;
     if (enriched.enriched > 0) {
       logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
     }
   }
+  signal?.throwIfAborted();
 
   // Format output
   const fmtOptions: FormatOptions = {
@@ -706,6 +747,13 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
 
+  const cacheKey = makeSearchCacheKey(options);
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info({ query, count, engines: options.engines }, 'Waterfall cache hit');
+    return { ...(cached as SearchResponse), cache_hit: true };
+  }
+
   const allResults: SearchResult[] = [];
   const allFailures: EngineError[] = [];
   const searchedEngines: string[] = [];
@@ -720,21 +768,11 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
       const batchResults = await Promise.allSettled(
         batch.map(async (engine) => {
           searchedEngines.push(engine);
-          const results = await searchEngine(engine, query, count);
-          return { engine, results };
+          return searchEngine(engine, query, count, 2, options.signal);
         })
       );
 
-      for (let idx = 0; idx < batchResults.length; idx++) {
-        const result = batchResults[idx];
-        if (result.status === "fulfilled") {
-          allResults.push(...result.value.results);
-        } else {
-          allFailures.push(
-            classifyEngineError(batch[idx], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-        }
-      }
+      collectEngineOutcomes(batchResults, batch, allResults, allFailures, options.signal);
     }
 
     const filtered = filterLowQuality(allResults);
@@ -798,20 +836,16 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
         paidAvailable.map(async (engine) => {
           const remaining = Math.max(count - allResults.length, 1);
           searchedEngines.push(engine);
-          const results = await searchEngine(engine as SearchProvider, query, remaining);
-          return { engine, results };
+          return searchEngine(engine as SearchProvider, query, remaining, 2, options.signal);
         })
       );
-      for (let i = 0; i < paidResults.length; i++) {
-        const result = paidResults[i];
-        if (result.status === "fulfilled") {
-          allResults.push(...result.value.results);
-        } else {
-          allFailures.push(
-            classifyEngineError(paidAvailable[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-        }
-      }
+      collectEngineOutcomes(
+        paidResults,
+        paidAvailable as SearchProvider[],
+        allResults,
+        allFailures,
+        options.signal,
+      );
     } else {
       logger.info("Phase 2: no paid engines available");
     }
@@ -836,6 +870,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
       phasesCompleted.push('3');
       logger.info({ alternatives }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
+        options.signal?.throwIfAborted();
         const altSearch = await executeWaterfallSearch({
           ...options,
           query: altQuery,
@@ -872,6 +907,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     scored, query, minConfidence, minSourceCount,
     includeDomains, excludeDomains,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
+    options.signal,
   );
 
   const response = {
@@ -895,7 +931,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
 
   setImmediate(() => {
     try {
-      cache.set(cache.makeKey(query, count, searchedEngines), response);
+      cache.set(cacheKey, response);
     } catch (err) {
       logger.error({ err }, "Cache write failed");
     }
@@ -936,13 +972,14 @@ export function setupFreeSearchTool(server: McpServer): void {
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ query, limit = 10, engines: userEngines }) => {
+    async ({ query, limit = 10, engines: userEngines }, extra) => {
       const start = Date.now();
       try {
         const results = await searchWithFallback({
           query,
           count: limit,
           engines: userEngines,
+          signal: extra?.signal,
         });
         serverMetrics.recordRequest(Date.now() - start);
         return {
@@ -954,6 +991,7 @@ export function setupFreeSearchTool(server: McpServer): void {
           ],
         };
       } catch (error) {
+        if (extra?.signal.aborted) throw error;
         serverMetrics.recordRequest(Date.now() - start);
         logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Search tool execution failed');
         return {

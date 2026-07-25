@@ -1,4 +1,5 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
+import { withTimeout } from '../infrastructure/abort.js';
 
 const SOGOU_SEARCH_URL = 'https://www.sogou.com/web';
 
@@ -105,7 +106,7 @@ export const sogouProvider = {
   languages: ['zh'],
 };
 
-export async function searchSogou(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchSogou(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = new URL(SOGOU_SEARCH_URL);
     url.searchParams.set('query', query);
@@ -120,6 +121,7 @@ export async function searchSogou(query: string, limit: number = 10): Promise<Se
         'Referer': 'https://www.sogou.com/',
       },
       redirect: 'follow',
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!response.ok) {
@@ -130,6 +132,7 @@ export async function searchSogou(query: string, limit: number = 10): Promise<Se
 
     // Check for anti-bot page
     if (html.toLowerCase().includes('antispider') || html.includes('请输入验证码') || html.includes('访问过于频繁')) {
+      if (options?.throwOnError) throw new Error('Sogou anti-bot challenge');
       console.warn('Sogou returned an anti-bot challenge page');
       return [];
     }
@@ -137,6 +140,8 @@ export async function searchSogou(query: string, limit: number = 10): Promise<Se
     const results = parseSogouHtml(html);
     return results.slice(0, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     console.error('Sogou search failed:', error instanceof Error ? error.message : String(error));
     return [];
   }
