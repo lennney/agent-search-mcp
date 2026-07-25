@@ -245,7 +245,11 @@ both real HTTP and stdio entrypoints, with an experimental Node 20/22 CI matrix
 configured to keep that path covered. Its HTTP boundary also rejects duplicate
 standard and `Mcp-Param-*` routing fields before Node combines them, while the
 pinned SDK verifies parameter-header canonicalization against tool input
-schemas. See the
+schemas. The P2 behavior matrix also verifies CORS/Origin and Bearer policy,
+W3C trace propagation to the search boundary, real-socket cancellation,
+tool-list cache hints, and automatic cache refresh after `tools/list_changed`.
+Its redacted raw HTTP capture records the local Node runtime and exact SDK
+pins without presenting configured CI targets as executed evidence. See the
 [2026 readiness plan](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md).
 
 ### Engine Filtering

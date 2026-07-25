@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "evidence:p2": "npm run build && node scripts/capture-p2-evidence.mjs",
     "test": "npm run build && vitest run",
     "start:http": "node dist/http.js",
     "start:stdio": "node dist/stdio.js"

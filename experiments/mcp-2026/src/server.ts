@@ -66,6 +66,13 @@ export interface SearchResponse {
 
 export interface SearchExecutionContext {
   signal?: AbortSignal;
+  traceContext?: W3CTraceContext;
+}
+
+export interface W3CTraceContext {
+  traceparent?: string;
+  tracestate?: string;
+  baggage?: string;
 }
 
 export type SearchExecutor = (
@@ -160,6 +167,7 @@ export function createExperimentalServer(
     },
     async ({ query, limit, engines, language }, toolContext) => {
       try {
+        const traceContext = readW3CTraceContext(toolContext.http?.req);
         const response = await search({
           query,
           count: limit,
@@ -167,7 +175,10 @@ export function createExperimentalServer(
           language,
           waterfall: true,
           enrich: false,
-        }, { signal: toolContext.mcpReq.signal });
+        }, {
+          signal: toolContext.mcpReq.signal,
+          ...(traceContext !== undefined && { traceContext }),
+        });
         return {
           content: [{
             type: 'text',
@@ -190,6 +201,21 @@ export function createExperimentalServer(
   );
 
   return server;
+}
+
+function readW3CTraceContext(request: Request | undefined): W3CTraceContext | undefined {
+  if (request === undefined) return undefined;
+  const traceparent = request.headers.get('traceparent') ?? undefined;
+  const tracestate = request.headers.get('tracestate') ?? undefined;
+  const baggage = request.headers.get('baggage') ?? undefined;
+  if (traceparent === undefined && tracestate === undefined && baggage === undefined) {
+    return undefined;
+  }
+  return {
+    ...(traceparent !== undefined && { traceparent }),
+    ...(tracestate !== undefined && { tracestate }),
+    ...(baggage !== undefined && { baggage }),
+  };
 }
 
 /**

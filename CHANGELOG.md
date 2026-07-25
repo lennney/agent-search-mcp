@@ -29,6 +29,9 @@ tags:
 - Added an isolated, private Node.js 20+ MCP `2026-07-28` prototype with
   pinned SDK v2 beta.5 packages, explicit modern negotiation, legacy fallback,
   secure HTTP defaults, stdio support, and structured `free_search` results.
+- Added a real-HTTP MCP 2026 behavior matrix for CORS/Origin enforcement,
+  Bearer authentication, W3C trace propagation, cancellation, cache hints,
+  and automatic tool-list cache invalidation.
 - Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
 - Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
 
@@ -56,6 +59,8 @@ tags:
   `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and `Mcp-Param-*` fields
   before Node combines them. Added real-socket coverage for case-insensitive
   names, integer canonicalization, missing headers, and malformed Base64.
+- Forwarded W3C trace context from the experimental HTTP request into the
+  search execution boundary while keeping it out of logs.
 
 ### Documentation
 
@@ -75,6 +80,8 @@ tags:
   experimental CI matrix.
 - Added reproducible MCP 2026 routing-header evidence and closed the
   `Mcp-Param-*` canonicalization/duplicate gate.
+- Added a redacted MCP 2026 P2 HTTP capture with exact SDK versions, an actual
+  local runtime record, configured CI targets, and explicit failure responses.
 
 ## v3.3.0 (2026-07-24)
 

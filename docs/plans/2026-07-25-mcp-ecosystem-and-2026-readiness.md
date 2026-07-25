@@ -125,14 +125,19 @@ Evidence on 2026-07-25:
 - [x] Record the first fallback trace, versions, root cause, and reproduction
       commands in `docs/evidence/mcp-2026-p2-fallback.md`.
 - [x] Expand routing checks to `Mcp-Param-*` canonicalization and duplicates.
-- [ ] Test CORS preflight, Origin validation, Bearer auth, trace propagation,
+- [x] Test CORS preflight, Origin validation, Bearer auth, trace propagation,
       caching hints, cancellation, and tool-list changes.
-- [ ] Record raw traces, SDK versions, Node versions, and failure cases.
+- [x] Record raw traces, SDK versions, the local Node version, configured CI
+      Node targets, and failure cases without representing configured targets
+      as local executions.
 - [ ] Promote the 2026 path only when all required conformance scenarios pass
       and the final specification/SDK release is available.
 
 Routing-header evidence:
 [`docs/evidence/mcp-2026-routing-headers.md`](../evidence/mcp-2026-routing-headers.md).
+
+HTTP behavior evidence:
+[`docs/evidence/mcp-2026-p2-http-matrix.md`](../evidence/mcp-2026-p2-http-matrix.md).
 
 ## P3 - Slim Guard integration
 

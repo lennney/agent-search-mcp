@@ -8,6 +8,24 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 P2 MCP HTTP behavior handover
+
+- The remaining experimental HTTP matrix now covers trusted/untrusted CORS,
+  Bearer success and failure, W3C trace propagation, real-socket cancellation,
+  public tool-list cache hints, and automatic refresh after
+  `tools/list_changed`.
+- Trace context reaches the experimental search execution boundary and is not
+  logged. Treat all W3C headers, especially `baggage`, as untrusted input.
+- Redacted raw HTTP evidence is checked in at
+  `experiments/mcp-2026/evidence/p2-http-matrix-2026-07-26.json`; volatile
+  transport headers are explicitly omitted.
+- The capture ran locally on Node `v24.14.1` with SDK v2 `2.0.0-beta.5`.
+  Node 20/22 are recorded only as configured CI targets in this capture.
+- Reproduction and limitations:
+  `docs/evidence/mcp-2026-p2-http-matrix.md`.
+- Remaining release gates are official 2026 HTTP/stdio conformance, final SDK
+  replacement, and an evidence-backed promotion decision.
+
 ## 2026-07-26 P2 MCP routing-header handover
 
 - The experimental Node HTTP edge now inspects `IncomingMessage.rawHeaders`

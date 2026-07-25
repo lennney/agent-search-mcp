@@ -31,7 +31,19 @@ stdio transports. The real HTTP tests cover case-insensitive
 `Mcp-Param-*` names, integer canonicalization, missing and malformed parameter
 headers, and duplicate routing fields. They also start the production SDK v1
 entrypoints and prove that an SDK v2 client in `auto` mode falls back over both
-HTTP and stdio.
+HTTP and stdio. The P2 HTTP matrix additionally covers CORS and Origin
+enforcement, Bearer authentication, W3C trace propagation, real-socket
+cancellation, cache hints, and automatic `tools/list_changed` refresh.
+
+Capture a redacted, reproducible HTTP evidence record:
+
+```bash
+npm --prefix experiments/mcp-2026 run evidence:p2 -- --captured-on=2026-07-26
+```
+
+The checked-in capture records the local runtime and exact SDK pins. CI Node
+20/22 values are labelled as configured targets, not local executions. See
+[`docs/evidence/mcp-2026-p2-http-matrix.md`](../../docs/evidence/mcp-2026-p2-http-matrix.md).
 
 ## Run
 
