@@ -18,6 +18,9 @@ tags:
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the
   `2026-07-28` routing and W3C trace headers through HTTP CORS without claiming
   production wire compatibility.
+- Added an isolated, private Node.js 20+ MCP `2026-07-28` prototype with
+  pinned SDK v2 beta.5 packages, explicit modern negotiation, legacy fallback,
+  secure HTTP defaults, stdio support, and structured `free_search` results.
 - Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
 - Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
 
@@ -32,6 +35,8 @@ tags:
 - Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
 - Added the MCP ecosystem/2026 readiness plan and the Git-authoritative,
   Hermes-projection decision for multi-device planning.
+- Documented the experimental 2026 entry, its stable-domain boundary, and the
+  current conformance-suite coverage gap.
 
 ## v3.3.0 (2026-07-24)
 

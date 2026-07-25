@@ -18,21 +18,22 @@ Build a local-first MCP ecosystem in which:
 
 # Protocol strategy
 
-The official TypeScript SDK v2 is required for complete `2026-07-28` wire
-support and requires Node.js 20+. The current package supports Node.js 18+ and
-uses SDK v1. Therefore the migration is deliberately dual-track.
+Complete `2026-07-28` wire support requires the official TypeScript SDK v2 and
+Node.js 20+. The current package supports Node.js 18+ and uses SDK v1.
+Migration is therefore deliberately dual-track.
 
 | Surface | Stable track | Experimental 2026 track |
 |---|---|---|
-| Runtime | Node 18/20/22 | Node 20/22 |
-| SDK | `@modelcontextprotocol/sdk` v1 | split v2 packages |
-| Negotiation | `initialize` | `server/discover` + per-request metadata |
-| HTTP | current Streamable HTTP | stateless, no protocol session |
+| Runtime | Node 18/20/22 | Node 20+ |
+| SDK | `@modelcontextprotocol/sdk` v1 | split v2 packages, beta.5 pinned |
+| Negotiation | legacy `initialize` | explicit `2026-07-28` discovery |
+| HTTP | current Streamable HTTP | stateless, secure-by-default |
+| stdio | production default | dual-era experimental entry |
 | Release status | production default | explicit opt-in until gates pass |
 
 # Work packages
 
-## P0 — credibility and compatibility
+## P0 - credibility and compatibility
 
 - [x] Correct `search_with_synthesis` confidence semantics: confidence is 0-1,
       while independent corroboration is `min_source_count`.
@@ -42,33 +43,54 @@ uses SDK v1. Therefore the migration is deliberately dual-track.
 - [x] Allow the 2026 routing and W3C trace headers through browser CORS.
 - [x] Run the full test suite and build on the current stable track.
 
-## P1 — isolated SDK v2 prototype
+## P1 - isolated SDK v2 prototype
 
-- [ ] Create an experimental Node 20+ entrypoint that shares search-domain
-      functions but does not pass SDK v1 objects across the v1/v2 boundary.
-- [ ] Opt in to `2026-07-28` serving explicitly; do not rely on SDK defaults.
-- [ ] Implement and test `server/discover`.
-- [ ] Verify `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and
-      `Mcp-Param-*` header/body consistency.
-- [ ] Keep application state in explicit tool arguments/handles.
-- [ ] Add bounded JSON Schema 2020-12 validation and reject external `$ref`
+- [x] Create `experiments/mcp-2026`, a private Node.js 20+ entrypoint with an
+      independent lockfile and exact SDK v2 beta.5 versions.
+- [x] Share only JSON-shaped search-domain arguments/results; never pass SDK v1
+      clients, servers, transports, sessions, or errors across the boundary.
+- [x] Opt in to `2026-07-28` explicitly and retain a `2025-11-25` fallback.
+- [x] Exercise SDK `server/discover` through a client pinned to `2026-07-28`.
+- [x] Verify real HTTP and stdio negotiation.
+- [x] Verify protocol-version routing and reject `Mcp-Method`/`Mcp-Name`
+      headers that disagree with the JSON-RPC body.
+- [x] Keep the entry stateless and all search state in bounded tool arguments.
+- [x] Generate a bounded, self-contained tool schema without external `$ref`
       dereferencing.
-- [ ] Preserve structured tool results and standard JSON-RPC error codes.
+- [x] Preserve `structuredContent`; let the SDK emit standard protocol errors
+      while tool execution failures retain `isError`.
+- [x] Require Bearer auth by default, validate Host/Origin, and keep `/health`
+      public for probes.
+- [x] Enforce the HTTP byte limit for all accepted POST bodies by requiring a
+      valid `Content-Length` and rejecting chunked transfer encoding.
 
-## P2 — conformance and release gates
+Evidence on 2026-07-25:
 
-- [ ] Run the official MCP conformance suite for HTTP and stdio.
+- SDK v2 tests: 9 passed across 3 files.
+- Modern and legacy negotiation pass through the same factory.
+- Official conformance `0.1.16` `server-initialize`: 1/1 passed against the
+  experimental HTTP server.
+- Limitation: conformance `0.1.16` only advertises scenarios through
+  `2025-11-25`; this is legacy-regression evidence, not complete 2026
+  conformance.
+
+## P2 - conformance and release gates
+
+- [ ] Run official 2026 conformance for HTTP and stdio when those scenarios are
+      published.
 - [ ] Test automatic fallback from a 2026-capable client to the stable server.
+- [ ] Expand routing checks to `Mcp-Param-*` canonicalization and duplicates.
 - [ ] Test CORS preflight, Origin validation, Bearer auth, trace propagation,
       caching hints, cancellation, and tool-list changes.
 - [ ] Record raw traces, SDK versions, Node versions, and failure cases.
 - [ ] Promote the 2026 path only when all required conformance scenarios pass
       and the final specification/SDK release is available.
 
-## P3 — Slim Guard integration
+## P3 - Slim Guard integration
 
 - [ ] Fix Slim Guard protocol fidelity before using it as the public gateway:
-      preserve `isError`, `structuredContent`, `_meta`, media, and resource links.
+      preserve `isError`, `structuredContent`, `_meta`, media, and resource
+      links.
 - [ ] Add remote HTTP upstream support and explicit stable routing names.
 - [ ] Isolate cache entries by tenant/session and never cache mutations.
 - [ ] Redact secrets from audit records.
@@ -77,7 +99,7 @@ uses SDK v1. Therefore the migration is deliberately dual-track.
 - [ ] Ship an optional `agent-search` preset; keep direct Agent Search install
       working without Slim Guard.
 
-## P4 — benchmark
+## P4 - benchmark
 
 - [ ] Search track: nDCG@10, recall/MRR, passage recall, grounded-answer
       accuracy, citation support, tokens per correct answer, p50/p95 latency.
@@ -90,24 +112,22 @@ uses SDK v1. Therefore the migration is deliberately dual-track.
 # 2026 release-day checklist
 
 1. Compare the final `2026-07-28` changelog with the locked RC.
-2. Pin the final SDK v2 versions in the experimental build.
+2. Replace beta pins with verified final SDK v2 versions.
 3. Re-run conformance and the complete benchmark.
 4. Update protocol status only from verified evidence.
 5. Keep the stable entrypoint available for at least one migration window.
 
 # Plan synchronization
 
-This file and repository ADRs are authoritative. Follow
-`docs/decisions/ADR-20260725-plan-authority-and-hermes-projection.md` for the
-Tencent Hermes projection. The remote projection must record the source commit
-and must never be edited as an independent plan.
+The repository plan and ADRs are authoritative. Hermes projection is deferred
+for now; no remote state is required for P1.
 
 # Primary references
 
 - MCP 2026-07-28 RC overview:
   https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/
 - TypeScript SDK v1-to-v2 migration:
-  https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2.html
+  https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2
 - TypeScript SDK 2026 protocol support:
   https://ts.sdk.modelcontextprotocol.io/v2/migration/support-2026-07-28
 - Official conformance suite:

@@ -210,8 +210,18 @@ HTTP mode is secure-by-default: `/mcp` requires `Authorization: Bearer <token>`,
 The production entrypoint currently speaks MCP `2025-11-25`. `/health` reports
 that stable version separately from the experimental `2026-07-28` target, and
 HTTP CORS allows the new routing and W3C trace headers. Full 2026 wire support
-requires the TypeScript SDK v2 and Node.js 20+, so it will remain an isolated
-opt-in track until official conformance passes. See the
+requires the TypeScript SDK v2 and Node.js 20+. An isolated Node.js 20+
+prototype now pins SDK v2 beta.5, explicitly negotiates `2026-07-28`, and
+serves both HTTP and stdio without changing the production dependency tree:
+
+```bash
+npm --prefix experiments/mcp-2026 install
+npm run experimental:2026:test
+HTTP_AUTH_TOKEN=replace-me npm run experimental:2026:http
+```
+
+It remains opt-in until the official conformance suite publishes and passes
+the 2026 scenarios. See the
 [2026 readiness plan](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md).
 
 ### Engine Filtering
@@ -288,6 +298,8 @@ npm run dev:http   # HTTP mode (port 3000)
 ```
 
 The build helper is cross-platform; CI checks Node.js 18/20/22 on Linux and performs a Windows build smoke test.
+The private `experiments/mcp-2026` package requires Node.js 20+ and has its own
+lockfile so SDK v2 beta dependencies cannot change the stable package.
 
 ---
 

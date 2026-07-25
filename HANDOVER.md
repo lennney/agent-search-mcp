@@ -7,6 +7,31 @@ tags:
 - agent-search-mcp
 - handoverdoc
 ---
+
+## 2026-07-25 P1 experimental MCP 2026 handover
+
+- Added private `experiments/mcp-2026` package: Node.js 20+, exact SDK v2
+  beta.5 pins, separate lockfile, and no changes to the stable Node.js 18+
+  runtime dependencies.
+- HTTP and stdio explicitly negotiate `2026-07-28`; the same factory continues
+  to serve a `2025-11-25` legacy client.
+- Only JSON-shaped search inputs/results cross into the stable
+  `searchWithFallback` implementation. No SDK v1 object crosses the boundary.
+- Experimental tests: 9 passed across 3 files, including real HTTP and stdio
+  transports, modern/legacy negotiation, structured results, and routing
+  mismatch rejection.
+- `@modelcontextprotocol/conformance@0.1.16` `server-initialize` passed 1/1.
+  That release only lists scenarios through `2025-11-25`, so full 2026
+  conformance remains a P2 release gate.
+- POST bodies require a valid `Content-Length`; chunked transfer encoding is
+  rejected so `HTTP_MAX_BODY_BYTES` cannot be bypassed.
+- Known P2 work: `Mcp-Param-*` edge cases, automatic fallback to the production
+  entry, and the official 2026 conformance scenarios once published.
+- Residual audit note: SDK v2 beta.5 brings `@hono/node-server@1.19.15`, whose
+  advisory affects Windows static-file serving. This entry does not use that
+  feature; do not force a major transitive override.
+- Hermes work was intentionally deferred; the Git plan remains authoritative.
+
 # Agent Search MCP — Handover
 
 ## 项目状态
