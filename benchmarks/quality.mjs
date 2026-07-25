@@ -5,6 +5,7 @@ import { dirname, relative, resolve } from 'node:path';
 
 import {
   evaluateQualityFixture,
+  prepareBlindedReviewPacket,
   prepareHumanLabelTemplate,
   validateQualityFixture,
 } from './lib/quality-metrics.mjs';
@@ -22,7 +23,20 @@ async function writeJson(path, value) {
 }
 
 const prepareCapturePath = option('--prepare-capture');
-if (prepareCapturePath) {
+const prepareReviewerPacketPath = option('--prepare-reviewer-packet');
+if (prepareReviewerPacketPath) {
+  const outputPath = option('--output');
+  const reviewerSlot = option('--reviewer-slot');
+  if (!outputPath || !reviewerSlot) {
+    throw new Error('--prepare-reviewer-packet requires --reviewer-slot and --output');
+  }
+  const fixture = JSON.parse(
+    await readFile(resolve(ROOT, prepareReviewerPacketPath), 'utf8'),
+  );
+  const packet = prepareBlindedReviewPacket(fixture, { reviewerSlot });
+  await writeJson(resolve(ROOT, outputPath), packet);
+  console.log(`Prepared blinded reviewer packet at ${resolve(ROOT, outputPath)}`);
+} else if (prepareCapturePath) {
   const outputPath = option('--output');
   if (!outputPath) throw new Error('--prepare-capture requires --output');
   const capture = JSON.parse(await readFile(resolve(ROOT, prepareCapturePath), 'utf8'));

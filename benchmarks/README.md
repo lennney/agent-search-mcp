@@ -49,6 +49,17 @@ Live capture records searched engines, calls, completed phases, early stop, raw 
 node benchmarks/run.mjs --fixture benchmarks/fixtures/live-latest.json
 ```
 
+The capture runner accepts a dedicated query set and an explicit comma-separated
+engine allowlist. The selected engines are recorded in the fixture and are
+honored by waterfall execution:
+
+```bash
+node benchmarks/run.mjs \
+  --capture benchmarks/fixtures/live-reviewer-pilot.json \
+  --query-set benchmarks/queries/reviewer-pilot.json \
+  --engines wikipedia
+```
+
 ## Human-gated search quality
 
 Live capture now preserves a response SHA-256, per-engine outcomes, latency,
@@ -65,6 +76,25 @@ Two people must review a non-empty pooled capture before its status can become
 rank@5, Success@5, answer correctness, citation support, tokens per correct
 answer, latency, trace coverage, and failure disclosure. Language, category,
 and freshness slices are emitted in JSON reports.
+
+Generate separate blinded packets after preparing the pending fixture:
+
+```bash
+npm run benchmark:reviewer-pilot:prepare
+npm run benchmark:reviewer-pilot:verify
+```
+
+Reviewer packets retain publisher URLs, titles, snippets, the question, and
+the reference answer, but omit search-adapter/ranking provenance, internal
+relevance and confidence, source counts, and execution traces. Opaque candidate
+IDs and a deterministic reviewer-specific permutation avoid exposing the
+original rank. Required publisher attribution remains visible.
+The current reviewer pilot is a single-engine runner qualification artifact,
+not yet the multi-system pool required for public Recall or quality claims.
+
+Retrieved content has its own license boundary. See
+[`DATA_LICENSES.md`](./DATA_LICENSES.md); do not assume the repository's Apache
+license covers captured third-party snippets.
 
 ```bash
 # Metric-code regression only; bootstrap data is not a quality claim
@@ -92,6 +122,9 @@ headline number.
 | [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
 | [`fixtures/quality-bootstrap.json`](./fixtures/quality-bootstrap.json) | Synthetic metric regression; never quality evidence |
 | [`fixtures/live-p2-pilot.json`](./fixtures/live-p2-pilot.json) | Real zero-result failure pilot with raw traces |
+| [`fixtures/live-reviewer-pilot.json`](./fixtures/live-reviewer-pilot.json) | Real non-empty single-engine reviewer-pipeline qualification capture |
+| [`queries/reviewer-pilot.json`](./queries/reviewer-pilot.json) | Bilingual reviewer-pilot questions and reference answers |
+| [`reviews/`](./reviews) | Blinded, pending reviewer packets |
 | [`schemas/labeled-search-quality-v1.schema.json`](./schemas/labeled-search-quality-v1.schema.json) | Label/trace schema |
 | [`methodology.md`](./methodology.md) | Evidence model and limitations |
 | [`run.cjs`](./run.cjs) | Legacy historical runner |

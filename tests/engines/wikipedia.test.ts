@@ -10,17 +10,20 @@ describe('Wikipedia engine', () => {
     expect(wikipediaProvider.languages).toContain('zh');
   });
 
-  it('searchWikipedia returns results from opensearch API', async () => {
+  it('searchWikipedia returns results with article extracts', async () => {
     const originalFetch = global.fetch;
     try {
       global.fetch = async () => ({
         ok: true,
-        json: async () => [
-          'test',
-          ['Test Title'],
-          ['Test snippet'],
-          ['https://en.wikipedia.org/wiki/Test'],
-        ],
+        json: async () => ({
+          query: {
+            pages: [{
+              title: 'Test Title',
+              extract: 'Test snippet with enough detail for ranking.',
+              fullurl: 'https://en.wikipedia.org/wiki/Test',
+            }],
+          },
+        }),
       }) as unknown as typeof fetch;
 
       const results = await searchWikipedia('test', 5);
@@ -28,8 +31,29 @@ describe('Wikipedia engine', () => {
       expect(results.length).toBe(1);
       expect(results[0].title).toBe('Test Title');
       expect(results[0].url).toBe('https://en.wikipedia.org/wiki/Test');
+      expect(results[0].snippet).toBe('Test snippet with enough detail for ranking.');
       expect(results[0].source).toBe('wikipedia');
       expect(results[0].engines).toEqual(['wikipedia']);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('uses Chinese Wikipedia for a Chinese query', async () => {
+    const originalFetch = global.fetch;
+    let requestedUrl = '';
+    try {
+      global.fetch = async (input) => {
+        requestedUrl = String(input);
+        return {
+          ok: true,
+          json: async () => ({ query: { pages: [] } }),
+        } as unknown as Response;
+      };
+
+      await searchWikipedia('人工智能', 5);
+
+      expect(requestedUrl).toMatch(/^https:\/\/zh\.wikipedia\.org\//);
     } finally {
       global.fetch = originalFetch;
     }

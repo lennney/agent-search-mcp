@@ -8,6 +8,25 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 non-empty reviewer-pipeline handover
+
+- Fixed two core search defects exposed by live qualification: waterfall now
+  honors explicit engines, and Wikipedia returns bounded article extracts
+  instead of empty snippets that are later filtered out.
+- Wikipedia routes CJK queries to `zh.wikipedia.org`.
+- Relevance now uses Latin/CJK term coverage, differentiating broad matches
+  from one-term partial matches without mixing relevance into confidence.
+- Added query-set/engine options to the live runner and checked in a real
+  two-query, 20-candidate Wikipedia capture.
+- Two blinded reviewer packets omit adapter/ranking provenance, internal
+  scores, source counts, traces, and original rank while keeping
+  question/reference-answer context and required publisher attribution.
+- CI verifies raw-response/source hashes, candidate coverage, data-license
+  metadata, opaque IDs, rank hiding, and the `pending-human` gate.
+- This is a single-engine pipeline qualification, not a public quality result.
+  Remaining gate: multi-system pool, two real human reviews, adjudication.
+- Evidence: `docs/evidence/2026-07-26-reviewer-pilot.md`.
+
 ## 2026-07-26 P2 MCP HTTP behavior handover
 
 - The remaining experimental HTTP matrix now covers trusted/untrusted CORS,

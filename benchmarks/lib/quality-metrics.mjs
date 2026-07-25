@@ -112,6 +112,9 @@ export function prepareHumanLabelTemplate(capture) {
         language: sample.language,
         category: sample.category ?? 'unknown',
         freshness: sample.freshness ?? 'unknown',
+        ...(typeof sample.question === 'string' && { question: sample.question }),
+        ...(typeof sample.reference_answer === 'string'
+          && { reference_answer: sample.reference_answer }),
         response: sample.response,
         trace: sample.trace,
         labels: {
@@ -132,6 +135,8 @@ export function prepareHumanLabelTemplate(capture) {
     source_capture_sha256: createHash('sha256')
       .update(JSON.stringify(capture))
       .digest('hex'),
+    ...(isRecord(capture.content_licenses)
+      && { content_licenses: capture.content_licenses }),
     labeling: {
       status: 'pending-human',
       relevance_scale: { min: 0, max: 3, relevant_threshold: 2 },
@@ -144,6 +149,78 @@ export function prepareHumanLabelTemplate(capture) {
       ],
     },
     samples,
+  };
+}
+
+export function prepareBlindedReviewPacket(fixture, options = {}) {
+  if (!isRecord(fixture) || !Array.isArray(fixture.samples)) {
+    fixtureError('review fixture samples must be an array');
+  }
+  const reviewerSlot = options.reviewerSlot;
+  if (typeof reviewerSlot !== 'string' || reviewerSlot.trim().length === 0) {
+    fixtureError('reviewerSlot is required');
+  }
+  const sourceFixtureSha256 = createHash('sha256')
+    .update(JSON.stringify(fixture))
+    .digest('hex');
+
+  return {
+    schema_version: 1,
+    kind: 'blinded-search-review',
+    source_fixture_sha256: sourceFixtureSha256,
+    ...(isRecord(fixture.content_licenses)
+      && { content_licenses: fixture.content_licenses }),
+    reviewer_slot: reviewerSlot,
+    instructions: [
+      'Judge candidates independently without consulting another reviewer.',
+      'Use relevance 0 for irrelevant, 1 for marginal, 2 for relevant, and 3 for highly relevant.',
+      'Set citation_supported only when the candidate supports the reference answer.',
+      'Do not add engine or ranking-system identity to this packet.',
+    ],
+    samples: fixture.samples.map((sample, sampleIndex) => {
+      if (!isRecord(sample)
+        || typeof sample.id !== 'string'
+        || !isRecord(sample.response)
+        || !Array.isArray(sample.response.results)) {
+        fixtureError(`review sample ${sampleIndex} is invalid`);
+      }
+      const candidates = sample.response.results
+        .map(result => {
+          const candidateId = `c-${createHash('sha256')
+            .update(`${sample.id}\0${result.url}`)
+            .digest('hex')
+            .slice(0, 12)}`;
+          return {
+            candidate_id: candidateId,
+            title: result.title,
+            url: result.url,
+            snippet: result.snippet ?? '',
+            relevance: null,
+            citation_supported: null,
+          };
+        });
+      const originalOrder = candidates.map(candidate => candidate.candidate_id);
+      candidates.sort((left, right) => {
+        const sortKey = candidate => createHash('sha256')
+          .update(`${sourceFixtureSha256}\0${reviewerSlot}\0${sample.id}\0${candidate.candidate_id}`)
+          .digest('hex');
+        return sortKey(left).localeCompare(sortKey(right));
+      });
+      if (candidates.length > 1
+        && candidates.every((candidate, index) =>
+          candidate.candidate_id === originalOrder[index])) {
+        candidates.push(candidates.shift());
+      }
+
+      return {
+        id: sample.id,
+        query: sample.query,
+        ...(typeof sample.question === 'string' && { question: sample.question }),
+        ...(typeof sample.reference_answer === 'string'
+          && { reference_answer: sample.reference_answer }),
+        candidates,
+      };
+    }),
   };
 }
 

@@ -246,6 +246,27 @@ describe('searchWithFallback — waterfall', () => {
     expect(res.query).toBe('wf');
   });
 
+  it('searches only explicitly requested engines in waterfall mode', async () => {
+    (searchWikipedia as any).mockResolvedValue(makeResults(1, 'wikipedia'));
+
+    const result = await searchWithFallback({
+      query: 'explicit-waterfall-engine',
+      engines: ['wikipedia'],
+      waterfall: true,
+      expandQueries: false,
+    });
+
+    expect(searchWikipedia).toHaveBeenCalled();
+    expect(searchDuckDuckGo).not.toHaveBeenCalled();
+    expect(searchSogou).not.toHaveBeenCalled();
+    expect(searchBing).not.toHaveBeenCalled();
+    expect(searchBaidu).not.toHaveBeenCalled();
+    expect(searchStartpage).not.toHaveBeenCalled();
+    expect(searchYandex).not.toHaveBeenCalled();
+    expect(searchMojeek).not.toHaveBeenCalled();
+    expect(result.meta.execution?.searched_engines).toEqual(['wikipedia']);
+  });
+
   it('reads the same cache-key contract used by parallel search', async () => {
     const cached = {
       query: 'cached-waterfall',

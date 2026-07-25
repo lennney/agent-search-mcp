@@ -57,6 +57,12 @@ jobs:
       - name: Verify frozen benchmark fixture
         run: npm run benchmark:verify
 
+      - name: Verify quality metric fixture
+        run: npm run benchmark:quality:verify
+
+      - name: Verify reviewer pilot artifacts
+        run: npm run benchmark:reviewer-pilot:verify
+
   windows-build:
     runs-on: windows-latest
 

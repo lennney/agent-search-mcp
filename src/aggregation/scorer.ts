@@ -1,4 +1,5 @@
 import { SearchResult } from '../types.js';
+import { extractQueryTerms } from './passage-selector.js';
 
 // 域名权威评级: 域名 → 评分加成
 // 基于 TLD + 域名知名度
@@ -84,7 +85,7 @@ export function scoreAndRank(
   weights: Record<string, number> = {},
   frequencies?: Map<string, number>
 ): ScoredResult[] {
-  const tokens = query.toLowerCase().split(/\W+/).filter(t => t.length >= 3);
+  const tokens = extractQueryTerms(query);
   
   return results
     .map(r => {
@@ -148,12 +149,10 @@ function normalizeUrl(url: string): string {
 /**
  * Token-based scoring inspired by ddgs SimpleFilterRanker.
  * 
- * Buckets:
- * - Wikipedia boost: +0.15
- * - Both title+body match: +0.4
- * - Title only match: +0.3
- * - Body only match: +0.2
- * - Neither: 0
+ * Query coverage:
+ * - Title term coverage contributes up to +0.35.
+ * - Body term coverage contributes up to +0.20.
+ * - Matching both surfaces contributes an additional +0.05.
  * 
  * Then multiply by frequency bonus and engine weight.
  */
@@ -172,18 +171,10 @@ function calculateRelevance(
   const titleMatches = tokens.filter(t => titleLower.includes(t)).length;
   const bodyMatches = tokens.filter(t => bodyLower.includes(t)).length;
   
-  // Bucket classification
-  let bucketScore = 0;
-  const hasTitle = titleMatches > 0;
-  const hasBody = bodyMatches > 0;
-  
-  if (hasTitle && hasBody) {
-    bucketScore = 0.4; // Both match
-  } else if (hasTitle) {
-    bucketScore = 0.3; // Title only
-  } else if (hasBody) {
-    bucketScore = 0.2; // Body only
-  }
+  const titleCoverage = titleMatches / tokens.length;
+  const bodyCoverage = bodyMatches / tokens.length;
+  const crossSurfaceBonus = titleMatches > 0 && bodyMatches > 0 ? 0.05 : 0;
+  let bucketScore = titleCoverage * 0.35 + bodyCoverage * 0.2 + crossSurfaceBonus;
   
   // 域名权威加成 (替代原来硬编码的 wikipedia/github boost)
   const domainBoost = getDomainBoost(result.url);

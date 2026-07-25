@@ -69,6 +69,50 @@ describe('scoreAndRank', () => {
     expect(scored[0].url).toContain('exact');
   });
 
+  it('ranks broader query-term coverage above a one-term partial match', () => {
+    const results = [
+      makeResult({
+        url: 'https://example.com/exact',
+        title: 'Model Context Protocol',
+        snippet: 'The Model Context Protocol connects AI applications to tools and data.',
+        engines: ['ddg'],
+      }),
+      makeResult({
+        url: 'https://example.com/partial',
+        title: 'Communication protocol',
+        snippet: 'A protocol defines communication rules.',
+        engines: ['ddg'],
+      }),
+    ];
+
+    const scored = scoreAndRank(results, 'What is the Model Context Protocol?', weights);
+
+    expect(scored[0].url).toContain('exact');
+    expect(scored[0].relevance).toBeGreaterThan(scored[1].relevance);
+  });
+
+  it('uses CJK query terms when ranking Chinese results', () => {
+    const results = [
+      makeResult({
+        url: 'https://example.com/transformer',
+        title: 'Transformer 模型',
+        snippet: 'Transformer 模型使用注意力机制处理序列。',
+        engines: ['ddg'],
+      }),
+      makeResult({
+        url: 'https://example.com/chat',
+        title: '聊天机器人',
+        snippet: '介绍通用聊天应用。',
+        engines: ['ddg'],
+      }),
+    ];
+
+    const scored = scoreAndRank(results, 'Transformer 模型是什么？', weights);
+
+    expect(scored[0].url).toContain('transformer');
+    expect(scored[0].relevance).toBeGreaterThan(scored[1].relevance);
+  });
+
   it('handles missing snippet gracefully', () => {
     const results = [
       makeResult({ url: 'https://example.com/no-snippet', snippet: undefined, engines: ['brave'] }),

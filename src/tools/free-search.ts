@@ -704,6 +704,16 @@ const WATERFALL_PHASES = {
   phase2: ["brave", "tavily", "exa", "youcom"],
 } as const;
 
+function selectWaterfallPhase(
+  phase: readonly string[],
+  requestedEngines: Set<SearchProvider> | undefined,
+): SearchProvider[] {
+  const engines = phase as readonly SearchProvider[];
+  return requestedEngines === undefined
+    ? [...engines]
+    : engines.filter(engine => requestedEngines.has(engine));
+}
+
 async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth: number = 0): Promise<SearchResponse> {
   // Guard against infinite recursion from query expansion
   if (depth > 2) {
@@ -743,6 +753,23 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   const allFailures: EngineError[] = [];
   const searchedEngines: string[] = [];
   const phasesCompleted: string[] = [];
+  const requestedEngines = options.engines === undefined
+    ? undefined
+    : new Set(options.engines);
+  const freePhases = [
+    {
+      label: '1a',
+      engines: selectWaterfallPhase(WATERFALL_PHASES.phase1a, requestedEngines),
+    },
+    {
+      label: '1b',
+      engines: selectWaterfallPhase(WATERFALL_PHASES.phase1b, requestedEngines),
+    },
+    {
+      label: '1c',
+      engines: selectWaterfallPhase(WATERFALL_PHASES.phase1c, requestedEngines),
+    },
+  ];
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
     phasesCompleted.push(phaseLabel);
@@ -793,27 +820,19 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     return basket.sufficient;
   }
 
-  let basketFull = await searchBatch([...WATERFALL_PHASES.phase1a] as SearchProvider[], "1a");
-  if (basketFull) {
-    logger.info("Phase 1a satisfied — skipping remaining phases");
-  }
-
-  if (!basketFull) {
-    basketFull = await searchBatch([...WATERFALL_PHASES.phase1b] as SearchProvider[], "1b");
+  let basketFull = false;
+  for (const phase of freePhases) {
+    if (phase.engines.length === 0) continue;
+    basketFull = await searchBatch(phase.engines, phase.label);
     if (basketFull) {
-      logger.info("Phase 1b satisfied — skipping remaining phases");
+      logger.info({ phase: phase.label }, 'Waterfall basket satisfied; skipping remaining phases');
+      break;
     }
   }
 
   if (!basketFull) {
-    basketFull = await searchBatch([...WATERFALL_PHASES.phase1c] as SearchProvider[], "1c");
-    if (basketFull) {
-      logger.info("Phase 1c satisfied — skipping Phase 2");
-    }
-  }
-
-  if (!basketFull) {
-    const paidAvailable = WATERFALL_PHASES.phase2.filter((e) => hasApiKey(e as SearchProvider));
+    const paidAvailable = selectWaterfallPhase(WATERFALL_PHASES.phase2, requestedEngines)
+      .filter(hasApiKey);
     if (paidAvailable.length > 0) {
       phasesCompleted.push('2');
       logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");

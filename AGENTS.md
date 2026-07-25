@@ -15,7 +15,7 @@ tags:
 
 **版本**: v3.1.0（已发布 npm + GitHub Release）— [查看完整路线图](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
 
-**测试**: stable 538 passed, 47 files; experimental 2026 21 passed, 7 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
+**测试**: stable 546 passed, 48 files; experimental 2026 21 passed, 7 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
 
 当前优先事项：
 1. **搜索质量证据** — 在稳定网络 runner 上捕获真实 fixture 并增加人工相关性标签
@@ -102,6 +102,9 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 - **Benchmark 口径**: 可保留 2026-07-24 历史 30 查询实测的 28.7% / 35.5% / 75%，但必须限定当时查询集和环境。当前冻结 fixture + `gpt-tokenizer` 用于可重现的格式化回归，不代表搜索质量。
 - **Evidence budget**: `EVIDENCE_BUDGET_CHARS` 是整个响应共享的 passage 字符预算，不是每条结果的预算；compact 占位结果必须保留 `sources`，缺失发布时间必须返回 `null`，禁止推断。
 - **Quality evidence gate**: `quality-bootstrap.json` 只用于指标回归，`quality_claim_eligible=false`；公开质量数字必须来自非空 pooled capture、两名独立人工 reviewer 和 `human-verified` 元数据。零结果样本必须保留用于失败透明度，禁止静默排除。
+- **Reviewer pilot**: `live-reviewer-pilot.json` 只是 Wikipedia 单引擎的非空链路验收，不是 multi-system pool 或质量声明；reviewer 包必须移除 adapter/ranking provenance、内部 score/confidence、source_count 和 execution trace，但保留 publisher URL 与必要许可署名。
+- **Benchmark data license**: 第三方检索摘要不自动继承仓库 Apache-2.0；提交 capture 前必须核对再分发条款并记录许可/署名。Wikipedia pilot 的 extract 按 CC BY-SA 4.0 单独声明，文章 URL 用于贡献者署名。
+- **Waterfall engine contract**: 显式 `engines` 必须过滤每个 waterfall phase 和 paid fallback；不得因固定 phase 偷跑未请求适配器。Wikipedia 使用带 extract 的 MediaWiki query API，CJK 查询路由到中文站。
 - **2026 路由头**: experimental Node HTTP 必须从 `rawHeaders` 拒绝重复的 `MCP-Protocol-Version`、`Mcp-Method`、`Mcp-Name` 与任意 `Mcp-Param-*`，避免规范化掩盖歧义；参数值解码和 body 一致性继续交给 SDK v2。
 - **2026 HTTP 证据**: W3C trace headers 只传入 search execution context，禁止记录可能含秘密的 `baggage`；取消必须经真实 socket 到达 handler signal；`tools/list_changed` 必须使 SDK 客户端缓存失效。证据捕获只保留安全/协议响应头，并列出被省略的易变传输头。
 - **HTTP 安全默认值**: HTTP / both 模式必须配置 `HTTP_AUTH_TOKEN`；只有显式 `HTTP_ALLOW_UNAUTHENTICATED=true` 才允许无认证运行。带 Origin 的浏览器请求必须命中 `ALLOWED_ORIGINS`。

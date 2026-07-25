@@ -8,7 +8,7 @@ const CJK_SEQUENCE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+/gu;
 const CJK_ONLY = /^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+$/u;
 const LATIN_TERM = /[\p{L}\p{N}]+/gu;
 
-function queryTerms(query: string): string[] {
+export function extractQueryTerms(query: string): string[] {
   const normalized = query.toLowerCase();
   const terms = new Set<string>();
 
@@ -62,7 +62,7 @@ export function selectRelevantPassage(
     return { text: '', score: 0, matched_terms: [] };
   }
 
-  const terms = queryTerms(query);
+  const terms = extractQueryTerms(query);
   let best = passages[0];
   let bestScore = 0;
   let bestMatches: string[] = [];

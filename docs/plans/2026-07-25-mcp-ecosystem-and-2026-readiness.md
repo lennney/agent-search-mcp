@@ -74,6 +74,11 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../evidence/2026-07-2
 
 Evidence: [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../evidence/2026-07-26-p2-quality-pilot.md).
 
+Reviewer-pipeline qualification:
+[`docs/evidence/2026-07-26-reviewer-pilot.md`](../evidence/2026-07-26-reviewer-pilot.md).
+The non-empty single-engine capture and two blinded packets are ready; a
+multi-system pool, two actual human judgments, and adjudication remain open.
+
 ## P0 - credibility and compatibility
 
 - [x] Correct `search_with_synthesis` confidence semantics: confidence is 0-1,

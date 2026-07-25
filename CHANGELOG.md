@@ -21,6 +21,11 @@ tags:
   per-engine outcomes, graded ranking metrics, citation support, tokens per
   correct answer, latency/failure dimensions, and slice reporting. Bootstrap
   fixtures are explicitly ineligible for public quality claims.
+- Added dedicated benchmark query-set and engine selection, a real non-empty
+  bilingual reviewer-pipeline capture, and two provenance-blinded reviewer
+  packets. A CI verifier checks hashes, license metadata, candidate coverage,
+  opaque IDs, shuffled rank, and pending-human status. The single-engine pilot
+  remains ineligible for quality claims.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the
@@ -48,6 +53,12 @@ tags:
   but does not count as independent corroboration.
 - Unified parallel and waterfall cache keys and enabled cache reads for
   waterfall execution.
+- Made waterfall search honor an explicit engine allowlist instead of calling
+  every fixed phase.
+- Replaced empty Wikipedia OpenSearch descriptions with bounded MediaWiki
+  article extracts and route CJK queries to Chinese Wikipedia.
+- Made lexical relevance sensitive to Latin/CJK query-term coverage instead
+  of assigning the same score to every partial match.
 - Corrected `search_with_synthesis` to use normalized 0-1 confidence, keep
   source-count filtering separate, preserve legacy 2-3 inputs, and report each
   result's actual source provenance.

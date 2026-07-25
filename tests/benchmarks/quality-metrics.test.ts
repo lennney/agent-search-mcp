@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCaptureTrace,
   evaluateQualityFixture,
+  prepareBlindedReviewPacket,
   prepareHumanLabelTemplate,
   validateQualityFixture,
 } from '../../benchmarks/lib/quality-metrics.mjs';
@@ -148,6 +149,8 @@ describe('quality benchmark metrics', () => {
         language: sample.language,
         category: sample.category,
         freshness: sample.freshness,
+        question: 'What is the expected answer?',
+        reference_answer: 'Expected answer for reviewer comparison.',
         response: sample.response,
         trace: sample.trace,
       })),
@@ -161,6 +164,8 @@ describe('quality benchmark metrics', () => {
     expect(template.samples[0]).toEqual(expect.objectContaining({
       category: 'factual',
       freshness: 'evergreen',
+      question: 'What is the expected answer?',
+      reference_answer: 'Expected answer for reviewer comparison.',
     }));
     expect(template.samples[0].labels).toEqual({
       answer_correct: null,
@@ -177,6 +182,44 @@ describe('quality benchmark metrics', () => {
         },
       ],
     });
+  });
+
+  it('creates a deterministic reviewer packet without engine or score provenance', () => {
+    const fixture = makeFixture();
+    fixture.samples[0].question = 'Which result supports the answer?';
+    fixture.samples[0].reference_answer = 'Alpha is the expected answer.';
+    fixture.content_licenses = {
+      wikipedia: { license: 'CC BY-SA 4.0' },
+    };
+    const packet = prepareBlindedReviewPacket(fixture, { reviewerSlot: 'reviewer-a' });
+
+    expect(packet.kind).toBe('blinded-search-review');
+    expect(packet.reviewer_slot).toBe('reviewer-a');
+    expect(packet.content_licenses).toEqual(fixture.content_licenses);
+    expect(packet.samples[0]).toEqual(expect.objectContaining({
+      question: 'Which result supports the answer?',
+      reference_answer: 'Alpha is the expected answer.',
+    }));
+    const firstSourceResult = fixture.samples[0].response.results[0];
+    const matchingCandidate = packet.samples[0].candidates
+      .find(candidate => candidate.url === firstSourceResult.url);
+    expect(matchingCandidate).toEqual({
+      candidate_id: expect.stringMatching(/^c-[a-f0-9]{12}$/),
+      title: fixture.samples[0].response.results[0].title,
+      url: fixture.samples[0].response.results[0].url,
+      snippet: fixture.samples[0].response.results[0].snippet,
+      relevance: null,
+      citation_supported: null,
+    });
+    expect(prepareBlindedReviewPacket(fixture, { reviewerSlot: 'reviewer-a' }))
+      .toEqual(packet);
+    expect(packet.samples[0].candidates.map(candidate => candidate.url))
+      .not.toEqual(fixture.samples[0].response.results.map(result => result.url));
+    const serialized = JSON.stringify(packet);
+    expect(serialized).not.toContain('"sources"');
+    expect(serialized).not.toContain('"source_count"');
+    expect(serialized).not.toContain('"confidence"');
+    expect(serialized).not.toContain('"engine_outcomes"');
   });
 
   it('reports quality, citation, token, latency, and failure transparency separately', () => {

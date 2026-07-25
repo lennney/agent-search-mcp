@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { encode } from 'gpt-tokenizer';
 
+import { parseEngineSelection } from './lib/capture-options.mjs';
 import { buildCaptureTrace } from './lib/quality-metrics.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -14,6 +15,14 @@ const ALL_ENGINES = [
 ];
 const ZERO_KEY_ENGINE_COUNT = 8;
 const OPTIONAL_KEY_ENV = ['BRAVE_API_KEY', 'TAVILY_API_KEY', 'EXA_API_KEY', 'YDC_API_KEY'];
+const CONTENT_LICENSES = {
+  wikipedia: {
+    license: 'CC BY-SA 4.0',
+    attribution: 'Wikipedia contributors; each result URL links to its article and history.',
+    license_url: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    changes: 'Introductory extracts may be truncated and whitespace-normalized.',
+  },
+};
 const SCENARIOS = {
   normal: { style: 'normal', snippetMax: 200, evidenceBudgetChars: 1200 },
   compact: { style: 'compact', snippetMax: 200, maxFullResults: 3, evidenceBudgetChars: 600 },
@@ -53,11 +62,16 @@ async function capture(fixturePath) {
   process.env.MIN_CONFIDENCE = '0';
   process.env.MIN_SOURCE_COUNT = '1';
 
+  const querySetPath = resolve(
+    ROOT,
+    option('--query-set') || 'benchmarks/queries.json',
+  );
   const [{ searchWithFallback }, packageJson, querySet] = await Promise.all([
     import('../dist/tools/free-search.js'),
     readJson(resolve(ROOT, 'package.json')),
-    readJson(resolve(ROOT, 'benchmarks/queries.json')),
+    readJson(querySetPath),
   ]);
+  const requestedEngines = parseEngineSelection(option('--engines'), ALL_ENGINES);
   const allQueries = Array.isArray(querySet) ? querySet : querySet.queries;
   const requestedLimit = Number.parseInt(option('--limit') || String(allQueries?.length || 0), 10);
   const english = allQueries?.filter(item => (item.language || item.lang) !== 'zh') || [];
@@ -75,9 +89,23 @@ async function capture(fixturePath) {
     captured_at: new Date().toISOString(),
     package_version: packageJson.version,
     query_set_sha256: sha256(JSON.stringify(queries)),
+    query_set: relative(ROOT, querySetPath).replaceAll('\\', '/'),
+    requested_engines: requestedEngines,
+    content_licenses: Object.fromEntries(
+      requestedEngines
+        .filter(engine => CONTENT_LICENSES[engine])
+        .map(engine => [engine, CONTENT_LICENSES[engine]]),
+    ),
     tokenizer: 'gpt-tokenizer@3.4.0',
-    zero_key_engine_baseline: ZERO_KEY_ENGINE_COUNT,
-    naive_engine_baseline: ZERO_KEY_ENGINE_COUNT + OPTIONAL_KEY_ENV.filter(name => process.env[name]).length,
+    zero_key_engine_baseline: requestedEngines
+      .filter(engine => !['brave', 'tavily', 'exa', 'youcom'].includes(engine))
+      .length,
+    naive_engine_baseline: requestedEngines
+      .filter(engine => {
+        const optionalIndex = ['brave', 'tavily', 'exa', 'youcom'].indexOf(engine);
+        return optionalIndex < 0 || Boolean(process.env[OPTIONAL_KEY_ENV[optionalIndex]]);
+      })
+      .length,
     samples,
   };
   for (let index = 0; index < queries.length; index++) {
@@ -90,7 +118,7 @@ async function capture(fixturePath) {
       const response = await searchWithFallback({
         query,
         count: 10,
-        engines: ALL_ENGINES,
+        engines: requestedEngines,
         waterfall: true,
         minConfidence: 0,
         minSourceCount: 1,
@@ -104,11 +132,14 @@ async function capture(fixturePath) {
         language: item.language || item.lang || 'unknown',
         category: item.category || item.type || 'unknown',
         freshness: item.freshness || (item.type === 'news' ? 'dynamic' : 'evergreen'),
+        ...(typeof item.question === 'string' && { question: item.question }),
+        ...(typeof item.reference_answer === 'string'
+          && { reference_answer: item.reference_answer }),
         duration_ms: durationMs,
         response,
         trace: buildCaptureTrace(response, {
           durationMs,
-          requestedEngines: ALL_ENGINES,
+          requestedEngines,
           startedAt,
         }),
       });
@@ -120,6 +151,9 @@ async function capture(fixturePath) {
         language: item.language || item.lang || 'unknown',
         category: item.category || item.type || 'unknown',
         freshness: item.freshness || (item.type === 'news' ? 'dynamic' : 'evergreen'),
+        ...(typeof item.question === 'string' && { question: item.question }),
+        ...(typeof item.reference_answer === 'string'
+          && { reference_answer: item.reference_answer }),
         duration_ms: Date.now() - startedAtMs,
         error: error instanceof Error ? error.message : String(error),
       });
