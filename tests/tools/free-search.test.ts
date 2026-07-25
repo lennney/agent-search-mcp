@@ -14,6 +14,20 @@ const infrastructureState = vi.hoisted(() => ({
   },
 }));
 
+const aggregationState = vi.hoisted(() => ({
+  filterLowQuality: vi.fn((results: any[]) => results),
+  checkConfidenceBasket: vi.fn(() => ({
+    sufficient: true,
+    basketConfidence: 0.85,
+    basketRelevance: 0.6,
+    relevantResultsCount: 5,
+    relevanceThreshold: 0.35,
+    providerFamilyCount: 2,
+    topResultsCount: 5,
+    analyzedCount: 10,
+  })),
+}));
+
 // ── Module-level mocks (ALL factories are hoisted — no variable refs) ─
 vi.mock('../../src/engines/duckduckgo.js', () => ({
   searchDuckDuckGo: vi.fn(),
@@ -39,11 +53,32 @@ vi.mock('../../src/aggregation/index.js', () => ({
   dedupByProvider: vi.fn((r) => r),
   dedupByUrl: vi.fn((r) => ({ results: r, frequencies: new Map() })),
   dedupByTitle: vi.fn((r) => r),
-  filterLowQuality: vi.fn((r) => r),
+  filterLowQuality: aggregationState.filterLowQuality,
   getProviderFamily: vi.fn((engine: string) => (
     engine === 'duckduckgo' || engine === 'bing' ? 'bing' : engine
   )),
   scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 0.8, relevance: 0.6, source_count: 1, score: 0.6 }))),
+  evaluateSearchEvidence: vi.fn((rawResults, policy) => {
+    const results = aggregationState.filterLowQuality(rawResults)
+      .map((item) => ({
+        ...item,
+        confidence: 0.8,
+        relevance: 0.6,
+        source_count: 1,
+        score: 0.6,
+      }))
+      .filter((item) => (
+        item.confidence >= (policy.minConfidence ?? 0)
+        && item.source_count >= (policy.minSourceCount ?? 1)
+      ));
+    return {
+      results,
+      qualityGate: aggregationState.checkConfidenceBasket(
+        results,
+        policy.qualityGate,
+      ),
+    };
+  }),
   formatResults: vi.fn((r) => {
     const results = r.map((x) => ({
       title: x.title,
@@ -63,16 +98,7 @@ vi.mock('../../src/aggregation/index.js', () => ({
       security_note: '',
     };
   }),
-  checkConfidenceBasket: vi.fn(() => ({
-    sufficient: true,
-    basketConfidence: 0.85,
-    basketRelevance: 0.6,
-    relevantResultsCount: 5,
-    relevanceThreshold: 0.35,
-    providerFamilyCount: 2,
-    topResultsCount: 5,
-    analyzedCount: 10,
-  })),
+  checkConfidenceBasket: aggregationState.checkConfidenceBasket,
   enrichResults: vi.fn(async (r) => ({ results: r, enriched: 0, failures: 0 })),
   expandQuery: vi.fn(() => []),
   hasChinese: vi.fn(() => false),

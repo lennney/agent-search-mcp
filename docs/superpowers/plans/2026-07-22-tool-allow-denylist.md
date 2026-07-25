@@ -450,7 +450,7 @@ git commit -m "docs: document ENABLED_TOOLS/DISABLED_TOOLS env vars"
 
 ## Self-Review
 
-1. **Spec coverage**: All 3 HANDOVER/ARCHITECTURE-IMPROVEMENTS items assessed. Pattern 6 (Tool Allow/Denylist) is the only unimplemented one. Patterns 7 and 8 are already done.
+1. **Spec coverage**: All three requirements from the retired architecture-improvement analysis were assessed. Tool allow/denylist was the only missing item; the other two were already complete.
 2. **Placeholder scan**: No TBD, TODO, or vague references. All code is shown inline.
 3. **Type consistency**: `ToolPolicy` constructor takes `string[] | undefined`, `isToolEnabled` returns `boolean`. Config fields are `string[]`. All consistent across tasks.
 

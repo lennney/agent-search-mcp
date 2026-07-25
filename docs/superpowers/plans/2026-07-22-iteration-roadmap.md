@@ -728,6 +728,10 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
       contract and verify runtime/benchmark parity.
 - [x] Make an HTML-202/Lite combined DDG failure non-retryable so one MCP
       request cannot repeat the same Lite representation.
+- [x] Put filtering, domain policy, deduplication, scoring, and the quality
+      gate behind one search-evidence interface shared by parallel and
+      waterfall routing. Domain policy now runs before deduplication and uses
+      exact host/subdomain matching.
 - [ ] Calibrate the provisional per-result relevance floor on a non-empty
       pooled capture. It is an internal routing heuristic, not a public
       relevance probability.

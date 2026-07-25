@@ -13,9 +13,23 @@ import { searchStartpage } from '../engines/startpage.js';
 import { searchYandex } from '../engines/yandex.js';
 import { searchMojeek } from '../engines/mojeek.js';
 import { getSecurityNote } from '../infrastructure/security.js';
-// ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
-import { dedupByUrl, dedupByTitle, filterLowQuality, getProviderFamily, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank, type ConfidenceBasketResult, type ScoredResult } from '../aggregation/index.js';
+import {
+  detectLanguage,
+  enrichResults,
+  evaluateSearchEvidence,
+  expandQuery,
+  filterLowQuality,
+  formatResults,
+  generateChineseVariants,
+  getProviderFamily,
+  hasChinese,
+  semanticDedup,
+  semanticRerank,
+  type ConfidenceBasketResult,
+  type ScoredResult,
+  type SearchEvidenceEvaluation,
+} from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics, abortableDelay } from '../infrastructure/index.js';
 
@@ -439,39 +453,6 @@ function calculateAdaptiveConcurrency(engines: SearchProvider[], count: number):
   return baseConcurrency;
 }
 
-function filterBasketByDomains(
-  results: ScoredResult[],
-  includeDomains?: string[],
-  excludeDomains?: string[],
-): ScoredResult[] {
-  let filtered = results;
-  if (includeDomains && includeDomains.length > 0) {
-    filtered = filtered.filter((result) => {
-      try {
-        const hostname = new URL(result.url).hostname;
-        return includeDomains.some(
-          (domain) => hostname.includes(domain) || hostname.endsWith(domain),
-        );
-      } catch {
-        return false;
-      }
-    });
-  }
-  if (excludeDomains && excludeDomains.length > 0) {
-    filtered = filtered.filter((result) => {
-      try {
-        const hostname = new URL(result.url).hostname;
-        return !excludeDomains.some(
-          (domain) => hostname.includes(domain) || hostname.endsWith(domain),
-        );
-      } catch {
-        return true;
-      }
-    });
-  }
-  return filtered;
-}
-
 function getEffectiveResultThresholds(
   requestedMinConfidence: number,
   requestedMinSourceCount: number,
@@ -547,6 +528,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const allResults: SearchResult[] = [];
   const failures: EngineError[] = [];
   const searchedEngines: string[] = [];
+  let parallelEvaluation: SearchEvidenceEvaluation | undefined;
   let parallelGate: ConfidenceBasketResult | undefined;
   let stoppedEarly = false;
   let freePhaseAttempted = false;
@@ -599,31 +581,20 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       }
     });
   };
-  const evaluateParallelGate = (): ConfidenceBasketResult => {
-    const candidateFiltered = filterLowQuality(allResults);
-    const {
-      results: candidateUrlDeduped,
-      frequencies: candidateFrequencies,
-    } = dedupByUrl(candidateFiltered);
-    const candidateScored = filterBasketByDomains(
-      scoreAndRank(
-        dedupByTitle(candidateUrlDeduped),
-        query,
-        ENGINE_WEIGHTS,
-        candidateFrequencies,
-      ),
+  const evaluateParallelEvidence = (): SearchEvidenceEvaluation => {
+    return evaluateSearchEvidence(allResults, {
+      query,
+      engineWeights: ENGINE_WEIGHTS,
+      minConfidence: effectiveThresholds.minConfidence,
+      minSourceCount: effectiveThresholds.minSourceCount,
       includeDomains,
       excludeDomains,
-    ).filter(
-      (result) =>
-        result.confidence >= effectiveThresholds.minConfidence
-        && result.source_count >= effectiveThresholds.minSourceCount,
-    );
-    return checkConfidenceBasket(candidateScored, {
-      minResults: Math.min(count, 3),
-      minAvgConfidence: 0.6,
-      minProviderFamilies: requiredProviderFamilies,
-      topK: 5,
+      qualityGate: {
+        minResults: Math.min(count, 3),
+        minAvgConfidence: 0.6,
+        minProviderFamilies: requiredProviderFamilies,
+        topK: 5,
+      },
     });
   };
 
@@ -642,7 +613,8 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     // Result count is necessary but not sufficient: only stop if the current
     // display basket also has enough relevant, reliable, independent evidence.
     if (allResults.length >= count * 1.5) {
-      parallelGate = evaluateParallelGate();
+      parallelEvaluation = evaluateParallelEvidence();
+      parallelGate = parallelEvaluation.qualityGate;
       if (parallelGate.sufficient) {
         stoppedEarly =
           i + BATCH_SIZE < phase1Engines.length
@@ -661,11 +633,14 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   // Always assess the completed free phase. Otherwise a basket with enough raw
   // rows to meet `count` but too few to reach the batching threshold could
   // silently skip an explicitly requested optional provider.
-  parallelGate = parallelGate ?? evaluateParallelGate();
+  if (!parallelEvaluation) {
+    parallelEvaluation = evaluateParallelEvidence();
+    parallelGate = parallelEvaluation.qualityGate;
+  }
   if (
     !stoppedEarly
     && allResults.length >= count
-    && parallelGate.sufficient
+    && parallelEvaluation.qualityGate.sufficient
     && paidToSearch.length > 0
   ) {
     stoppedEarly = true;
@@ -674,7 +649,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   logger.info({ count: allResults.length }, 'Phase 1 results');
 
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
-  const qualityGateFailed = !parallelGate.sufficient;
+  const qualityGateFailed = !parallelEvaluation.qualityGate.sufficient;
   if (allResults.length < count || qualityGateFailed) {
     if (paidToSearch.length > 0) {
       optionalPhaseAttempted = true;
@@ -688,7 +663,8 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       );
 
       collectProviderChainOutcomes(phase2Results, paidToSearch);
-      parallelGate = evaluateParallelGate();
+      parallelEvaluation = evaluateParallelEvidence();
+      parallelGate = parallelEvaluation.qualityGate;
 
       logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
@@ -696,24 +672,10 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     }
   }
 
-  // ── Step 5: Aggregation layer (fused from ddgs + our patterns) ──────
-  
-  // 5a. Filter low-quality results (from ddgs)
-  const filtered = filterLowQuality(allResults);
-  
-  // 5b. URL dedup with frequency counting
-  const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
-  
-  // 5c. Title dedup
-  const titleDeduped = dedupByTitle(urlDeduped);
-  
-  // 5d. Score and rank with frequency bonus
-  const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
-
-  // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
+  // The same evaluated evidence basket drives both routing and final output.
   const { formatted } = await applyPostProcessing(
-    scored, query, minConfidence, minSourceCount,
-    includeDomains, excludeDomains,
+    parallelEvaluation.results,
+    query,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
     options.signal,
   );
@@ -772,10 +734,6 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
 async function applyPostProcessing(
   scored: ScoredResult[],
   query: string,
-  minConfidence: number,
-  minSourceCount: number,
-  includeDomains: string[] | undefined,
-  excludeDomains: string[] | undefined,
   enrich: boolean | undefined,
   enrichMax: number | undefined,
   enrichMinConfidence: number | undefined,
@@ -798,36 +756,6 @@ async function applyPostProcessing(
       signal?.throwIfAborted();
       logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
     }
-  }
-
-  // Post-search filters
-  if (minConfidence > 0) {
-    scored = scored.filter(r => r.confidence >= minConfidence);
-  }
-  if (minSourceCount > 1) {
-    scored = scored.filter(r => r.source_count >= minSourceCount);
-  }
-
-  if (includeDomains && includeDomains.length > 0) {
-    scored = scored.filter(r => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return includeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return false;
-      }
-    });
-  }
-
-  if (excludeDomains && excludeDomains.length > 0) {
-    scored = scored.filter(r => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return !excludeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return true;
-      }
-    });
   }
 
   // Content enrichment (optional)
@@ -966,6 +894,23 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   let lastBasket: ConfidenceBasketResult | undefined;
   let stoppedEarly = false;
 
+  const evaluateCurrentEvidence = (): SearchEvidenceEvaluation => {
+    return evaluateSearchEvidence(allResults, {
+      query,
+      engineWeights: ENGINE_WEIGHTS,
+      minConfidence: effectiveThresholds.minConfidence,
+      minSourceCount: effectiveThresholds.minSourceCount,
+      includeDomains,
+      excludeDomains,
+      qualityGate: {
+        minResults: waterfallMinResults,
+        minAvgConfidence: waterfallMinConfidence,
+        minProviderFamilies: requiredProviderFamilies,
+        topK: 5,
+      },
+    });
+  };
+
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
     phasesCompleted.push(phaseLabel);
     const batchSize = calculateAdaptiveConcurrency(engines, count);
@@ -982,31 +927,14 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
       collectEngineOutcomes(batchResults, batch, allResults, allFailures, options.signal);
     }
 
-    const filtered = filterLowQuality(allResults);
-    const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
-    const titleDeduped = dedupByTitle(urlDeduped);
-    const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
+    const evaluation = evaluateCurrentEvidence();
+    lastBasket = evaluation.qualityGate;
 
-    const basketScored = filterBasketByDomains(
-      scored,
-      includeDomains,
-      excludeDomains,
-    ).filter(
-      (result) =>
-        result.confidence >= effectiveThresholds.minConfidence
-        && result.source_count >= effectiveThresholds.minSourceCount,
+    logger.info(
+      { phase: phaseLabel, total: allResults.length, basket: lastBasket },
+      "Waterfall phase complete",
     );
-
-    const basket = checkConfidenceBasket(basketScored, {
-      minResults: waterfallMinResults,
-      minAvgConfidence: waterfallMinConfidence,
-      minProviderFamilies: requiredProviderFamilies,
-      topK: 5,
-    });
-    lastBasket = basket;
-
-    logger.info({ phase: phaseLabel, total: allResults.length, basket }, "Waterfall phase complete");
-    return basket.sufficient;
+    return lastBasket.sufficient;
   }
 
   let basketFull = false;
@@ -1076,16 +1004,13 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     }
   }
 
-  // Aggregate and output (same logic as executeParallelSearch)
-  const filtered = filterLowQuality(allResults);
-  const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
-  const titleDeduped = dedupByTitle(urlDeduped);
-  const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
-
-  // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
+  // Query expansion may add evidence after the last routing check, so evaluate
+  // once more before producing the response.
+  const finalEvaluation = evaluateCurrentEvidence();
+  lastBasket = finalEvaluation.qualityGate;
   const { formatted } = await applyPostProcessing(
-    scored, query, minConfidence, minSourceCount,
-    includeDomains, excludeDomains,
+    finalEvaluation.results,
+    query,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
     options.signal,
   );

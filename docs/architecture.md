@@ -161,7 +161,7 @@ DDG HTML/Lite 是同一故障域。Lite 只在 HTML 202 后、同一总 deadline
 |------|------|---------|
 | `src/tools/` | MCP 工具注册 (Agent 接口) | 每工具独立文件 |
 | `src/engines/` | 搜索引擎适配 (每引擎独立) | `{name}.ts` + 统一签名 |
-| `src/aggregation/` | 搜索结果处理管道 | 纯函数，可测试 |
+| `src/aggregation/` | 搜索证据评估与结果处理管道 | `search-evidence.ts` 统一过滤、去重、评分和质量门 |
 | `src/synthesis/` | 搜索结果合成 (prompt_hint) | 零 LLM 依赖 |
 | `src/infrastructure/` | 共享基础设施 | 跨层可用 |
 | `tests/` | 与 src/ 镜像的测试目录 | vitest + mock |
@@ -218,7 +218,7 @@ export function register{Name}(server: McpServer): void
 
 | 文档 | 内容 |
 |------|------|
-| [ARCHITECTURE-IMPROVEMENTS.md](ARCHITECTURE-IMPROVEMENTS.md) | 从竞品提炼的 8 个架构模式（已实现 5/8） |
+| [research/2026-07-26-agent-search-product-architecture.md](research/2026-07-26-agent-search-product-architecture.md) | 当前竞品源码、Agent/MCP 分层和架构策略 |
 | [plans/2026-07-22-maintainability-architecture.md](plans/2026-07-22-maintainability-architecture.md) | 当前可维护性收敛计划：AppMetadata、EngineCatalog、SearchRuntime、提取与 transport |
 | [conventions.md](conventions.md) | 编码规范（命名/导入/签名） |
 | [AGENTS.md](../AGENTS.md) | 项目地图（Agent 第一站） |

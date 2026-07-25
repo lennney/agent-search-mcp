@@ -44,7 +44,9 @@ count, per-result relevance, average source confidence, and independent
 provider-family coverage pass separately; `meta.execution` reports the observed
 gate and `stop_reason`. Compact mode supports progressive disclosure so agents
 can inspect the top results first and call `free_extract` only when deeper
-content is needed.
+content is needed. Both routing modes use the same evidence-evaluation module,
+and domain filters match only the requested host or its real subdomains before
+deduplication.
 
 ### Inspectable evidence packets
 

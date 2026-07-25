@@ -40,6 +40,28 @@ vi.mock('../../src/aggregation/index.js', () => ({
     engine === 'duckduckgo' || engine === 'bing' ? 'bing' : engine
   )),
   scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 1, relevance: 0.5, source_count: 1, score: 0.5 }))),
+  evaluateSearchEvidence: vi.fn((rawResults) => {
+    const results = rawResults.map((item) => ({
+      ...item,
+      confidence: 1,
+      relevance: 0.5,
+      source_count: 1,
+      score: 0.5,
+    }));
+    return {
+      results,
+      qualityGate: {
+        sufficient: true,
+        basketConfidence: 1,
+        basketRelevance: 0.5,
+        relevantResultsCount: results.length,
+        relevanceThreshold: 0.35,
+        providerFamilyCount: 1,
+        topResultsCount: results.length,
+        analyzedCount: results.length,
+      },
+    };
+  }),
   formatResults: vi.fn((r) => ({
     results: r,
     meta: { total: r.length, high_confidence: r.length, engines: [] },

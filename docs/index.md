@@ -1,62 +1,39 @@
 # Documentation Index
 
-> 项目文档导航。新增文件时更新此页。
+文档按“用户入口、当前权威、历史证据”分层。新增文件前先判断能否更新现有
+README、路线图、ADR 或 evidence；避免为一次会话新增长期维护入口。
 
-## 用户文档
+## 用户入口
 
-| 文档 | 说明 |
-|------|------|
-| [README.md](../README.md) | 英文 - 安装、工具、配置、架构、竞品对比 |
-| [README_zh.md](../README_zh.md) | 中文版 - 同上 |
-| [CHANGELOG.md](../CHANGELOG.md) | 版本历史与变更记录 |
+- [README.md](../README.md)：英文安装、能力、配置和产品定位。
+- [README_zh.md](../README_zh.md)：中文用户入口。
+- [CHANGELOG.md](../CHANGELOG.md)：面向用户的功能与修复记录。
+- [HTTP deployment](http-deployment.md)：HTTP 安全和反向代理部署。
 
-## 项目规范（Agent 必读）
+## 当前工程权威
 
-| 文档 | 说明 |
-|------|------|
-| [AGENTS.md](../AGENTS.md) | 项目地图 — agent 进入项目的第一站 |
-| [conventions.md](conventions.md) | 编码规范详情 |
-| [release-process.md](release-process.md) | 发布流程 checklist |
-| [architecture.md](architecture.md) | 系统架构文档（分层+数据流+关键模式） |
-| [ARCHITECTURE-IMPROVEMENTS.md](ARCHITECTURE-IMPROVEMENTS.md) | 从竞品提炼的 8 个架构模式 |
-| [research/2026-07-26-agent-search-product-architecture.md](research/2026-07-26-agent-search-product-architecture.md) | 当前 Agent Search/MCP 产品源码与架构调查 |
-| [contracts/slim-guard-evidence-handoff-v1.md](contracts/slim-guard-evidence-handoff-v1.md) | Agent Search → Slim Guard 可选证据合同与 provider-family 口径 |
-| [evidence/2026-07-26-ddg-html-lite-network-observation.md](evidence/2026-07-26-ddg-html-lite-network-observation.md) | 单 runner 的 DDG HTML/Lite 202 负面网络观测 |
+- [AGENTS.md](../AGENTS.md)：Agent 约束和仓库地图。
+- [HANDOVER.md](../HANDOVER.md)：仅记录当前状态、风险和下一步。
+- [Conventions](conventions.md)：编码和文档规范。
+- [Architecture](architecture.md)：稳定架构与核心数据流。
+- [Iteration roadmap](superpowers/plans/2026-07-22-iteration-roadmap.md)：
+  当前唯一主路线图。
+- [Benchmark README](../benchmarks/README.md)：评测入口、口径和限制。
+- [Agent Search architecture research](research/2026-07-26-agent-search-product-architecture.md)：
+  固定 commit 的竞品/架构依据。
+- [Slim Guard evidence contract](contracts/slim-guard-evidence-handoff-v1.md)：
+  可选下游交接格式。
 
-## 路线图
+## 历史与证据
 
-| 文档 | 说明 |
-|------|------|
-| [superpowers/plans/2026-07-22-iteration-roadmap.md](superpowers/plans/2026-07-22-iteration-roadmap.md) | 当前路线图（v3.1.0 → v3.2.0） |
-| [superpowers/plans/2026-07-16-agent-search-mcp-strengthening-roadmap.md](superpowers/plans/2026-07-16-agent-search-mcp-strengthening-roadmap.md) | 旧路线图 — 全部完成，已废弃 |
+- `docs/plans/`、`docs/reviews/`：历史计划和评审，不表示当前状态。
+- `docs/evidence/`：可复现证据和环境限制。
+- `docs/decisions/`：仍有效的架构决策。
+- `docs/geo/`：分发素材，不参与运行时契约。
 
-## 架构决策
+## 维护规则
 
-| 文档 | 说明 |
-|------|------|
-| `decisions/ADR-YYYYMMDD-title.md` | 架构决策记录（按日期命名） |
-
-## 开发文档
-
-| 文档 | 说明 |
-|------|------|
-| [../benchmarks/README.md](../benchmarks/README.md) | 探索性基准、方法限制与历史报告 |
-| [geo/DISTRIBUTION_STATUS.md](geo/DISTRIBUTION_STATUS.md) | 分发渠道和公开指标状态 |
-| [geo/PROMOTION_KIT.md](geo/PROMOTION_KIT.md) | 已校准口径的中英文推广素材 |
-| [geo/juejin-agent-search-mcp.md](geo/juejin-agent-search-mcp.md) | 掘金长文草稿 |
-| `plans/YYYY-MM-DD-title.md` | 功能计划与评审 |
-| `reviews/` | 安全/多平台/功能评审 |
-
-## 会话管理
-
-| 文档 | 说明 |
-|------|------|
-| [HANDOVER.md](../HANDOVER.md) | 会话交接日志（每次修改后更新） |
-| [LEARNINGS.md](../LEARNINGS.md) | 踩坑经验记录 |
-
-## 维护原则
-
-- AGENTS.md 和 conventions.md 是 Agent 行为准则，修改前需确认
-- HANDOVER.md 每次 session 结束更新，不超过 80 行
-- 重大架构决策写 ADR，不写在 HANDOVER 里
-- 文档与代码同时修改，不单独补文档
+- HANDOVER 保持在 80 行以内，不追加会话流水账。
+- 一个事实只保留一个权威来源；其他文档用链接，不复制状态和测试数量。
+- 已被当前架构、研究或路线图完全覆盖的旧分析直接删除，Git 历史负责追溯。
+- 只有重大不可逆架构决定新增 ADR；普通实现决策更新路线图或 CHANGELOG。

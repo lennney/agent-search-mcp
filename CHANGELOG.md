@@ -13,6 +13,9 @@ tags:
 
 ### Features
 
+- Unified parallel and waterfall result normalization behind one search-evidence
+  interface so domain policy, deduplication, scoring, output eligibility, and
+  the routing quality gate cannot drift between execution modes.
 - Added quality-aware batch and waterfall stopping. Execution metadata now
   exposes `stop_reason` plus the observed relevance, confidence, result-count,
   and independent-provider-family gate instead of treating raw result count as
@@ -73,6 +76,10 @@ tags:
 
 ### Fixes
 
+- Apply include/exclude domain policy before title and URL deduplication, use
+  exact host/subdomain matching, and fail closed for invalid include filters.
+  Excluded or lookalike domains can no longer suppress an allowed same-title
+  result.
 - Count corroboration by independent upstream provider family rather than
   adapter name. DuckDuckGo/Bing no longer double-count the same result or
   inflate `source_count`; empty engine arrays now fall back to the result's
