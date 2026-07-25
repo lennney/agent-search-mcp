@@ -351,7 +351,7 @@ describe('isChinese', () => {
 // ─── Chinese snippet truncation ──────────────────────────────────────────
 
 describe('formatResults Chinese truncation', () => {
-  it('allows 300 chars for Chinese snippets instead of 200', () => {
+  it('selects a readable sentence within the Chinese 300-char ceiling', () => {
     const chineseSnippet = '这是一段很长的中文摘要文本，包含了很多有意义的信息，需要更长的显示长度才能完整表达内容。' +
       '中文的信息密度比英文更高，每个字符都承载更多信息，因此需要更长的截断长度来保证信息的完整性。' +
       '这是第三段的补充文本内容，用来确保总长度超过三百个字符，验证截断逻辑是否正确工作。' +
@@ -370,7 +370,9 @@ describe('formatResults Chinese truncation', () => {
     ];
     const formatted = formatResults(results);
     expect(formatted.results[0].snippet.length).toBeLessThanOrEqual(300);
-    expect(formatted.results[0].snippet.length).toBeGreaterThan(200);
+    expect(formatted.results[0].snippet.length).toBeGreaterThan(0);
+    expect((formatted.results[0] as any).evidence.selected_chars)
+      .toBe(formatted.results[0].snippet.length);
   });
 
   it('allows 150 chars for Chinese titles instead of 100', () => {

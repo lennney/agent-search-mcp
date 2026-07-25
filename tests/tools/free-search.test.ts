@@ -69,7 +69,11 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
     EnginePolicy: vi.fn(() => ({
       isAllowed: vi.fn(() => true),
     })),
-    loadConfig: vi.fn(() => ({ ALLOWED_ENGINES: [], DENIED_ENGINES: [] })),
+    loadConfig: vi.fn(() => ({
+      ALLOWED_ENGINES: [],
+      DENIED_ENGINES: [],
+      evidenceBudgetChars: 1200,
+    })),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   };
 });
@@ -83,7 +87,7 @@ import { searchWikipedia } from '../../src/engines/wikipedia.js';
 import { searchStartpage } from '../../src/engines/startpage.js';
 import { searchYandex } from '../../src/engines/yandex.js';
 import { searchMojeek } from '../../src/engines/mojeek.js';
-import { detectLanguage, enrichResults } from '../../src/aggregation/index.js';
+import { detectLanguage, enrichResults, formatResults } from '../../src/aggregation/index.js';
 
 function makeResults(count: number, source: string) {
   return Array.from({ length: count }, (_, i) => ({
@@ -120,6 +124,18 @@ describe('searchWithFallback — parallel', () => {
     expect(res.meta.total).toBeGreaterThan(0);
     expect(searchDuckDuckGo).toHaveBeenCalled();
     expect(searchSogou).toHaveBeenCalled();
+  });
+
+  it('passes the query and configured evidence budget into formatting', async () => {
+    await searchWithFallback({ query: 'evidence selection' });
+
+    expect(formatResults).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        query: 'evidence selection',
+        evidenceBudgetChars: 1200,
+      }),
+    );
   });
 
   it('collapses concurrent duplicate requests', async () => {

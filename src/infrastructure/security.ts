@@ -193,6 +193,11 @@ export interface SecurityProcessedResult {
   source_count: number;
   source: string;
   engines?: string[];
+  published_at?: string;
+  extraction?: {
+    kind: 'search_snippet' | 'reader_extracted';
+    source_chars: number;
+  };
   security: {
     injectionDetected: boolean;
     urlSafe: boolean;
@@ -214,6 +219,11 @@ export function processResultSecurity(result: {
   source_count?: number;
   source?: string;
   engines?: string[];
+  published_at?: string;
+  extraction?: {
+    kind: 'search_snippet' | 'reader_extracted';
+    source_chars: number;
+  };
 }): SecurityProcessedResult {
   // Check snippet for injection
   const injectionResult = checkSnippetInjection(result.snippet);
@@ -236,6 +246,8 @@ export function processResultSecurity(result: {
     source_count: result.source_count ?? 1,
     source: result.source ?? 'unknown',
     engines: result.engines,
+    published_at: result.published_at,
+    extraction: result.extraction,
     security: {
       injectionDetected: allThreats.length > 0,
       urlSafe: urlResult.safe,

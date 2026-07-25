@@ -39,9 +39,17 @@ Eight adapters need no credentials — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia
 
 Parallel and waterfall orchestration, URL/title deduplication, ranking, and graceful fallback are built in. Compact mode supports progressive disclosure so agents can inspect the top results first and call `free_extract` only when deeper content is needed.
 
+### Inspectable evidence packets
+
+Full results select a deterministic query-relevant passage and keep provenance,
+relevance, independent source count, upstream publication time, and extraction
+metadata as separate fields. One response-level character budget bounds passage
+content, while compact placeholders retain their source list and engine
+failures remain visible in `partialFailures`.
+
 ### Token control is a product feature
 
-`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `MIN_CONFIDENCE`, and `MIN_SOURCE_COUNT` let operators trade context size against detail. A historical 30-query live run measured **28.7% fewer tokens in Compact mode**, **35.5% in Compact+**, and **75% fewer engine calls than naive eight-engine fan-out**. These are scoped measurements for that query set and environment, not universal guarantees. The new frozen-fixture replay uses an in-process tokenizer and currently measures 30.2% / 33.9% formatting savings reproducibly.
+`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS`, `MIN_CONFIDENCE`, and `MIN_SOURCE_COUNT` let operators trade context size against detail. A historical 30-query live run measured **28.7% fewer tokens in Compact mode**, **35.5% in Compact+**, and **75% fewer engine calls than naive eight-engine fan-out**. These are scoped measurements for that query set and environment, not universal guarantees. The frozen-fixture replay now includes evidence metadata and reproducibly measures 28.4% / 30.4% formatting savings.
 
 ### Native Chinese search
 
@@ -187,6 +195,7 @@ including cache reads in waterfall mode.
 | `OUTPUT_STYLE` | `normal` | `compact` for token-optimized output |
 | `SNIPPET_LENGTH` | `200` | Max snippet characters (60–500) |
 | `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
+| `EVIDENCE_BUDGET_CHARS` | `1200` | Shared passage budget per response (200-20000 characters) |
 | `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
 | `MIN_SOURCE_COUNT` | `1` | Minimum number of independent engine sources (1–12) |
 | `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
@@ -266,7 +275,7 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 
 ## Benchmark
 
-The benchmark has two evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. Its raw responses were not frozen, so those figures remain historical environment-scoped measurements. The current runner captures actual execution telemetry and replays a frozen fixture through every output style with locked `gpt-tokenizer`; CI verifies the expected summary (currently 30.2% / 33.9%). Neither track is a cross-product quality ranking or a production guarantee.
+The benchmark has two evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. Its raw responses were not frozen, so those figures remain historical environment-scoped measurements. The current runner captures actual execution telemetry and replays a frozen fixture through every output style with locked `gpt-tokenizer`; CI verifies the evidence-packet summary (currently 28.4% / 30.4%). Neither track is a cross-product quality ranking or a production guarantee.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

@@ -95,7 +95,7 @@ SNIPPET_LENGTH=160
 MIN_CONFIDENCE=0
 ```
 
-Compact 模式会完整展示前几个结果，其余结果只保留标题和 URL；Agent 需要时再调用 `free_extract`。历史 30 查询真实运行实测 Compact 节省 28.7% token、Compact+ 节省 35.5%，瀑布调用数相比 8 引擎全并发少 75%。这些是当时查询集和环境的实测，不是生产保证。新的冻结 fixture + 锁定 tokenizer 回放可稳定验证 30.2% / 33.9% 的格式化节省。
+Compact 模式会完整展示前几个结果，其余结果保留标题、URL 和来源；Agent 需要时再调用 `free_extract`。历史 30 查询真实运行实测 Compact 节省 28.7% token、Compact+ 节省 35.5%，瀑布调用数相比 8 引擎全并发少 75%。这些是当时查询集和环境的实测，不是生产保证。新的 evidence packet 冻结 fixture + 锁定 tokenizer 回放可稳定验证 28.4% / 30.4% 的格式化节省。
 
 ## 可靠性和安全边界
 

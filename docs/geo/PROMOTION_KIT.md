@@ -40,7 +40,7 @@ The product is the routing policy and evidence contract. Adapters are replaceabl
 ## Claim boundaries
 
 - Scope exact figures: the historical 30-query 2026-07-24 run measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls than naive eight-engine fan-out. Do not present them as universal guarantees.
-- The frozen formatting fixture currently reproduces 30.2% / 33.9% savings with locked `gpt-tokenizer`; do not use it as a search-quality claim.
+- The frozen evidence-packet fixture currently reproduces 28.4% / 30.4% savings with locked `gpt-tokenizer`; do not use it as a search-quality claim.
 - Monthly savings comparisons or “competitors cannot self-host.”
 - Treating `confidence` as a count of independent verifying sources; use `source_count` for that.
 - Presenting the historical 30-query report as a cross-product quality ranking.
@@ -63,7 +63,7 @@ The product is the routing policy and evidence contract. Adapters are replaceabl
 >
 > This is not positioned as a replacement for hosted crawl/research products. Tavily, Exa, Brave, and Firecrawl are stronger when you need hosted endpoints, Crawl/Map, vertical search, or an SLA. The niche here is zero-key local setup, Chinese-web coverage, and upstream choice.
 >
-> The historical 30-query run measured 28.7% fewer tokens in Compact mode, 35.5% in Compact+, and 75% fewer engine calls than naive eight-engine fan-out. Those are environment-scoped measurements, not guarantees. A new frozen-fixture replay with a locked tokenizer reproducibly measures 30.2% / 33.9% formatting savings.
+> The historical 30-query run measured 28.7% fewer tokens in Compact mode, 35.5% in Compact+, and 75% fewer engine calls than naive eight-engine fan-out. Those are environment-scoped measurements, not guarantees. The frozen evidence-packet replay with a locked tokenizer reproducibly measures 28.4% / 30.4% formatting savings.
 >
 > GitHub: https://github.com/lennney/agent-search-mcp
 >
@@ -83,7 +83,7 @@ The product is the routing policy and evidence contract. Adapters are replaceabl
 >
 > 这轮刚修了 DDG 无 Python 时的 HTML fallback、stdio 日志污染、CSDN SSRF 和 Windows 构建；510 项测试通过。
 >
-> 历史 30 查询实测中，Compact 节省 28.7% token，Compact+ 节省 35.5%，瀑布调用数相比 8 引擎全并发少 75%。这些数字限定于当时查询集和环境，不是通用保证；新的冻结 fixture 可稳定回放 30.2% / 33.9% 的格式化节省。欢迎用真实失败查询来打脸，比 Star 更有价值。
+> 历史 30 查询实测中，Compact 节省 28.7% token，Compact+ 节省 35.5%，瀑布调用数相比 8 引擎全并发少 75%。这些数字限定于当时查询集和环境，不是通用保证；新的 evidence packet 冻结 fixture 可稳定回放 28.4% / 30.4% 的格式化节省。欢迎用真实失败查询来打脸，比 Star 更有价值。
 >
 > https://github.com/lennney/agent-search-mcp
 

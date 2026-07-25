@@ -4,6 +4,11 @@ export interface SearchResult {
   snippet: string;
   source: string;
   engines?: string[];  // populated by aggregation layer, or set by single-engine searches
+  published_at?: string;
+  extraction?: {
+    kind: 'search_snippet' | 'reader_extracted';
+    source_chars: number;
+  };
 }
 
 export interface EngineSearchOptions {

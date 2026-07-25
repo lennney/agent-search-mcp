@@ -110,6 +110,8 @@ function parseBingNewsXML(xml: string, limit: number): SearchResult[] {
     const url = linkMatch ? linkMatch[1].trim() : '';
     const snippet = descMatch ? decodeHTMLTags(descMatch[1].trim()) : '';
     const date = dateMatch ? dateMatch[1].trim() : '';
+    const timestamp = date ? Date.parse(date) : Number.NaN;
+    const publishedAt = Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : undefined;
 
     if (title && url) {
       results.push({
@@ -118,6 +120,7 @@ function parseBingNewsXML(xml: string, limit: number): SearchResult[] {
         snippet,
         source: 'bing-news',
         engines: ['bing'],
+        ...(publishedAt ? { published_at: publishedAt } : {}),
       });
     }
   }

@@ -46,6 +46,21 @@ Scope: Agent Search only. Slim Guard is not changed in this package.
 - [x] Share one cache-key contract across parallel and waterfall execution and
       read the cache in both modes.
 
+## P1A - query-aware evidence packets
+
+Scope: Agent Search only. This defines the future Slim Guard handoff shape
+without adding a runtime dependency on the gateway.
+
+- [x] Select evidence passages deterministically from the original query.
+- [x] Enforce a shared response-level character budget and report its use.
+- [x] Keep provenance, relevance, corroboration, freshness, and extraction
+      metadata as separate inspectable signals.
+- [x] Preserve sources on compact placeholders and engine failures at the
+      response boundary.
+- [x] Replay fixed 1200/600/360-character scenarios with the locked tokenizer.
+
+Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../evidence/2026-07-26-evidence-packets.md).
+
 ## P0 - credibility and compatibility
 
 - [x] Correct `search_with_synthesis` confidence semantics: confidence is 0-1,

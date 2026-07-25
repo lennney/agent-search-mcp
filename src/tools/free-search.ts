@@ -294,30 +294,13 @@ export interface SearchWithFallbackOptions {
   signal?: AbortSignal;
 }
 
-interface FormattedResult {
-  title: string;
-  url: string;
-  snippet?: string;
-  confidence?: number;
-  relevance?: number;
-  source_count?: number;
-  sources?: string[];
-  security?: {
-    injection_detected: boolean;
-    url_safe: boolean;
-    threats: string[];
-    warnings: string[];
-  };
-}
+type FormattedSearchPayload = ReturnType<typeof formatResults>;
 
 interface SearchResponse {
   query: string;
   engines: SearchProvider[];
-  results: FormattedResult[];
-  meta: {
-    total: number;
-    high_confidence: number;
-    engines: string[];
+  results: FormattedSearchPayload['results'];
+  meta: FormattedSearchPayload['meta'] & {
     execution?: {
       mode: 'parallel' | 'waterfall';
       engine_calls: number;
@@ -706,6 +689,8 @@ async function applyPostProcessing(
     maxFullResults: config.maxFullResults,
     minConfidence: config.minConfidence,
     minSourceCount: config.minSourceCount,
+    query,
+    evidenceBudgetChars: config.evidenceBudgetChars,
   };
   const formatted = formatResults(scored, fmtOptions);
 

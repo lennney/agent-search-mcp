@@ -13,9 +13,9 @@ const ALL_ENGINES = [
 const ZERO_KEY_ENGINE_COUNT = 8;
 const OPTIONAL_KEY_ENV = ['BRAVE_API_KEY', 'TAVILY_API_KEY', 'EXA_API_KEY', 'YDC_API_KEY'];
 const SCENARIOS = {
-  normal: { style: 'normal', snippetMax: 200 },
-  compact: { style: 'compact', snippetMax: 200, maxFullResults: 3 },
-  compact_aggressive: { style: 'compact', snippetMax: 120, maxFullResults: 3 },
+  normal: { style: 'normal', snippetMax: 200, evidenceBudgetChars: 1200 },
+  compact: { style: 'compact', snippetMax: 200, maxFullResults: 3, evidenceBudgetChars: 600 },
+  compact_aggressive: { style: 'compact', snippetMax: 120, maxFullResults: 3, evidenceBudgetChars: 360 },
 };
 
 function option(name) {
@@ -201,7 +201,7 @@ async function replay(fixturePath, outputPath, check) {
   for (const [name, formatOptions] of Object.entries(SCENARIOS)) {
     scenarioRows[name] = successful.map(sample => {
       const scored = sample.response.results.map(toScoredResult);
-      const formatted = formatResults(scored, formatOptions);
+      const formatted = formatResults(scored, { ...formatOptions, query: sample.query });
       const payload = {
         query: sample.query,
         engines: sample.response.engines,

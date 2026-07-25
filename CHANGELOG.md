@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Added deterministic query-aware passage selection and response-level evidence
+  budgets. Full results now expose separate passage, publication, extraction,
+  provenance, relevance, and corroboration signals while compact placeholders
+  retain their source list.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the
@@ -46,6 +50,9 @@ tags:
   fall back cleanly over HTTP and stdio.
 
 ### Documentation
+
+- Recorded the P1 evidence-packet contract and its reproducible 1200/600/360
+  character benchmark scenarios.
 
 - Added the Agent Search-only core evidence track to both active roadmaps;
   Slim Guard remains a separate, unchanged product in this implementation.

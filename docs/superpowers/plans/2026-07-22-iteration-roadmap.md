@@ -656,11 +656,13 @@ semantics on its own.
 
 ### P1 - evidence-first retrieval
 
-- [ ] Introduce query-aware passage selection and explicit output budgets.
-- [ ] Separate provenance, relevance, corroboration, freshness, and extraction
+- [x] Introduce query-aware passage selection and explicit output budgets.
+- [x] Separate provenance, relevance, corroboration, freshness, and extraction
       quality instead of compressing them into one opaque score.
-- [ ] Return compact evidence packets that Slim Guard can later transform
+- [x] Return compact evidence packets that Slim Guard can later transform
       without losing source or failure metadata.
+
+Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-07-26-evidence-packets.md).
 
 ### P2 - measurable ecosystem contract
 

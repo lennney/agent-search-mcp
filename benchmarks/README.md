@@ -23,10 +23,13 @@ The current runner replays the same frozen results through all output styles wit
 
 | Metric | Normal | Compact | Compact+ |
 |--------|-------:|--------:|---------:|
-| Average tokens | 2122.0 | 1480.3 | 1401.7 |
-| Savings vs Normal | — | **30.2%** | **33.9%** |
+| Average tokens | 2311.0 | 1655.8 | 1607.5 |
+| Savings vs Normal | — | **28.4%** | **30.4%** |
 
-This synthetic bilingual fixture verifies formatting, field semantics, and token-count regressions. It makes no search-quality or live engine-efficiency claim.
+The three scenarios enforce shared passage budgets of 1200, 600, and 360
+characters respectively. This synthetic bilingual fixture verifies formatting,
+evidence-packet semantics, and token-count regressions. It makes no
+search-quality or live engine-efficiency claim.
 
 ```bash
 # Deterministic replay; fails if the expected summary changes

@@ -20,6 +20,7 @@ describe('loadConfig', () => {
     delete process.env.USE_PROXY;
     delete process.env.DEFAULT_ENGINE;
     delete process.env.ALLOWED_ENGINES;
+    delete process.env.EVIDENCE_BUDGET_CHARS;
     
     const config = loadConfig();
     expect(config.mode).toBe('stdio');
@@ -29,6 +30,18 @@ describe('loadConfig', () => {
     expect(config.useProxy).toBe(false);
     expect(config.defaultEngine).toBe('duckduckgo');
     expect(config.allowedEngines).toEqual([]);
+    expect(config.evidenceBudgetChars).toBe(1200);
+  });
+
+  it('parses and clamps EVIDENCE_BUDGET_CHARS', () => {
+    process.env.EVIDENCE_BUDGET_CHARS = '2400';
+    expect(loadConfig().evidenceBudgetChars).toBe(2400);
+
+    process.env.EVIDENCE_BUDGET_CHARS = '50';
+    expect(loadConfig().evidenceBudgetChars).toBe(200);
+
+    process.env.EVIDENCE_BUDGET_CHARS = '999999';
+    expect(loadConfig().evidenceBudgetChars).toBe(20_000);
   });
 
   it('parses MODE=http correctly', () => {

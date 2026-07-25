@@ -41,11 +41,25 @@ export interface SearchResponse {
     relevance?: number;
     source_count?: number;
     sources?: string[];
+    evidence?: {
+      passage_score: number;
+      matched_terms: string[];
+      published_at: string | null;
+      extraction: 'search_snippet' | 'reader_extracted';
+      source_chars: number;
+      selected_chars: number;
+    };
   }>;
   meta: {
     total: number;
     high_confidence: number;
     engines: string[];
+    evidence_budget?: {
+      unit: 'characters';
+      limit: number;
+      used: number;
+      truncated_results: number;
+    };
   };
   security_note: string;
 }

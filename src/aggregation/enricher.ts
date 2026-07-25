@@ -94,6 +94,10 @@ export async function enrichResults(
     return {
       ...r,
       snippet: truncated,
+      extraction: {
+        kind: 'reader_extracted' as const,
+        source_chars: content.length,
+      },
     };
   });
 

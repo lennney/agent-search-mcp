@@ -17,6 +17,7 @@ export interface Config {
   outputStyle: 'normal' | 'compact';
   snippetLength: number;
   maxFullResults: number;
+  evidenceBudgetChars: number;
   minConfidence: number;
   minSourceCount: number;
   semanticDedup: boolean;
@@ -35,6 +36,11 @@ export function loadConfig(): Config {
   const port = Number.isFinite(rawPort) && rawPort > 0 ? rawPort : 3000;
   const legacyMinConfidence = parseFloat(process.env.MIN_CONFIDENCE || '0') || 0;
   const explicitMinSourceCount = parseInt(process.env.MIN_SOURCE_COUNT || '', 10);
+  const rawEvidenceBudget = parseInt(process.env.EVIDENCE_BUDGET_CHARS || '1200', 10);
+  const evidenceBudgetChars = Math.max(
+    200,
+    Math.min(20_000, Number.isFinite(rawEvidenceBudget) ? rawEvidenceBudget : 1200),
+  );
   
   return {
     mode,
@@ -64,6 +70,7 @@ export function loadConfig(): Config {
     outputStyle: process.env.OUTPUT_STYLE === 'compact' ? 'compact' : 'normal',
     snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
     maxFullResults: parseInt(process.env.MAX_FULL_RESULTS || '3', 10) || 3,
+    evidenceBudgetChars,
     minConfidence: legacyMinConfidence <= 1 ? Math.max(legacyMinConfidence, 0) : 0,
     minSourceCount: Math.min(12, Number.isFinite(explicitMinSourceCount)
       ? Math.max(explicitMinSourceCount, 1)

@@ -8,6 +8,23 @@ tags:
 - handoverdoc
 ---
 
+## 2026-07-26 P1 query-aware evidence handover
+
+- Scope remains Agent Search only; Slim Guard was not modified.
+- Full search results now carry a deterministic, query-aware evidence packet
+  with separate provenance, relevance, corroboration, freshness, extraction,
+  and passage-selection signals.
+- `EVIDENCE_BUDGET_CHARS` defaults to 1200 characters and is clamped to
+  200-20000. Response metadata reports the budget, actual use, and truncation.
+- Compact placeholders retain `sources`; response-level `partialFailures`
+  remains unchanged.
+- Stable and experimental 2026 boundaries share the JSON packet shape without
+  changing public MCP tool inputs.
+- Frozen fixture replay now uses explicit 1200/600/360-character budgets and
+  measures 28.4% / 30.4% compact formatting savings.
+- Reproducible evidence is in
+  `docs/evidence/2026-07-26-evidence-packets.md`.
+
 ## 2026-07-26 Agent Search core evidence handover
 
 - Scope was limited to Agent Search. Slim Guard was not modified.
