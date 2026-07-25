@@ -105,6 +105,7 @@ vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测�
 - **Reviewer pilot**: `live-reviewer-pilot.json` 只是 Wikipedia 单引擎的非空链路验收，不是 multi-system pool 或质量声明；reviewer 包必须移除 adapter/ranking provenance、内部 score/confidence、source_count 和 execution trace，但保留 publisher URL 与必要许可署名。
 - **Human review identity**: `reviewer_slot` 只用于盲包排列，不能当作人工身份。completed review 必须填写不同的 human reviewer ID 与完成时间；pool 必须保留各系统原始 rank/hash，reviewer 包必须隐藏这些 provenance。
 - **Benchmark claim readiness**: `human-verified` 只证明人工证据链，不自动代表可公开质量声明。默认总体至少 30 个 adjudicated queries 且查询文本归一化后仍有 30 个不同查询，单个 language/category/freshness slice 至少 10 个；阈值只是最低发布护栏，不等同统计功效或代表性证明。
+- **Benchmark uncertainty**: 达到总体门槛后，每个系统对必须用同一查询做 2,000 次确定性 paired bootstrap 并报告 95% 区间；差值统一为 left-minus-right。区间不跨 0 也不能自动解释为因果、普遍优势或实际意义。
 - **Benchmark data license**: 第三方检索摘要不自动继承仓库 Apache-2.0；提交 capture 前必须核对再分发条款并记录许可/署名。Wikipedia pilot 的 extract 按 CC BY-SA 4.0 单独声明，文章 URL 用于贡献者署名。
 - **Waterfall engine contract**: 显式 `engines` 必须过滤每个 waterfall phase 和 paid fallback；不得因固定 phase 偷跑未请求适配器。Wikipedia 使用带 extract 的 MediaWiki query API，CJK 查询路由到中文站。
 - **2026 路由头**: experimental Node HTTP 必须从 `rawHeaders` 拒绝重复的 `MCP-Protocol-Version`、`Mcp-Method`、`Mcp-Name` 与任意 `Mcp-Param-*`，避免规范化掩盖歧义；参数值解码和 body 一致性继续交给 SDK v2。

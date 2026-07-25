@@ -141,6 +141,17 @@ claim that statistical power or population representativeness is automatically
 adequate.
 Normalization uses Unicode NFKC, collapsed whitespace, and case folding.
 
+Every system pair receives a query-paired comparison. Below the overall
+30-distinct-query floor it is explicitly marked `insufficient-sample`. At or
+above the floor, the report uses 2,000 deterministic paired-bootstrap
+resamples and emits percentile 95% confidence intervals for the left-minus-right
+delta in nDCG@5, Precision@5, pool-relative Recall@5, reciprocal rank,
+Success@5, and latency. Retrieval deltas are percentage points and higher is
+better; latency is milliseconds and lower is better. The evidence hashes and
+system IDs seed the resampling, so the same evidence produces the same report.
+All required system pairs must have uncertainty reported before
+`quality_claim_eligible` can become true.
+
 Before adjudication, the artifact also reports reviewer reliability:
 all-reviewer raw agreement, mean pairwise quadratic-weighted Cohen's kappa for
 the ordinal 0-3 relevance labels, and mean pairwise Cohen's kappa for binary

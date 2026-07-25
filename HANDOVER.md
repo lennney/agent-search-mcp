@@ -30,6 +30,10 @@ tags:
   report requires 30 adjudicated rows and 30 distinct queries overall, plus 10
   rows and 10 distinct queries per reported slice; these are minimum
   guardrails, not a substitute for power/coverage analysis.
+- Eligible comparisons now report deterministic query-paired bootstrap 95%
+  intervals from 2,000 resamples for every system pair. Deltas are left minus
+  right; retrieval uses percentage points and latency uses milliseconds.
+  Small samples emit `insufficient-sample` rather than an inferred interval.
 - CLI: `node benchmarks/pool.mjs`; workflow and limitations are documented in
   `benchmarks/README.md`.
 - This closes the tooling portion only. Still required: capture a genuinely

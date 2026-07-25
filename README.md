@@ -303,7 +303,9 @@ Reviewer raw agreement and pairwise kappa remain attached to the comparison so
 adjudication does not erase evidence about labeling difficulty.
 Small human-reviewed pilots remain ineligible for headline comparisons:
 overall reports require 30 adjudicated rows with 30 distinct queries; slices
-require 10 rows with 10 distinct queries.
+require 10 rows with 10 distinct queries. Eligible multi-system reports also
+include deterministic paired-bootstrap 95% confidence intervals for every
+system pair instead of presenting point estimates alone.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

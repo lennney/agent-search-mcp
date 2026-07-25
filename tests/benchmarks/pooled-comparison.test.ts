@@ -148,6 +148,11 @@ describe('pooled search comparison metrics', () => {
           multi_system: { passed: true, actual: 2, required: 2 },
           adjudicated_queries: { passed: false, actual: 1, required: 30 },
           distinct_queries: { passed: false, actual: 1, required: 30 },
+          paired_uncertainty: {
+            passed: false,
+            reported_pairs: 0,
+            required_pairs: 1,
+          },
         },
       },
       source_pool_sha256: sha256(pool),
@@ -214,6 +219,15 @@ describe('pooled search comparison metrics', () => {
       distinct_queries: 1,
       required_queries: 10,
     });
+    expect(report.pairwise_comparisons['system-a__vs__system-b']).toEqual({
+      status: 'insufficient-sample',
+      left_system: 'system-a',
+      right_system: 'system-b',
+      paired_queries: 1,
+      distinct_queries: 1,
+      required_queries: 30,
+      metrics: null,
+    });
     expect(report.unmeasured).toEqual({
       answer_accuracy: 'No synthesized answer was independently judged per system.',
       tokens_per_correct_answer: 'Answer correctness is unavailable; this metric is not inferred.',
@@ -265,8 +279,73 @@ describe('pooled search comparison metrics', () => {
       actual: 30,
       required: 30,
     });
+    expect(report.claim_readiness.checks.paired_uncertainty).toEqual({
+      passed: true,
+      reported_pairs: 1,
+      required_pairs: 1,
+    });
+    expect(report.pairwise_comparisons['system-a__vs__system-b'])
+      .toEqual(expect.objectContaining({
+        status: 'reported',
+        left_system: 'system-a',
+        right_system: 'system-b',
+        paired_queries: 30,
+        distinct_queries: 30,
+        method: {
+          name: 'paired-bootstrap-percentile',
+          iterations: 2000,
+          confidence_level: 0.95,
+          seed_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        },
+        metrics: {
+          ndcg_at_5_percentage_points: {
+            delta: -29.6,
+            ci_95: { lower: -29.6, upper: -29.6 },
+            direction: 'higher-is-better',
+          },
+          precision_at_5_percentage_points: {
+            delta: -20,
+            ci_95: { lower: -20, upper: -20 },
+            direction: 'higher-is-better',
+          },
+          pooled_recall_at_5_percentage_points: {
+            delta: -50,
+            ci_95: { lower: -50, upper: -50 },
+            direction: 'higher-is-better',
+          },
+          reciprocal_rank_at_5_percentage_points: {
+            delta: 0,
+            ci_95: { lower: 0, upper: 0 },
+            direction: 'higher-is-better',
+          },
+          success_at_5_percentage_points: {
+            delta: 0,
+            ci_95: { lower: 0, upper: 0 },
+            direction: 'higher-is-better',
+          },
+          latency_ms: {
+            delta: -100,
+            ci_95: { lower: -100, upper: -100 },
+            direction: 'lower-is-better',
+          },
+        },
+      }));
+    expect(evaluatePooledComparison(pool, adjudication).pairwise_comparisons)
+      .toEqual(report.pairwise_comparisons);
     expect(report.systems['system-a'].slices.language.en.claim_readiness.status)
       .toBe('eligible');
+
+    pool.samples.slice(0, 15).forEach((sample: Record<string, any>) => {
+      sample.system_runs.find((run: Record<string, any>) =>
+        run.system_id === 'system-a').result_order = [];
+    });
+    adjudication.source_pool_sha256 = sha256(pool);
+    const varyingReport = evaluatePooledComparison(pool, adjudication);
+    const varyingNdcg = varyingReport
+      .pairwise_comparisons['system-a__vs__system-b']
+      .metrics.ndcg_at_5_percentage_points;
+    expect(varyingNdcg.ci_95.lower).toBeLessThan(varyingNdcg.delta);
+    expect(varyingNdcg.ci_95.upper).toBeGreaterThan(varyingNdcg.delta);
   });
 
   it('rejects pending or mismatched adjudication instead of emitting claims', () => {

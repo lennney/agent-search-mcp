@@ -76,8 +76,25 @@ The 30/10 thresholds are versioned minimum publication guardrails chosen to
 prevent tiny pilots from becoming headline comparisons and to align the
 overall floor with the existing 30-query benchmark. They do not prove adequate
 statistical power, query-population representativeness, or practical
-significance; those still require uncertainty reporting and benchmark-specific
-review.
+significance; those still require benchmark-specific review.
+
+## Paired uncertainty
+
+Comparisons resample queries as paired observations because every system is
+evaluated on the same query IDs. Once the overall 30-row and 30-distinct-query
+floor is met, each system pair receives 2,000 deterministic paired-bootstrap
+resamples and a percentile 95% confidence interval. The reported delta is
+always left system minus right system. Retrieval deltas are percentage points
+with higher values preferred; latency deltas are milliseconds with lower
+values preferred.
+
+The seed is derived from the pool hash, adjudication hash, and system pair.
+This makes reports reproducible without pretending the observed query set is a
+random sample of every future workload. Below the floor, the comparison is
+`insufficient-sample` and does not emit an inferred interval. An interval that
+crosses zero shows that the observed direction is uncertain; an interval that
+does not cross zero still does not establish causality, universal superiority,
+query-population coverage, or practical significance.
 
 ## Human labeling protocol
 

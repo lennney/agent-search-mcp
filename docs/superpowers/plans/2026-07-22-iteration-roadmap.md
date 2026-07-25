@@ -677,6 +677,8 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
         pairwise kappa without hiding low-agreement queries.
   - [x] Separate human-verified evidence from public-claim readiness with
         minimum distinct-query gates overall and per slice.
+  - [x] Add deterministic query-paired bootstrap intervals for every system
+        pair and require uncertainty reporting for public-claim readiness.
   - [ ] Complete two-reviewer human labels on a non-empty pooled capture.
 - [x] Measure quality, citation support, tokens per correct answer, latency, and
       failure transparency as separate dimensions.

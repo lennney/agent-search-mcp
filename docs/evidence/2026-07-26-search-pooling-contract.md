@@ -88,9 +88,13 @@ no-variance pairs remain `null` and are counted separately.
 Human verification and public-claim readiness are separate. Reports require
 30 adjudicated rows and 30 distinct normalized queries before
 `quality_claim_eligible` can become true; individual slices require 10 rows
-and 10 distinct queries. These thresholds prevent the
+and 10 distinct queries. At the overall floor, every system pair also receives
+2,000 deterministic query-paired bootstrap resamples and a percentile 95%
+confidence interval for left-minus-right retrieval and latency deltas. Below
+the floor the pair remains `insufficient-sample`; all pairs must be reported
+before headline eligibility. These thresholds and intervals prevent the
 two-query qualification pilot from becoming a headline benchmark, but do not
-replace statistical-power or query-coverage analysis.
+replace statistical-power, practical-significance, or query-coverage analysis.
 
 ## Remaining external gate
 

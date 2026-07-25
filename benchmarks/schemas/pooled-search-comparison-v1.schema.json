@@ -14,6 +14,7 @@
     "metric_scope",
     "reviewer_agreement",
     "systems",
+    "pairwise_comparisons",
     "unmeasured"
   ],
   "properties": {
@@ -72,8 +73,32 @@
             "human_verified",
             "multi_system",
             "adjudicated_queries",
-            "distinct_queries"
-          ]
+            "distinct_queries",
+            "paired_uncertainty"
+          ],
+          "properties": {
+            "paired_uncertainty": {
+              "type": "object",
+              "required": [
+                "passed",
+                "reported_pairs",
+                "required_pairs"
+              ],
+              "properties": {
+                "passed": {
+                  "type": "boolean"
+                },
+                "reported_pairs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "required_pairs": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -159,6 +184,20 @@
         ]
       }
     },
+    "pairwise_comparisons": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/insufficientPairwiseComparison"
+          },
+          {
+            "$ref": "#/$defs/reportedPairwiseComparison"
+          }
+        ]
+      }
+    },
     "unmeasured": {
       "type": "object",
       "required": [
@@ -168,6 +207,150 @@
     }
   },
   "$defs": {
+    "pairwiseBase": {
+      "type": "object",
+      "required": [
+        "status",
+        "left_system",
+        "right_system",
+        "paired_queries",
+        "distinct_queries"
+      ],
+      "properties": {
+        "left_system": {
+          "type": "string",
+          "minLength": 1
+        },
+        "right_system": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paired_queries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "distinct_queries": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "insufficientPairwiseComparison": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairwiseBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "required_queries",
+            "metrics"
+          ],
+          "properties": {
+            "status": {
+              "const": "insufficient-sample"
+            },
+            "required_queries": {
+              "const": 30
+            },
+            "metrics": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "reportedPairwiseComparison": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairwiseBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "method",
+            "metrics"
+          ],
+          "properties": {
+            "status": {
+              "const": "reported"
+            },
+            "method": {
+              "type": "object",
+              "required": [
+                "name",
+                "iterations",
+                "confidence_level",
+                "seed_sha256"
+              ],
+              "properties": {
+                "name": {
+                  "const": "paired-bootstrap-percentile"
+                },
+                "iterations": {
+                  "const": 2000
+                },
+                "confidence_level": {
+                  "const": 0.95
+                },
+                "seed_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "metrics": {
+              "type": "object",
+              "required": [
+                "ndcg_at_5_percentage_points",
+                "precision_at_5_percentage_points",
+                "pooled_recall_at_5_percentage_points",
+                "reciprocal_rank_at_5_percentage_points",
+                "success_at_5_percentage_points",
+                "latency_ms"
+              ],
+              "additionalProperties": {
+                "$ref": "#/$defs/pairwiseMetric"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pairwiseMetric": {
+      "type": "object",
+      "required": [
+        "delta",
+        "ci_95",
+        "direction"
+      ],
+      "properties": {
+        "delta": {
+          "type": "number"
+        },
+        "ci_95": {
+          "type": "object",
+          "required": [
+            "lower",
+            "upper"
+          ],
+          "properties": {
+            "lower": {
+              "type": "number"
+            },
+            "upper": {
+              "type": "number"
+            }
+          }
+        },
+        "direction": {
+          "enum": [
+            "higher-is-better",
+            "lower-is-better"
+          ]
+        }
+      }
+    },
     "agreementMetric": {
       "type": "object",
       "required": [

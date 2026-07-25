@@ -5,6 +5,8 @@ import { validateCompletedAdjudication } from './pooling.mjs';
 const CUTOFF = 5;
 const MINIMUM_OVERALL_QUERIES = 30;
 const MINIMUM_SLICE_QUERIES = 10;
+const BOOTSTRAP_ITERATIONS = 2000;
+const BOOTSTRAP_CONFIDENCE_LEVEL = 0.95;
 
 function comparisonError(message) {
   throw new Error(`Invalid pooled comparison: ${message}`);
@@ -42,6 +44,117 @@ function percentileNearestRank(values, percentile) {
   const sorted = [...values].sort((left, right) => left - right);
   const index = Math.max(0, Math.ceil(percentile * sorted.length) - 1);
   return sorted[index];
+}
+
+function createSeededRandom(seedHex) {
+  let state = Number.parseInt(seedHex.slice(0, 8), 16) || 0x6d2b79f5;
+  return () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ value >>> 15, value | 1);
+    value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+    return ((value ^ value >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function pairedBootstrapMetric(leftRows, rightRows, key, scale, pairSeed) {
+  const pairedDeltas = leftRows.map(
+    (row, index) => (row[key] - rightRows[index][key]) * scale,
+  );
+  const random = createSeededRandom(sha256({ pairSeed, metric: key }));
+  const bootstrapDeltas = Array.from({ length: BOOTSTRAP_ITERATIONS }, () => {
+    let sum = 0;
+    for (let index = 0; index < pairedDeltas.length; index += 1) {
+      sum += pairedDeltas[Math.floor(random() * pairedDeltas.length)];
+    }
+    return sum / pairedDeltas.length;
+  });
+  const tail = (1 - BOOTSTRAP_CONFIDENCE_LEVEL) / 2;
+  return {
+    delta: round(average(pairedDeltas)),
+    ci_95: {
+      lower: round(percentileNearestRank(bootstrapDeltas, tail)),
+      upper: round(percentileNearestRank(bootstrapDeltas, 1 - tail)),
+    },
+  };
+}
+
+function buildPairwiseComparisons(systemIds, rowsBySystem, poolHash, adjudicationHash) {
+  const comparisons = {};
+  for (let leftIndex = 0; leftIndex < systemIds.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < systemIds.length; rightIndex += 1) {
+      const leftSystem = systemIds[leftIndex];
+      const rightSystem = systemIds[rightIndex];
+      const leftRows = rowsBySystem.get(leftSystem);
+      const rightRows = rowsBySystem.get(rightSystem);
+      if (leftRows.length !== rightRows.length
+        || leftRows.some((row, index) => row.queryKey !== rightRows[index].queryKey)) {
+        comparisonError(`systems ${leftSystem} and ${rightSystem} are not query-paired`);
+      }
+      const distinctQueries = new Set(leftRows.map(row => row.queryKey)).size;
+      const comparisonKey = `${leftSystem}__vs__${rightSystem}`;
+      if (leftRows.length < MINIMUM_OVERALL_QUERIES
+        || distinctQueries < MINIMUM_OVERALL_QUERIES) {
+        comparisons[comparisonKey] = {
+          status: 'insufficient-sample',
+          left_system: leftSystem,
+          right_system: rightSystem,
+          paired_queries: leftRows.length,
+          distinct_queries: distinctQueries,
+          required_queries: MINIMUM_OVERALL_QUERIES,
+          metrics: null,
+        };
+        continue;
+      }
+
+      const pairSeed = sha256({
+        source_pool_sha256: poolHash,
+        source_adjudication_sha256: adjudicationHash,
+        systems: [leftSystem, rightSystem],
+      });
+      const higherIsBetter = (key, outputKey) => [
+        outputKey,
+        {
+          ...pairedBootstrapMetric(leftRows, rightRows, key, 100, pairSeed),
+          direction: 'higher-is-better',
+        },
+      ];
+      comparisons[comparisonKey] = {
+        status: 'reported',
+        left_system: leftSystem,
+        right_system: rightSystem,
+        paired_queries: leftRows.length,
+        distinct_queries: distinctQueries,
+        method: {
+          name: 'paired-bootstrap-percentile',
+          iterations: BOOTSTRAP_ITERATIONS,
+          confidence_level: BOOTSTRAP_CONFIDENCE_LEVEL,
+          seed_sha256: pairSeed,
+        },
+        metrics: Object.fromEntries([
+          higherIsBetter('ndcg', 'ndcg_at_5_percentage_points'),
+          higherIsBetter('precision', 'precision_at_5_percentage_points'),
+          higherIsBetter('recall', 'pooled_recall_at_5_percentage_points'),
+          higherIsBetter('reciprocalRank', 'reciprocal_rank_at_5_percentage_points'),
+          higherIsBetter('success', 'success_at_5_percentage_points'),
+          [
+            'latency_ms',
+            {
+              ...pairedBootstrapMetric(
+                leftRows,
+                rightRows,
+                'durationMs',
+                1,
+                pairSeed,
+              ),
+              direction: 'lower-is-better',
+            },
+          ],
+        ]),
+      };
+    }
+  }
+  return comparisons;
 }
 
 function dcg(grades) {
@@ -278,6 +391,16 @@ export function evaluatePooledComparison(pool, adjudication) {
   const distinctQueries = new Set(
     pool.samples.map(sample => normalizeQueryKey(sample.query)),
   ).size;
+  const adjudicationHash = sha256(adjudication);
+  const pairwiseComparisons = buildPairwiseComparisons(
+    systemIds,
+    rowsBySystem,
+    poolHash,
+    adjudicationHash,
+  );
+  const requiredPairs = systemIds.length * (systemIds.length - 1) / 2;
+  const reportedPairs = Object.values(pairwiseComparisons)
+    .filter(comparison => comparison.status === 'reported').length;
   const claimChecks = {
     human_verified: { passed: true },
     multi_system: {
@@ -294,6 +417,11 @@ export function evaluatePooledComparison(pool, adjudication) {
       passed: distinctQueries >= MINIMUM_OVERALL_QUERIES,
       actual: distinctQueries,
       required: MINIMUM_OVERALL_QUERIES,
+    },
+    paired_uncertainty: {
+      passed: reportedPairs === requiredPairs,
+      reported_pairs: reportedPairs,
+      required_pairs: requiredPairs,
     },
   };
   const qualityClaimEligible = Object.values(claimChecks)
@@ -313,7 +441,7 @@ export function evaluatePooledComparison(pool, adjudication) {
       checks: claimChecks,
     },
     source_pool_sha256: poolHash,
-    source_adjudication_sha256: sha256(adjudication),
+    source_adjudication_sha256: adjudicationHash,
     source_captures: pool.source_captures,
     reviewers: adjudication.reviewers,
     adjudicator: adjudication.adjudicator,
@@ -331,6 +459,7 @@ export function evaluatePooledComparison(pool, adjudication) {
         slices: buildSlices(rows),
       }];
     })),
+    pairwise_comparisons: pairwiseComparisons,
     unmeasured: {
       answer_accuracy: 'No synthesized answer was independently judged per system.',
       tokens_per_correct_answer: 'Answer correctness is unavailable; this metric is not inferred.',

@@ -41,6 +41,9 @@ tags:
 - Added claim-readiness gates that keep human-verified small pilots
   ineligible for public quality headlines below 30 adjudicated rows and 30
   distinct queries, and mark slices ineligible below 10 rows/distinct queries.
+- Added deterministic 2,000-resample paired-bootstrap 95% confidence intervals
+  for per-system retrieval and latency deltas. Public-claim readiness now
+  requires uncertainty reporting for every system pair.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the
