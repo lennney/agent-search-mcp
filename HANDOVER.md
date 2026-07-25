@@ -20,6 +20,7 @@ tags:
 
 ## 最近活动
 
+- [2026-07-25] ✅ 宣传层级定稿：“免费 + 省 Token”作为第一卖点，“Agent 搜索路由器”作为独特机制和长期路线
 - [2026-07-25] ✅ 统一 12 适配器路由，拆分 relevance/confidence/source_count 契约
 - [2026-07-25] ✅ Benchmark v3：真实执行遥测、冻结 fixture、锁定 tokenizer 与 CI 回归门禁
 - [2026-07-25] ✅ HTTP Bearer 认证 + Origin allowlist；无认证模式必须显式开启

@@ -1,7 +1,7 @@
 # Agent Search MCP
 
-> **给 AI Agent 的本地优先搜索路由器。**
-> 8 个零密钥来源起步，中文查询原生路由，多源证据可检查，token 消耗可控制，只在需要时升级到可选商业 API。`npx agent-search-mcp` 即可使用。
+> **给 AI Agent 的免费、省 Token 网页搜索。**
+> 8 个零密钥来源直接起步；用瀑布停止和紧凑输出减少上下文；中文查询原生路由，只在需要时升级商业 API。`npx agent-search-mcp` 即可使用。
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -16,7 +16,7 @@
 
 ## 为什么选择 Agent Search MCP
 
-Agent 需要的不只是一个搜索接口，还要知道**去哪里搜、什么时候停、花多少上下文、哪些证据值得信**。Agent Search MCP 做的是这个控制层：它是本地优先的搜索路由器，不是又一个单后端搜索 API。
+用户第一眼能感受到的价值很直接：**不买搜索 API 也能搜，不盲目丢证据也能少花 token**。支撑这两个卖点的机制，是一套决定**去哪里搜、什么时候停、花多少上下文、哪些证据值得信**的搜索策略。Agent Search MCP 做的就是这个控制层。
 
 这条路线是：**零密钥起步 → 中文原生路由 → 多源证据可检查 → 按 token 预算渐进搜索 → 必要时升级商业 API**。12 个适配器是这条路线的实现，适配器数量本身不是产品故事。
 

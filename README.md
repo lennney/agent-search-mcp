@@ -1,7 +1,7 @@
 # Agent Search MCP
 
-> **The local-first search router for AI agents.**
-> Start with eight zero-key sources, route Chinese queries natively, inspect multi-source evidence, control token spend, and escalate to optional commercial APIs only when needed. `npx agent-search-mcp` is all you need.
+> **Free, token-efficient web search for AI agents.**
+> Start with eight zero-key sources. Spend less context through waterfall stopping and compact output. Route Chinese queries natively and escalate to optional commercial APIs only when needed. `npx agent-search-mcp` is all you need.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -16,7 +16,7 @@
 
 ## Why Agent Search MCP
 
-An agent needs more than a search endpoint. It needs a policy for **where to search, when to stop, how much context to spend, and what evidence to trust**. Agent Search MCP is that control layer: a local-first search router, not another single-backend search API.
+The immediate value is simple: **search without paying for an API, and return fewer tokens without blindly throwing away evidence**. The mechanism behind that promise is a search policy for **where to search, when to stop, how much context to spend, and what evidence to trust**. Agent Search MCP is that control layer: a local-first search router, not another single-backend search API.
 
 The route is deliberate: **zero-key start → Chinese-native routing → inspectable multi-source evidence → token-aware progressive search → optional commercial escalation**. The 12 adapters serve this route; adapter count is not the product story by itself.
 

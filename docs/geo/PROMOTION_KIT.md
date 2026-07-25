@@ -6,15 +6,17 @@ Updated: 2026-07-25
 
 **Category:** Agent Search Router / Agent 搜索控制层
 
-**One line (EN):** The local-first search router for AI agents: zero-key start, Chinese-native routing, inspectable multi-source evidence, token-aware stopping, and optional commercial escalation.
+**Primary hook (EN):** Free, token-efficient web search for AI agents.
 
-**One line (ZH):** 给 AI Agent 的本地优先搜索路由器：零密钥起步，中文原生，多源证据可检查，按 token 预算渐搜，必要时再升级商业 API。
+**Primary hook (ZH):** 给 AI Agent 的免费、省 Token 网页搜索。
+
+**Mechanism:** A local-first search router: zero-key start, Chinese-native routing, inspectable multi-source evidence, token-aware stopping, and optional commercial escalation.
 
 **Best audience:** Claude Code, Cursor, Codex, and other MCP users who want a local search path without creating an API account first.
 
 ## The distinctive route
 
-Do not lead with “12 engines.” Lead with the control loop:
+Lead with **free + token-efficient**. Use the control loop to explain why the promise is credible and distinctive:
 
 1. **Start free:** useful search before account creation or API procurement.
 2. **Route by context:** Chinese queries go to Chinese-native sources instead of a translation shim.
@@ -45,17 +47,17 @@ The product is the routing policy and evidence contract. Adapters are replaceabl
 
 ## GitHub / directory description
 
-> Local-first search router for AI agents: zero-key start, Chinese-native routing, inspectable multi-source evidence, token-aware waterfall search, and optional commercial escalation.
+> Free, token-efficient web search for AI agents: eight zero-key sources, token-aware waterfall search, Chinese-native routing, inspectable evidence, and optional commercial escalation.
 
 ## Reddit / Hacker News
 
 **Title**
 
-> Agent Search MCP: a local-first search router, not another single-backend search API
+> Agent Search MCP: free, token-efficient web search for Claude Code, Cursor and Codex
 
 **Body**
 
-> I built an Apache-2.0 search control layer for AI agents. The idea is that an agent needs more than an endpoint: it needs a policy for where to search, when to stop, how much context to spend, and what evidence to trust.
+> I built an Apache-2.0 MCP search server around two practical goals: search without paying for an API, and spend fewer context tokens without blindly discarding evidence.
 >
 > `npx agent-search-mcp` starts a local stdio server. It begins with eight zero-key routes, sends Chinese queries to native Chinese sources, exposes relevance/confidence/source provenance, stops progressively to control token use, and escalates to Brave/Tavily/Exa/You.com only when configured.
 >
@@ -71,11 +73,11 @@ The product is the routing policy and evidence contract. Adapters are replaceabl
 
 **标题**
 
-> [开源] 不只是搜索 API：给 AI Agent 做了一个本地优先的搜索路由器
+> [开源] Agent Search MCP：免费起步，还能节省 Token 的 Agent 搜索
 
 **正文**
 
-> 做了一个给 Claude Code / Cursor / Codex 用的搜索控制层。Agent 不只需要“能搜”，还需要决定去哪搜、什么时候停、花多少 token、哪些来源可以交叉验证。`npx agent-search-mcp` 就能启动，不注册账号也能先搜。
+> 做了一个给 Claude Code / Cursor / Codex 用的 MCP 搜索，就解决两个直接问题：不买搜索 API 也能先搜，返回结果时少花 token。底层用路由、瀑布停止和渐进披露做到，不是简单把结果砍掉。`npx agent-search-mcp` 就能启动。
 >
 > 目前重点不是替代 Tavily/Exa/Brave，而是补一个本地、零密钥、中文友好的选择。包内有搜狗、百度等零密钥适配器，也可以选择性接 Brave/Tavily/Exa/You.com。
 >
