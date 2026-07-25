@@ -38,6 +38,9 @@ tags:
   pairwise quadratic-weighted Cohen's kappa for relevance, and pairwise
   Cohen's kappa for citation support. Undefined no-variance pairs remain
   explicit instead of being reported as perfect agreement.
+- Added claim-readiness gates that keep human-verified small pilots
+  ineligible for public quality headlines below 30 adjudicated rows and 30
+  distinct queries, and mark slices ineligible below 10 rows/distinct queries.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
 - Added explicit MCP protocol readiness metadata to `/health` and allowed the

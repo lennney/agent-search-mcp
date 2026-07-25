@@ -10,6 +10,7 @@
     "quality_claim_eligible",
     "source_pool_sha256",
     "source_adjudication_sha256",
+    "claim_readiness",
     "metric_scope",
     "reviewer_agreement",
     "systems",
@@ -26,7 +27,7 @@
       "const": "human-verified"
     },
     "quality_claim_eligible": {
-      "const": true
+      "type": "boolean"
     },
     "source_pool_sha256": {
       "type": "string",
@@ -35,6 +36,46 @@
     "source_adjudication_sha256": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "claim_readiness": {
+      "type": "object",
+      "required": [
+        "status",
+        "policy",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "eligible",
+            "insufficient-sample"
+          ]
+        },
+        "policy": {
+          "type": "object",
+          "required": [
+            "minimum_overall_queries",
+            "minimum_slice_queries"
+          ],
+          "properties": {
+            "minimum_overall_queries": {
+              "const": 30
+            },
+            "minimum_slice_queries": {
+              "const": 10
+            }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "required": [
+            "human_verified",
+            "multi_system",
+            "adjudicated_queries",
+            "distinct_queries"
+          ]
+        }
+      }
     },
     "metric_scope": {
       "type": "object",

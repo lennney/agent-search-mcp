@@ -59,6 +59,26 @@ does not manufacture tokens-per-correct-answer. Those dimensions stay
 explicitly unmeasured until a separately blinded per-system answer protocol
 exists.
 
+## Claim readiness
+
+Human verification and public-claim readiness are separate states. A completed
+two-reviewer adjudication establishes label provenance, but the default report
+keeps `quality_claim_eligible: false` below 30 adjudicated queries. Individual
+reports also require 30 distinct normalized query texts, so repeated copies
+cannot satisfy the floor. Individual language, category, and freshness slices
+require at least 10 rows and 10 distinct queries and carry
+their own readiness status. Zero-result queries remain in those counts.
+Distinct-query counting applies Unicode NFKC normalization, trims and collapses
+whitespace, and ignores case, so full-width/case/spacing variants cannot inflate
+coverage.
+
+The 30/10 thresholds are versioned minimum publication guardrails chosen to
+prevent tiny pilots from becoming headline comparisons and to align the
+overall floor with the existing 30-query benchmark. They do not prove adequate
+statistical power, query-population representativeness, or practical
+significance; those still require uncertainty reporting and benchmark-specific
+review.
+
 ## Human labeling protocol
 
 1. Pool results from the systems/configurations being compared.

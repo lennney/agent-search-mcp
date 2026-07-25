@@ -85,6 +85,13 @@ support. The completed-artifact validator recomputes these values from the
 retained judgments, so they cannot be edited independently. Undefined
 no-variance pairs remain `null` and are counted separately.
 
+Human verification and public-claim readiness are separate. Reports require
+30 adjudicated rows and 30 distinct normalized queries before
+`quality_claim_eligible` can become true; individual slices require 10 rows
+and 10 distinct queries. These thresholds prevent the
+two-query qualification pilot from becoming a headline benchmark, but do not
+replace statistical-power or query-coverage analysis.
+
 ## Remaining external gate
 
 1. Capture Agent Search and a genuinely independent comparison system against

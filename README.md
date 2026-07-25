@@ -301,6 +301,9 @@ protected ranking and emits per-system pooled-qrels metrics. Reported Recall is
 candidate-pool-relative; answer accuracy is not inferred from result relevance.
 Reviewer raw agreement and pairwise kappa remain attached to the comparison so
 adjudication does not erase evidence about labeling difficulty.
+Small human-reviewed pilots remain ineligible for headline comparisons:
+overall reports require 30 adjudicated rows with 30 distinct queries; slices
+require 10 rows with 10 distinct queries.
 
 → [Methodology, queries, limitations, and reports](./benchmarks/)
 

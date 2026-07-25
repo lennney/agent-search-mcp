@@ -136,7 +136,20 @@ describe('pooled search comparison metrics', () => {
       schema_version: 1,
       kind: 'pooled-search-comparison',
       label_status: 'human-verified',
-      quality_claim_eligible: true,
+      quality_claim_eligible: false,
+      claim_readiness: {
+        status: 'insufficient-sample',
+        policy: {
+          minimum_overall_queries: 30,
+          minimum_slice_queries: 10,
+        },
+        checks: {
+          human_verified: { passed: true },
+          multi_system: { passed: true, actual: 2, required: 2 },
+          adjudicated_queries: { passed: false, actual: 1, required: 30 },
+          distinct_queries: { passed: false, actual: 1, required: 30 },
+        },
+      },
       source_pool_sha256: sha256(pool),
       source_adjudication_sha256: sha256(adjudication),
       metric_scope: {
@@ -195,10 +208,65 @@ describe('pooled search comparison metrics', () => {
       reciprocal_rank_at_5_percent: 100,
       success_at_5_percent: 100,
     });
+    expect(report.systems['system-a'].slices.language.en.claim_readiness).toEqual({
+      status: 'insufficient-sample',
+      actual_queries: 1,
+      distinct_queries: 1,
+      required_queries: 10,
+    });
     expect(report.unmeasured).toEqual({
       answer_accuracy: 'No synthesized answer was independently judged per system.',
       tokens_per_correct_answer: 'Answer correctness is unavailable; this metric is not inferred.',
     });
+  });
+
+  it('requires the query floor to contain distinct queries', () => {
+    const { pool, adjudication } = completedEvidence();
+    const sourcePoolSample = pool.samples[0];
+    const sourceAdjudicationSample = adjudication.samples[0];
+    pool.samples = Array.from({ length: 30 }, (_, index) => ({
+      ...structuredClone(sourcePoolSample),
+      id: `q${index + 1}`,
+      query: index % 2 === 0 ? ' Alpha   Query ' : 'ＡＬＰＨＡ QUERY',
+    }));
+    adjudication.samples = Array.from({ length: 30 }, (_, index) => ({
+      ...structuredClone(sourceAdjudicationSample),
+      id: `q${index + 1}`,
+      query: pool.samples[index].query,
+    }));
+    adjudication.reviewer_agreement.judged_candidates = 90;
+    adjudication.source_pool_sha256 = sha256(pool);
+
+    const duplicateReport = evaluatePooledComparison(pool, adjudication);
+
+    expect(duplicateReport.quality_claim_eligible).toBe(false);
+    expect(duplicateReport.claim_readiness.checks.adjudicated_queries).toEqual({
+      passed: true,
+      actual: 30,
+      required: 30,
+    });
+    expect(duplicateReport.claim_readiness.checks.distinct_queries).toEqual({
+      passed: false,
+      actual: 1,
+      required: 30,
+    });
+
+    pool.samples.forEach((sample: Record<string, any>, index: number) => {
+      sample.query = `alpha query ${index + 1}`;
+      adjudication.samples[index].query = sample.query;
+    });
+    adjudication.source_pool_sha256 = sha256(pool);
+    const report = evaluatePooledComparison(pool, adjudication);
+
+    expect(report.quality_claim_eligible).toBe(true);
+    expect(report.claim_readiness.status).toBe('eligible');
+    expect(report.claim_readiness.checks.distinct_queries).toEqual({
+      passed: true,
+      actual: 30,
+      required: 30,
+    });
+    expect(report.systems['system-a'].slices.language.en.claim_readiness.status)
+      .toBe('eligible');
   });
 
   it('rejects pending or mismatched adjudication instead of emitting claims', () => {

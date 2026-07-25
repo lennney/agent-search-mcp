@@ -26,6 +26,10 @@ tags:
 - Adjudication now records reviewer reliability before final labels: raw
   agreement, ordinal weighted kappa, binary citation kappa, and defined-pair
   counts. The validator recomputes these values from retained judgments.
+- Human verification no longer implies headline eligibility. The comparison
+  report requires 30 adjudicated rows and 30 distinct queries overall, plus 10
+  rows and 10 distinct queries per reported slice; these are minimum
+  guardrails, not a substitute for power/coverage analysis.
 - CLI: `node benchmarks/pool.mjs`; workflow and limitations are documented in
   `benchmarks/README.md`.
 - This closes the tooling portion only. Still required: capture a genuinely

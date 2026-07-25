@@ -675,6 +675,8 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
         adjudication without inferring unmeasured answer correctness.
   - [x] Report pre-adjudication reviewer reliability with raw agreement and
         pairwise kappa without hiding low-agreement queries.
+  - [x] Separate human-verified evidence from public-claim readiness with
+        minimum distinct-query gates overall and per slice.
   - [ ] Complete two-reviewer human labels on a non-empty pooled capture.
 - [x] Measure quality, citation support, tokens per correct answer, latency, and
       failure transparency as separate dimensions.

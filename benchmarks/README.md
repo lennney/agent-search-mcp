@@ -130,6 +130,17 @@ fewer results cannot inflate the score. Because the search tool returns evidence
 synthesized answer, answer accuracy and tokens per correct answer are marked
 unmeasured instead of inferred from retrieval relevance.
 
+`human-verified` means the judgments and adjudication passed the evidence
+contract; it does not automatically authorize a public quality headline.
+`quality_claim_eligible` remains false until at least 30 adjudicated queries
+and 30 distinct normalized query texts are present; duplicating a query cannot
+satisfy the floor. Each language/category/freshness slice carries its own readiness
+status and requires at least 10 rows and 10 distinct queries. These are conservative minimum
+publication guardrails aligned with the checked-in 30-query benchmark, not a
+claim that statistical power or population representativeness is automatically
+adequate.
+Normalization uses Unicode NFKC, collapsed whitespace, and case folding.
+
 Before adjudication, the artifact also reports reviewer reliability:
 all-reviewer raw agreement, mean pairwise quadratic-weighted Cohen's kappa for
 the ordinal 0-3 relevance labels, and mean pairwise Cohen's kappa for binary

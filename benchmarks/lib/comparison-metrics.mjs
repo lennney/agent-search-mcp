@@ -3,9 +3,19 @@ import { createHash } from 'node:crypto';
 import { validateCompletedAdjudication } from './pooling.mjs';
 
 const CUTOFF = 5;
+const MINIMUM_OVERALL_QUERIES = 30;
+const MINIMUM_SLICE_QUERIES = 10;
 
 function comparisonError(message) {
   throw new Error(`Invalid pooled comparison: ${message}`);
+}
+
+function normalizeQueryKey(value) {
+  return value
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/gu, ' ')
+    .toLowerCase();
 }
 
 function isRecord(value) {
@@ -96,7 +106,20 @@ function buildSlices(rows) {
     return [key, Object.fromEntries(
       [...groups.entries()]
         .sort(([left], [right]) => left.localeCompare(right))
-        .map(([value, group]) => [value, summarizeRows(group)]),
+        .map(([value, group]) => {
+          const distinctQueries = new Set(group.map(row => row.queryKey)).size;
+          const eligible = group.length >= MINIMUM_SLICE_QUERIES
+            && distinctQueries >= MINIMUM_SLICE_QUERIES;
+          return [value, {
+            ...summarizeRows(group),
+            claim_readiness: {
+              status: eligible ? 'eligible' : 'insufficient-sample',
+              actual_queries: group.length,
+              distinct_queries: distinctQueries,
+              required_queries: MINIMUM_SLICE_QUERIES,
+            },
+          }];
+        }),
     )];
   }));
 }
@@ -133,7 +156,10 @@ export function evaluatePooledComparison(pool, adjudication) {
   const rowsBySystem = new Map(systemIds.map(systemId => [systemId, []]));
   for (const poolSample of pool.samples) {
     const adjudicated = adjudicationSamples.get(poolSample?.id);
-    if (!adjudicated || !Array.isArray(poolSample?.candidates)) {
+    if (!adjudicated
+      || typeof poolSample?.query !== 'string'
+      || poolSample.query.trim().length === 0
+      || !Array.isArray(poolSample?.candidates)) {
       comparisonError(`adjudication sample set does not match the pool at ${poolSample?.id}`);
     }
     const pooledCandidates = new Map(
@@ -223,6 +249,7 @@ export function evaluatePooledComparison(pool, adjudication) {
         ? 1
         : 0;
       rowsBySystem.get(systemId).push({
+        queryKey: normalizeQueryKey(poolSample.query),
         language: poolSample.language,
         category: poolSample.category,
         freshness: poolSample.freshness,
@@ -248,12 +275,43 @@ export function evaluatePooledComparison(pool, adjudication) {
   if (adjudicationSamples.size > 0) {
     comparisonError('adjudication sample set does not match the pool');
   }
+  const distinctQueries = new Set(
+    pool.samples.map(sample => normalizeQueryKey(sample.query)),
+  ).size;
+  const claimChecks = {
+    human_verified: { passed: true },
+    multi_system: {
+      passed: systemIds.length >= 2,
+      actual: systemIds.length,
+      required: 2,
+    },
+    adjudicated_queries: {
+      passed: pool.samples.length >= MINIMUM_OVERALL_QUERIES,
+      actual: pool.samples.length,
+      required: MINIMUM_OVERALL_QUERIES,
+    },
+    distinct_queries: {
+      passed: distinctQueries >= MINIMUM_OVERALL_QUERIES,
+      actual: distinctQueries,
+      required: MINIMUM_OVERALL_QUERIES,
+    },
+  };
+  const qualityClaimEligible = Object.values(claimChecks)
+    .every(check => check.passed);
 
   return {
     schema_version: 1,
     kind: 'pooled-search-comparison',
     label_status: 'human-verified',
-    quality_claim_eligible: true,
+    quality_claim_eligible: qualityClaimEligible,
+    claim_readiness: {
+      status: qualityClaimEligible ? 'eligible' : 'insufficient-sample',
+      policy: {
+        minimum_overall_queries: MINIMUM_OVERALL_QUERIES,
+        minimum_slice_queries: MINIMUM_SLICE_QUERIES,
+      },
+      checks: claimChecks,
+    },
     source_pool_sha256: poolHash,
     source_adjudication_sha256: sha256(adjudication),
     source_captures: pool.source_captures,
