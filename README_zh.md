@@ -150,39 +150,50 @@ mcp_servers:
 
 ---
 
+<!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## 搜索引擎
 
-包内包含 12 个引擎适配器，现在均可从 `free_search`、`free_search_advanced`、CLI 和瀑布路由选择。8 个零密钥引擎直接可用；Brave、Tavily、Exa 和 You.com 在配置 API Key 后启用。
+运行时注册了 12 个适配器：8 个零密钥适配器和 4 个可选 API 适配器。
 
-| 引擎 | 免费 | 优势 |
-|------|:----:|------|
-| **DuckDuckGo** | ✅ | 隐私保护，英文搜索 |
-| **搜狗** | ✅ | 中文网页搜索，微信公众号内容 |
-| **Bing** | ✅ | 多语言，英文结果好 |
-| **百度** | ✅ | 中文网页搜索，百度百科 |
-| **Wikipedia** | ✅ | 结构化知识，JSON API |
-| **Startpage** | ✅ | Google 结果通过隐私代理 |
-| **Yandex** | ✅ | 俄语/西里尔语搜索 |
-| **Mojeek** | ✅ | 独立爬虫，隐私优先 |
-| Brave Search | ❌ | 高质量网页搜索（本项目适配器需要用户 API Key） |
-| Tavily | ❌ | Agent 优化的可选适配器（本项目需要用户 API Key） |
-| Exa | ❌ | 神经语义的可选适配器（本项目需要用户 API Key） |
-| You.com | ❌ | AI 搜索的可选适配器（本项目需要用户 API Key） |
-
----
+| 引擎 | 访问方式 | 语言 | 定位 |
+|---|---|---|---|
+| DuckDuckGo | 零密钥 | en | 通用网页搜索 |
+| Sogou Search | 零密钥 | zh | 中文网页搜索 |
+| Bing | 零密钥 | en, zh | 多语言网页搜索 |
+| Baidu | 零密钥 | zh | 中文网页搜索 |
+| Wikipedia | 零密钥 | en, zh, ja, de, fr, es, auto | 百科参考资料 |
+| Startpage | 零密钥 | en, auto | 隐私导向网页搜索 |
+| Yandex | 零密钥 | ru, en, auto | 俄语及国际网页搜索 |
+| Mojeek | 零密钥 | en, auto | 独立隐私导向索引 |
+| Brave Search | `BRAVE_API_KEY` | en, zh | 可选商业网页搜索 |
+| Tavily Search | `TAVILY_API_KEY` | en, zh | 可选 Agent 导向搜索 |
+| Exa Search | `EXA_API_KEY` | en, zh | 可选神经语义搜索 |
+| You.com Search | `YDC_API_KEY` | en, zh | 可选商业网页搜索 |
 
 ## 工具
 
 | 工具 | 说明 | 适用场景 |
-|------|------|----------|
-| `free_search` | 多引擎搜索 + 自动回退 | 快速查事实 |
-| `free_search_advanced` | 过滤搜索 + 瀑布流程 + 内容丰富化 | 高置信度、域名过滤或中文查询 |
-| `free_search_news` | DDG 新闻 + Bing 新闻 | 时事新闻 |
-| `search_with_synthesis` | 深度搜索 + LLM 综合提示 | 复杂查询需多源验证 |
-| `free_extract` | 提取完整页面为 Markdown | 阅读搜索结果中的页面 |
-| `fetch_github_readme` | 获取 GitHub 仓库 README | 项目文档查阅 |
-| `fetch_csdn_article` | 获取 CSDN 文章内容 | 中文开发者文章 |
-| `fetch_juejin_article` | 获取掘金文章内容 | 中文开发者文章 |
+|---|---|---|
+| `free_search` | 多引擎网页搜索与有界回退 | 快速查事实和通用发现 |
+| `free_search_advanced` | 过滤、瀑布搜索和可选内容丰富化 | 域名策略和渐进验证 |
+| `free_extract` | 将网页提取为干净 Markdown | 读取完整来源页面 |
+| `fetch_github_readme` | 获取公开 GitHub 仓库 README | 项目文档查阅 |
+| `fetch_csdn_article` | 获取 CSDN 文章 | 中文技术文章 |
+| `fetch_juejin_article` | 获取掘金文章 | 中文开发者文章 |
+| `search_with_synthesis` | 搜索证据和 LLM 综合提示 | 基于引用证据生成回答 |
+| `free_search_news` | 近期新闻搜索 | 时效性信息发现 |
+
+### 能力控制
+
+| 环境变量 | 默认值 | 作用 |
+|---|---|---|
+| `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | 工具注册允许列表和拒绝列表；拒绝优先 |
+| `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | 引擎执行允许列表和拒绝列表；拒绝优先 |
+| `SEARCH_BUDGET_MAX_CALLS` | 16 | 适配器尝试次数预算 |
+| `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | 端到端耗时预算 |
+| `SEARCH_BUDGET_MAX_RESULTS` | 100 | 接纳原始结果数量预算 |
+| `EVIDENCE_BUDGET_CHARS` | 1200 | 证据字符预算 |
+<!-- END GENERATED CAPABILITY MATRIX -->
 
 所有工具均为只读、幂等，带 MCP 2025 注解。
 `free_search_advanced.time_range` 仍保留在兼容 schema 中，但已弃用：传入后会在

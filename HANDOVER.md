@@ -136,3 +136,16 @@ tags:
   budget, and evidence-contract branches. Dedicated tools are rejected for now.
 - Next roadmap item: generate the public capability matrix from runtime
   registries/config so documentation cannot drift from shipped behavior.
+
+## 2026-07-26 capability-registry checkpoint
+
+- Engine access, credential provenance, and free/optional groups now derive
+  from `engines`; search routing no longer keeps duplicate engine arrays.
+- `toolRegistry` is the registration source used by the server and public
+  matrix. `search://capabilities` filters that registry through `ToolPolicy`.
+- README engine/tool/control tables are marker-delimited generated output.
+  `capabilities:check` runs in CI and fails on drift; no template framework or
+  dependency was added.
+- The scoped P1.2 architecture-informed queue is complete. Remaining P1 work
+  depends on live Sogou/pooled quality evidence rather than more local surface
+  expansion.

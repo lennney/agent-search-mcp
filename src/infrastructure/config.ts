@@ -35,6 +35,81 @@ export interface Config {
   rerankModel: string;
 }
 
+interface BoundedIntegerConfig {
+  environment: string;
+  fallback: number;
+  min: number;
+  max: number;
+}
+
+export const boundedIntegerConfig = {
+  evidenceBudgetChars: {
+    environment: 'EVIDENCE_BUDGET_CHARS',
+    fallback: 1200,
+    min: 200,
+    max: 20_000,
+  },
+  searchBudgetMaxCalls: {
+    environment: 'SEARCH_BUDGET_MAX_CALLS',
+    fallback: 16,
+    min: 1,
+    max: 100,
+  },
+  searchBudgetMaxElapsedMs: {
+    environment: 'SEARCH_BUDGET_MAX_ELAPSED_MS',
+    fallback: 30_000,
+    min: 1_000,
+    max: 120_000,
+  },
+  searchBudgetMaxResults: {
+    environment: 'SEARCH_BUDGET_MAX_RESULTS',
+    fallback: 100,
+    min: 1,
+    max: 500,
+  },
+  searchCacheTtlMs: {
+    environment: 'SEARCH_CACHE_TTL_MS',
+    fallback: 60_000,
+    min: 1_000,
+    max: 86_400_000,
+  },
+  searchCacheMaxEntries: {
+    environment: 'SEARCH_CACHE_MAX_ENTRIES',
+    fallback: 1_000,
+    min: 1,
+    max: 10_000,
+  },
+} as const satisfies Record<string, BoundedIntegerConfig>;
+
+export const publicCapabilityControls = [
+  {
+    environment: 'ENABLED_TOOLS / DISABLED_TOOLS',
+    defaultValue: 'all / none',
+    description: {
+      en: 'Tool registration allowlist and denylist; deny wins',
+      zh: '工具注册允许列表和拒绝列表；拒绝优先',
+    },
+  },
+  {
+    environment: 'ALLOWED_ENGINES / DENIED_ENGINES',
+    defaultValue: 'all / none',
+    description: {
+      en: 'Engine execution allowlist and denylist; deny wins',
+      zh: '引擎执行允许列表和拒绝列表；拒绝优先',
+    },
+  },
+  ...([
+    ['searchBudgetMaxCalls', 'Adapter-attempt budget', '适配器尝试次数预算'],
+    ['searchBudgetMaxElapsedMs', 'End-to-end elapsed-time budget', '端到端耗时预算'],
+    ['searchBudgetMaxResults', 'Admitted raw-result budget', '接纳原始结果数量预算'],
+    ['evidenceBudgetChars', 'Evidence-character budget', '证据字符预算'],
+  ] as const).map(([key, en, zh]) => ({
+    environment: boundedIntegerConfig[key].environment,
+    defaultValue: String(boundedIntegerConfig[key].fallback),
+    description: { en, zh },
+  })),
+] as const;
+
 export function loadConfig(): Config {
   const rawMode = process.env.MODE;
   const mode: Config['mode'] = (rawMode === 'stdio' || rawMode === 'http' || rawMode === 'both') ? rawMode : 'stdio';
@@ -43,15 +118,22 @@ export function loadConfig(): Config {
   const port = Number.isFinite(rawPort) && rawPort > 0 ? rawPort : 3000;
   const legacyMinConfidence = parseFloat(process.env.MIN_CONFIDENCE || '0') || 0;
   const explicitMinSourceCount = parseInt(process.env.MIN_SOURCE_COUNT || '', 10);
-  const rawEvidenceBudget = parseInt(process.env.EVIDENCE_BUDGET_CHARS || '1200', 10);
-  const evidenceBudgetChars = Math.max(
-    200,
-    Math.min(20_000, Number.isFinite(rawEvidenceBudget) ? rawEvidenceBudget : 1200),
-  );
-  const boundedInteger = (name: string, fallback: number, min: number, max: number): number => {
-    const parsed = parseInt(process.env[name] || String(fallback), 10);
-    return Math.max(min, Math.min(max, Number.isFinite(parsed) ? parsed : fallback));
+  const boundedInteger = (definition: BoundedIntegerConfig): number => {
+    const parsed = parseInt(
+      process.env[definition.environment] || String(definition.fallback),
+      10,
+    );
+    return Math.max(
+      definition.min,
+      Math.min(
+        definition.max,
+        Number.isFinite(parsed) ? parsed : definition.fallback,
+      ),
+    );
   };
+  const evidenceBudgetChars = boundedInteger(
+    boundedIntegerConfig.evidenceBudgetChars,
+  );
   
   return {
     mode,
@@ -82,13 +164,13 @@ export function loadConfig(): Config {
     snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
     maxFullResults: parseInt(process.env.MAX_FULL_RESULTS || '3', 10) || 3,
     evidenceBudgetChars,
-    searchBudgetMaxCalls: boundedInteger('SEARCH_BUDGET_MAX_CALLS', 16, 1, 100),
-    searchBudgetMaxElapsedMs: boundedInteger('SEARCH_BUDGET_MAX_ELAPSED_MS', 30_000, 1_000, 120_000),
-    searchBudgetMaxResults: boundedInteger('SEARCH_BUDGET_MAX_RESULTS', 100, 1, 500),
+    searchBudgetMaxCalls: boundedInteger(boundedIntegerConfig.searchBudgetMaxCalls),
+    searchBudgetMaxElapsedMs: boundedInteger(boundedIntegerConfig.searchBudgetMaxElapsedMs),
+    searchBudgetMaxResults: boundedInteger(boundedIntegerConfig.searchBudgetMaxResults),
     providerCooldownStorePath: process.env.PROVIDER_COOLDOWN_STORE_PATH || '',
     searchCacheDirectory: process.env.SEARCH_CACHE_DIRECTORY || '',
-    searchCacheTtlMs: boundedInteger('SEARCH_CACHE_TTL_MS', 60_000, 1_000, 86_400_000),
-    searchCacheMaxEntries: boundedInteger('SEARCH_CACHE_MAX_ENTRIES', 1_000, 1, 10_000),
+    searchCacheTtlMs: boundedInteger(boundedIntegerConfig.searchCacheTtlMs),
+    searchCacheMaxEntries: boundedInteger(boundedIntegerConfig.searchCacheMaxEntries),
     minConfidence: legacyMinConfidence <= 1 ? Math.max(legacyMinConfidence, 0) : 0,
     minSourceCount: Math.min(12, Number.isFinite(explicitMinSourceCount)
       ? Math.max(explicitMinSourceCount, 1)

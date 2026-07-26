@@ -169,39 +169,50 @@ mcp_servers:
 
 ---
 
+<!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## Engines
 
-The package contains 12 engine adapters, all selectable through `free_search`, `free_search_advanced`, the CLI, and waterfall routing. Eight work without credentials; Brave, Tavily, Exa, and You.com are enabled when their API keys are present.
+The runtime registers 12 adapters: 8 zero-key adapters and 4 optional API adapters.
 
-| Engine | Free | Strengths |
-|--------|:----:|-----------|
-| **DuckDuckGo** | ✅ | Privacy-focused, English web |
-| **Sogou** | ✅ | Chinese web search, WeChat content |
-| **Bing** | ✅ | Multilingual, strong English results |
-| **Baidu** | ✅ | Chinese web search, Baidu Baike |
-| **Wikipedia** | ✅ | Clean JSON API, structured knowledge |
-| **Startpage** | ✅ | Google results via privacy proxy |
-| **Yandex** | ✅ | Russian/Cyrillic web search |
-| **Mojeek** | ✅ | Independent crawler, privacy-focused |
-| Brave Search | ❌ | High-quality web results (user API key required) |
-| Tavily | ❌ | Agent-optimized optional adapter (user API key required here) |
-| Exa | ❌ | Neural semantic optional adapter (user API key required here) |
-| You.com | ❌ | AI-powered optional adapter (user API key required here) |
-
----
+| Engine | Access | Languages | Role |
+|---|---|---|---|
+| DuckDuckGo | Zero-key | en | General Web Search |
+| Sogou Search | Zero-key | zh | Chinese Web Search |
+| Bing | Zero-key | en, zh | Multilingual Web Search |
+| Baidu | Zero-key | zh | Chinese Web Search |
+| Wikipedia | Zero-key | en, zh, ja, de, fr, es, auto | Encyclopedic references |
+| Startpage | Zero-key | en, auto | Privacy-oriented Web Search |
+| Yandex | Zero-key | ru, en, auto | Russian and international Web Search |
+| Mojeek | Zero-key | en, auto | Independent privacy-oriented index |
+| Brave Search | `BRAVE_API_KEY` | en, zh | Optional commercial Web Search |
+| Tavily Search | `TAVILY_API_KEY` | en, zh | Optional agent-oriented Search |
+| Exa Search | `EXA_API_KEY` | en, zh | Optional neural Search |
+| You.com Search | `YDC_API_KEY` | en, zh | Optional commercial Web Search |
 
 ## Tools
 
-| Tool | Description | Best For |
-|------|-------------|----------|
-| `free_search` | Multi-engine search with auto-fallback | Quick fact-finding |
-| `free_search_advanced` | Filtered search with waterfall, domain filtering, enrichment | High-confidence, domain-filtered, or Chinese-query results |
-| `free_search_news` | News search across DDG News + Bing News | Recent news, current events |
-| `search_with_synthesis` | Deep search with prompt hint for LLM synthesis | Complex queries needing verification |
-| `free_extract` | Extract full page content as Markdown | Reading a page from search results |
-| `fetch_github_readme` | Fetch README from a GitHub repo | Project documentation |
-| `fetch_csdn_article` | Fetch content from CSDN | Chinese developer articles |
-| `fetch_juejin_article` | Fetch content from Juejin | Chinese developer articles |
+| Tool | Description | Best for |
+|---|---|---|
+| `free_search` | Multi-engine Web Search with bounded fallback | Quick facts and general discovery |
+| `free_search_advanced` | Filtered waterfall search and optional enrichment | Domain policy and progressive verification |
+| `free_extract` | Extract a URL as clean Markdown | Reading complete source pages |
+| `fetch_github_readme` | Fetch a public GitHub repository README | Project documentation |
+| `fetch_csdn_article` | Fetch a CSDN article | Chinese technical articles |
+| `fetch_juejin_article` | Fetch a Juejin article | Chinese developer articles |
+| `search_with_synthesis` | Search evidence with an LLM synthesis hint | Agent-authored answers from cited evidence |
+| `free_search_news` | Recent news search | Time-sensitive discovery |
+
+### Capability controls
+
+| Environment | Default | Purpose |
+|---|---|---|
+| `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | Tool registration allowlist and denylist; deny wins |
+| `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | Engine execution allowlist and denylist; deny wins |
+| `SEARCH_BUDGET_MAX_CALLS` | 16 | Adapter-attempt budget |
+| `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | End-to-end elapsed-time budget |
+| `SEARCH_BUDGET_MAX_RESULTS` | 100 | Admitted raw-result budget |
+| `EVIDENCE_BUDGET_CHARS` | 1200 | Evidence-character budget |
+<!-- END GENERATED CAPABILITY MATRIX -->
 
 All tools are read-only and idempotent with MCP 2025 annotations.
 `free_search_advanced.time_range` remains in the compatibility schema but is

@@ -19,6 +19,8 @@ import { searchMojeek } from '../engines/mojeek.js';
 import {
   hasEngineCredential,
   optionalEngineCredentialEnvironment,
+  freeEngines,
+  paidEngines,
 } from '../engines/index.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
@@ -61,8 +63,8 @@ import {
   type SearchRequestBudgetSnapshot,
 } from '../infrastructure/index.js';
 
-const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
-const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
+const FREE_ENGINES: readonly SearchProvider[] = freeEngines;
+const PAID_ENGINES: readonly SearchProvider[] = paidEngines;
 
 // Engine weights (higher = more trusted)
 const ENGINE_WEIGHTS: Record<string, number> = {

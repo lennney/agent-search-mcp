@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Generated the bilingual public engine/tool/control matrix from the runtime
+  registries and bounded configuration metadata. Server registration,
+  `search://capabilities`, and README drift checks now share those sources
+  instead of maintaining separate tool and credential lists.
 - Added a dependency-free bilingual query-classifier experiment and a
   docs/news/code/general routing benchmark. The candidate changes proposed
   routes, but remains outside production because no completed quality evidence

@@ -798,7 +798,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
     issue/discussion or public integration requests for dedicated code-hosting
     search. Keep domain-filtered Web Search plus `fetch_github_readme`; do not
     add GitHub/GitLab tools without new demand evidence.
-- [ ] Generate the public capability matrix from the engine/tool registry and
+- [x] Generate the public capability matrix from the engine/tool registry and
       config schema so documentation cannot advertise unregistered tools or
       unused budgets.
 
