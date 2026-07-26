@@ -13,6 +13,9 @@ tags:
 
 ### Features
 
+- Made the primary `free_search` result a schema-declared Search Evidence
+  Packet. MCP clients receive canonical `structuredContent`; the text channel
+  is a compact view rather than a duplicate JSON contract.
 - Added completed-qrels calibration for the internal routing relevance floor.
   Protected pools retain per-system routing signals while blinded review
   packets omit them; small or label-unbalanced runs emit diagnostics without

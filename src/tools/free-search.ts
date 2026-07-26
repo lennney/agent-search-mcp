@@ -31,6 +31,10 @@ import {
   type SearchEvidenceEvaluation,
 } from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
+import {
+  createSearchToolResult,
+  searchOutputSchema,
+} from './search-output.js';
 import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics, abortableDelay } from '../infrastructure/index.js';
 
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
@@ -1140,6 +1144,7 @@ export function setupFreeSearchTool(server: McpServer): void {
             'Optional API engines require their corresponding environment-variable credentials. ' +
             'For Chinese results, include sogou or baidu.'),
       },
+      outputSchema: searchOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async ({ query, limit = 10, engines: userEngines }, extra) => {
@@ -1152,14 +1157,7 @@ export function setupFreeSearchTool(server: McpServer): void {
           signal: extra?.signal,
         });
         serverMetrics.recordRequest(Date.now() - start);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(results, null, 2),
-            },
-          ],
-        };
+        return createSearchToolResult(results);
       } catch (error) {
         if (extra?.signal.aborted) throw error;
         serverMetrics.recordRequest(Date.now() - start);

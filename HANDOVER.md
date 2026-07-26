@@ -37,10 +37,12 @@ tags:
 - 冻结 benchmark 只验证格式、Token 和指标代码，不代表搜索质量。
 - pooled capture 保留每个系统的内部路由信号，但 blinded reviewer packet
   必须移除这些信号；只有 completed adjudication 能生成阈值校准报告。
+- `free_search` 的权威输出是带 `outputSchema` 的 Search Evidence Packet；
+  `structuredContent` 保留完整机器合同，文本通道只提供紧凑视图。
 
 ## 当前验证
 
-- 稳定测试：605 passed / 54 files。
+- 稳定测试：606 passed / 54 files。
 - 实验 MCP 2026：21 passed / 7 files。
 - TypeScript/Windows build、冻结 Token benchmark 和 bootstrap quality
   benchmark：通过；bootstrap 仍不具备质量声明资格。

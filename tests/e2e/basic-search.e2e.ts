@@ -248,6 +248,11 @@ function waitForStartup(ms: number = 500): Promise<void> {
     const toolNames = tools.map((t) => t.name);
     expect(toolNames).toContain('free_search');
     expect(toolNames).toContain('free_extract');
+    const freeSearch = tools.find((tool) => tool.name === 'free_search');
+    expect(freeSearch?.outputSchema).toEqual(expect.objectContaining({
+      type: 'object',
+      required: expect.arrayContaining(['query', 'engines', 'results', 'meta', 'security_note']),
+    }));
   }, 20000);
 
   it('calls free_search and returns results', async () => {
@@ -281,7 +286,13 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect(response).not.toHaveProperty('error');
 
     const result = (response as JsonRpcResponse).result as Record<string, unknown>;
-    // Result should have content array
+    expect(result).toHaveProperty('structuredContent');
+    expect(result.structuredContent).toEqual(expect.objectContaining({
+      query: 'test',
+      results: expect.any(Array),
+      meta: expect.any(Object),
+    }));
+    // The compact text view keeps clients without structured-output support useful.
     expect(result).toHaveProperty('content');
     const content = result.content as Array<Record<string, unknown>>;
     expect(Array.isArray(content)).toBe(true);

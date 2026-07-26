@@ -871,5 +871,39 @@ describe('setupFreeSearchTool', () => {
     setupFreeSearchTool(server);
     expect(server.registerTool).toHaveBeenCalledOnce();
     expect(server.registerTool.mock.calls[0][0]).toBe('free_search');
+    expect(server.registerTool.mock.calls[0][1].outputSchema)
+      .toEqual(expect.objectContaining({
+        query: expect.anything(),
+        results: expect.anything(),
+        meta: expect.anything(),
+      }));
+  });
+
+  it('returns one canonical packet plus a compact text view', async () => {
+    vi.clearAllMocks();
+    resetAggregationMocks();
+    infrastructureState.cacheGet.mockReturnValue(null);
+    infrastructureState.config.outputStyle = 'normal';
+    (searchDuckDuckGo as any).mockResolvedValue(makeResults(1, 'ddg'));
+
+    const server = { registerTool: vi.fn() } as any;
+    setupFreeSearchTool(server);
+    const handler = server.registerTool.mock.calls[0][2];
+    const response = await handler({
+      query: 'structured output query',
+      limit: 1,
+      engines: ['duckduckgo'],
+    }, {});
+    expect(response.structuredContent).toEqual(expect.objectContaining({
+      query: 'structured output query',
+      results: [expect.objectContaining({
+        title: 'R0',
+        url: 'https://ddg.ex/0',
+      })],
+    }));
+    expect(response.content[0].text).toContain('Search evidence for: structured output query');
+    expect(response.content[0].text).toContain('https://ddg.ex/0');
+    expect(response.content[0].text).not.toContain('"security_note"');
+    expect(response.isError).toBeUndefined();
   });
 });
