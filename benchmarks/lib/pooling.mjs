@@ -145,10 +145,12 @@ export function poolLiveCaptures(inputs) {
             snippet: result.snippet ?? '',
             raw_result_sha256: sha256(result),
           });
+          const routingSignals = getRoutingSignals(result);
           candidate.systems.push({
             system_id: systemId,
             rank: resultIndex + 1,
             raw_result_sha256: sha256(result),
+            ...(routingSignals !== null && { routing_signals: routingSignals }),
           });
           candidatesByUrl.set(canonicalUrl, candidate);
         }
@@ -214,7 +216,7 @@ export function poolLiveCaptures(inputs) {
 }
 
 export function prepareReviewAdjudication(pool, packets) {
-  validatePool(pool);
+  validateSearchPool(pool);
   if (!Array.isArray(packets) || packets.length < 2) {
     poolError('at least two completed reviewer packets are required');
   }
@@ -413,6 +415,51 @@ export function validateCompletedAdjudication(adjudication) {
   return adjudication;
 }
 
+export function validateSearchPool(pool) {
+  validatePool(pool);
+  const sourceSystemIds = pool.source_captures.map(source => source?.system_id);
+  if (sourceSystemIds.some(systemId =>
+    typeof systemId !== 'string' || !SYSTEM_ID.test(systemId))
+    || new Set(sourceSystemIds).size !== sourceSystemIds.length) {
+    poolError('source system IDs must be unique stable lowercase identifiers');
+  }
+  const sourceSystems = new Set(sourceSystemIds);
+  const sampleIds = pool.samples.map(sample => sample?.id);
+  if (sampleIds.some(id => typeof id !== 'string' || id.length === 0)
+    || new Set(sampleIds).size !== sampleIds.length) {
+    poolError('sample IDs must be unique');
+  }
+  for (const sample of pool.samples) {
+    if (!Array.isArray(sample?.candidates)) {
+      poolError(`sample ${sample?.id ?? 'unknown'} candidates are invalid`);
+    }
+    const candidateIds = new Set();
+    for (const candidate of sample.candidates) {
+      if (typeof candidate?.candidate_id !== 'string'
+        || candidateIds.has(candidate.candidate_id)
+        || !Array.isArray(candidate.systems)
+        || candidate.systems.length === 0) {
+        poolError(`sample ${sample.id} candidate provenance is invalid`);
+      }
+      candidateIds.add(candidate.candidate_id);
+      const candidateSystems = new Set();
+      for (const system of candidate.systems) {
+        if (!sourceSystems.has(system?.system_id)
+          || candidateSystems.has(system.system_id)
+          || !Number.isInteger(system.rank)
+          || system.rank < 1
+          || !/^[a-f0-9]{64}$/.test(system.raw_result_sha256)
+          || (system.routing_signals !== undefined
+            && !isRoutingSignals(system.routing_signals))) {
+          poolError(`candidate ${candidate.candidate_id} system provenance is invalid`);
+        }
+        candidateSystems.add(system.system_id);
+      }
+    }
+  }
+  return pool;
+}
+
 function calculateReviewerAgreement(samples, reviewerIds) {
   const relevanceRows = [];
   const citationRows = [];
@@ -534,6 +581,33 @@ function validateResult(result, systemId, sampleId, resultIndex) {
     || (result.snippet !== undefined && typeof result.snippet !== 'string')) {
     poolError(`${systemId}/${sampleId} result ${resultIndex + 1} is invalid`);
   }
+  getRoutingSignals(result);
+}
+
+function getRoutingSignals(result) {
+  const values = [result.relevance, result.confidence, result.source_count];
+  if (values.some(value => value === undefined)) return null;
+  const signals = {
+    relevance: result.relevance,
+    confidence: result.confidence,
+    source_count: result.source_count,
+  };
+  if (!isRoutingSignals(signals)) {
+    poolError('routing signals must contain bounded relevance/confidence and positive source_count');
+  }
+  return signals;
+}
+
+function isRoutingSignals(value) {
+  return isRecord(value)
+    && Number.isFinite(value.relevance)
+    && value.relevance >= 0
+    && value.relevance <= 1
+    && Number.isFinite(value.confidence)
+    && value.confidence >= 0
+    && value.confidence <= 1
+    && Number.isInteger(value.source_count)
+    && value.source_count >= 1;
 }
 
 function validatePool(pool) {

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "routing-en-mcp",
+    "q": "Model Context Protocol definition",
+    "question": "What is the Model Context Protocol?",
+    "type": "factual",
+    "lang": "en",
+    "freshness": "evergreen",
+    "reference_answer": "An open protocol that standardizes how AI applications connect to external tools and data sources."
+  },
+  {
+    "id": "routing-en-http-429",
+    "q": "HTTP 429 status code meaning",
+    "question": "What does HTTP status code 429 mean?",
+    "type": "factual",
+    "lang": "en",
+    "freshness": "evergreen",
+    "reference_answer": "The client has sent too many requests in a given amount of time."
+  },
+  {
+    "id": "routing-en-typescript-structural",
+    "q": "TypeScript structural typing",
+    "question": "How does structural typing work in TypeScript?",
+    "type": "technical",
+    "lang": "en",
+    "freshness": "evergreen",
+    "reference_answer": "Compatibility is based on the shape and members of values rather than explicit nominal declarations."
+  },
+  {
+    "id": "routing-en-transformer-attention",
+    "q": "Transformer self-attention mechanism",
+    "question": "What does self-attention do in a Transformer?",
+    "type": "technical",
+    "lang": "en",
+    "freshness": "evergreen",
+    "reference_answer": "It relates positions in a sequence by weighting information from other positions to build contextual representations."
+  },
+  {
+    "id": "routing-en-postgresql-mvcc",
+    "q": "PostgreSQL MVCC explanation",
+    "question": "What is MVCC in PostgreSQL?",
+    "type": "technical",
+    "lang": "en",
+    "freshness": "evergreen",
+    "reference_answer": "Multi-version concurrency control lets transactions see consistent snapshots while reducing read-write blocking."
+  },
+  {
+    "id": "routing-zh-rag",
+    "q": "RAG 检索增强生成 定义",
+    "question": "什么是检索增强生成（RAG）？",
+    "type": "factual",
+    "lang": "zh",
+    "freshness": "evergreen",
+    "reference_answer": "在生成回答前检索外部知识，并把检索到的证据作为模型上下文的技术。"
+  },
+  {
+    "id": "routing-zh-redis-penetration",
+    "q": "Redis 缓存穿透 原理",
+    "question": "什么是缓存穿透？",
+    "type": "technical",
+    "lang": "zh",
+    "freshness": "evergreen",
+    "reference_answer": "查询不存在的数据时缓存无法命中，请求持续落到后端数据源的现象。"
+  },
+  {
+    "id": "routing-zh-python-asyncio",
+    "q": "Python asyncio 事件循环",
+    "question": "Python asyncio 的事件循环负责什么？",
+    "type": "technical",
+    "lang": "zh",
+    "freshness": "evergreen",
+    "reference_answer": "调度协程和回调，并协调非阻塞 I/O 事件。"
+  },
+  {
+    "id": "routing-zh-docker-image-container",
+    "q": "Docker 镜像和容器区别",
+    "question": "Docker 镜像和容器有什么区别？",
+    "type": "technical",
+    "lang": "zh",
+    "freshness": "evergreen",
+    "reference_answer": "镜像是只读模板，容器是由镜像创建并运行的实例。"
+  },
+  {
+    "id": "routing-zh-zero-trust",
+    "q": "零信任安全 原则",
+    "question": "零信任安全模型的核心原则是什么？",
+    "type": "factual",
+    "lang": "zh",
+    "freshness": "evergreen",
+    "reference_answer": "不因网络位置默认信任访问，而是持续验证身份、设备和授权，并实施最小权限。"
+  }
+]

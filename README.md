@@ -317,6 +317,10 @@ protected ranking and emits per-system pooled-qrels metrics. Reported Recall is
 candidate-pool-relative; answer accuracy is not inferred from result relevance.
 Reviewer raw agreement and pairwise kappa remain attached to the comparison so
 adjudication does not erase evidence about labeling difficulty.
+The protected pool also retains internal routing signals so a completed
+adjudication can generate a deterministic relevance-threshold curve; small
+calibration runs cannot silently change the production floor or become public
+quality claims.
 Small reviewed pilots remain ineligible for headline comparisons:
 overall reports require 30 adjudicated rows with 30 distinct queries; slices
 require 10 rows with 10 distinct queries. Eligible multi-system reports also

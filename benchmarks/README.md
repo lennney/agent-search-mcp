@@ -159,6 +159,13 @@ node benchmarks/pool.mjs \
   --compare benchmarks/fixtures/search-pool.json \
   --adjudication benchmarks/reviews/search-pool.adjudication.completed.json \
   --output benchmarks/reports/search-pool.comparison.json
+
+# Calibrate the internal routing relevance floor from the same completed qrels:
+npm run benchmark:calibrate-relevance -- \
+  --pool benchmarks/fixtures/search-pool.json \
+  --adjudication benchmarks/reviews/search-pool.adjudication.completed.json \
+  --system-id agent-search \
+  --output benchmarks/reports/agent-search.relevance-calibration.json
 ```
 
 The comparison reports nDCG@5, Precision@5, pooled Recall@5, reciprocal rank,
@@ -169,6 +176,15 @@ counted separately. Precision@5 uses a fixed denominator of five, so returning
 fewer results cannot inflate the score. Because the search tool returns evidence rather than a
 synthesized answer, answer accuracy and tokens per correct answer are marked
 unmeasured instead of inferred from retrieval relevance.
+
+The protected pool retains each system's internal `relevance`, `confidence`,
+and `source_count` beside its rank and raw-result hash. Reviewer packets omit
+all of those routing signals. The calibration command joins only a completed
+adjudication back to the selected system's protected scores. It emits a
+deterministic threshold curve, but withholds a recommendation below 10
+distinct queries, 30 judgments, or when either relevant or non-relevant labels
+are absent. This small internal calibration gate is separate from the stricter
+30-query public-comparison gate.
 
 `ai-reviewed` or `human-verified` means the corresponding judgments and
 adjudication passed the evidence contract; neither automatically authorizes a
@@ -247,8 +263,10 @@ headline number.
 | [`quality.mjs`](./quality.mjs) | Label preparation and quality evaluator |
 | [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and same-mode adjudication gate |
 | [`ai-review.mjs`](./ai-review.mjs) | OpenAI Responses executor for two-model review and third-model adjudication |
+| [`calibrate-relevance.mjs`](./calibrate-relevance.mjs) | Completed-qrels calibration for the internal routing relevance floor |
 | [`lib/ai-review.mjs`](./lib/ai-review.mjs) | Provider-neutral pointwise judge contract and evidence hashing |
 | [`lib/pooling.mjs`](./lib/pooling.mjs) | Pool URL normalization, trace preservation, and completed-review validation |
+| [`lib/relevance-calibration.mjs`](./lib/relevance-calibration.mjs) | Deterministic threshold curve, readiness gate, and recommendation policy |
 | [`lib/comparison-metrics.mjs`](./lib/comparison-metrics.mjs) | Per-system pooled-qrels comparison metrics and evidence gates |
 | [`lib/quality-metrics.mjs`](./lib/quality-metrics.mjs) | Trace, validation, and independent metrics |
 | [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
@@ -256,6 +274,7 @@ headline number.
 | [`fixtures/live-p2-pilot.json`](./fixtures/live-p2-pilot.json) | Real zero-result failure pilot with raw traces |
 | [`fixtures/live-reviewer-pilot.json`](./fixtures/live-reviewer-pilot.json) | Real non-empty single-engine reviewer-pipeline qualification capture |
 | [`queries/reviewer-pilot.json`](./queries/reviewer-pilot.json) | Bilingual reviewer-pilot questions and reference answers |
+| [`queries/routing-calibration.json`](./queries/routing-calibration.json) | Ten bilingual evergreen queries for internal routing calibration |
 | [`reviews/`](./reviews) | Blinded, pending reviewer packets |
 | [`schemas/labeled-search-quality-v1.schema.json`](./schemas/labeled-search-quality-v1.schema.json) | Label/trace schema |
 | [`schemas/pooled-search-comparison-v1.schema.json`](./schemas/pooled-search-comparison-v1.schema.json) | Completed pooled comparison report schema |

@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Added completed-qrels calibration for the internal routing relevance floor.
+  Protected pools retain per-system routing signals while blinded review
+  packets omit them; small or label-unbalanced runs emit diagnostics without
+  recommending a production threshold.
 - Made semantic-enabled routing evaluate the transformed display basket at
   every checkpoint before skipping later free/optional phases or query
   expansion. Execution metadata now identifies the gate as `pre_semantic` or

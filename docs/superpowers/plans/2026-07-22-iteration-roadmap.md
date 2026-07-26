@@ -735,6 +735,10 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 - [ ] Calibrate the provisional per-result relevance floor on a non-empty
       pooled capture. It is an internal routing heuristic, not a public
       relevance probability.
+  - [x] Preserve protected per-system routing signals and add a deterministic
+        completed-qrels calibrator with minimum-sample and label-balance gates.
+  - [x] Add a 10-query bilingual evergreen calibration set; keep the parent
+        item open until a genuinely multi-system capture completes review.
 - [x] Close the semantic-enabled path: each routing checkpoint now validates
       the post-semantic display basket before skipping later free/optional
       phases or query expansion (semantic features remain off by default).

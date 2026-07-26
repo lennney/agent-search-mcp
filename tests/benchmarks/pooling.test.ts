@@ -120,8 +120,24 @@ describe('multi-system search result pooling', () => {
       title: 'Shared result with detail',
       snippet: 'A substantially richer shared snippet selected deterministically.',
       systems: [
-        expect.objectContaining({ system_id: 'system-a', rank: 1 }),
-        expect.objectContaining({ system_id: 'system-b', rank: 1 }),
+        expect.objectContaining({
+          system_id: 'system-a',
+          rank: 1,
+          routing_signals: {
+            relevance: 0.6,
+            confidence: 0.8,
+            source_count: 1,
+          },
+        }),
+        expect.objectContaining({
+          system_id: 'system-b',
+          rank: 1,
+          routing_signals: {
+            relevance: 0.6,
+            confidence: 0.8,
+            source_count: 1,
+          },
+        }),
       ],
     }));
     expect(pooled.samples[0].system_runs).toEqual([
@@ -182,6 +198,7 @@ describe('multi-system search result pooling', () => {
     expect(packet.samples[0].candidates).toHaveLength(3);
     expect(serialized).not.toContain('"systems"');
     expect(serialized).not.toContain('"system_runs"');
+    expect(serialized).not.toContain('"routing_signals"');
     expect(serialized).not.toContain('"rank"');
     expect(serialized).not.toContain('system-a');
     expect(serialized).not.toContain('system-b');
