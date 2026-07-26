@@ -50,7 +50,7 @@
     "codex"
   ],
   "scripts": {
-    "build": "tsc && node scripts/build.mjs",
+    "build": "node scripts/build.mjs --clean && tsc && node scripts/build.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e:live": "node scripts/run-live-e2e.mjs",

@@ -26,7 +26,7 @@ tags:
 │              MCP 工具层 (tools/)                  │
 │                                                   │
 │  free_search    free_search_advanced    free_extract│
-│  free_search_news  search_with_synthesis          │
+│  search_with_synthesis                            │
 │  fetch_github_readme  fetch_csdn  fetch_juejin    │
 │  search://capabilities  search://health           │
 ├─────────────────────────────────────────────────┤

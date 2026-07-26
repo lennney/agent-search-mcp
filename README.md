@@ -150,7 +150,6 @@ The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapte
 | `fetch_csdn_article` | Fetch a CSDN article | Chinese technical articles |
 | `fetch_juejin_article` | Fetch a Juejin article | Chinese developer articles |
 | `search_with_synthesis` | Search evidence with an LLM synthesis hint | Agent-authored answers from cited evidence |
-| `free_search_news` | Recent news search | Time-sensitive discovery |
 
 ### Capability controls
 
@@ -179,11 +178,6 @@ count.
 `free_search_advanced.time_range` remains in the compatibility schema. The
 server returns `UNSUPPORTED_FILTER` before searching because the general web
 providers do not share one enforceable recency contract.
-
-`free_search_news` uses the zero-key Bing News RSS feed. Its `day`, `week`, and
-`month` ranges mean a maximum published age of 24 hours, 7 days, or 30 days;
-undated feed items are excluded. Upstream failures remain visible in
-`partialFailures`.
 
 ---
 

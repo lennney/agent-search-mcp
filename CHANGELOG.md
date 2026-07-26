@@ -181,15 +181,17 @@ tags:
 - Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
 - Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
 
+### Removed
+
+- Removed the dedicated `free_search_news` tool and Bing News RSS path before
+  release because bounded live validation could not establish a dependable RSS
+  response. General Web search remains available, but the product no longer
+  advertises an enforceable news time-range capability.
+
 ### Fixes
 
 - Restored Node 18 Streamable HTTP by installing Node's built-in Web Crypto
   implementation only when the runtime does not expose `globalThis.crypto`.
-- Corrected `free_search_news` to use the actual zero-key Bing News RSS feed
-  instead of relabeling ordinary DuckDuckGo Web results. The `day`, `week`, and
-  `month` filters now enforce 24-hour, 7-day, and 30-day publication windows;
-  MCP cancellation reaches the provider request and failures remain visible in
-  `partialFailures`.
 - Default test runs no longer call live search/extraction providers. The two
   network E2E cases require the explicit `test:e2e:live` command.
 - Live runner qualification now waits 10 seconds between query groups by

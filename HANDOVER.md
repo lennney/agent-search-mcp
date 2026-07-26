@@ -16,6 +16,8 @@ tags:
 - 稳定产品面是 Node.js >=18.17、TypeScript ESM、MCP stdio/HTTP 和 `fasm` CLI。
 - 16 个适配器均进入统一路由：9 个零密钥，7 个可选 API。Wiby 是零密钥
   小型网页补充源；Tencent WSA、Bocha、Serper 需要用户自带凭证。
+- `free_search_news` 与 Bing News RSS 路径已在发布前移除；当前没有独立新闻工具，
+  也不宣称通用搜索支持可强制执行的时间范围。
 - Slim Guard 是独立产品；本仓库只维护可选证据交接合同。
 - `2026-07-28` 能力仅在 `experiments/mcp-2026/` 验证，不宣称生产兼容。
 - 本轮授权仅覆盖提交并推送 PR 分支、观察 CI；不发布 npm/GitHub Release，
@@ -49,9 +51,6 @@ tags:
   内存是默认实现，本地持久化必须显式启用并对损坏/过期数据 fail open。
 - `SearchRequestBudget` 统一限制适配器尝试、总耗时、原始结果和证据字符；
   超限返回观察值、上限与 `budget_exhausted`，调用方取消仍直接 reject。
-- `free_search_news` 只使用真实的 Bing News RSS；`day/week/month` 按
-  `published_at` 执行 24 小时、7 天、30 天过滤。取消必须进入 HTTP，
-  上游失败必须进入 `partialFailures`，不得把普通网页改名为新闻。
 - 瀑布查询扩展只执行一代，生成查询不得再次扩展。
 - 显式请求缺少凭证的可选 API 时返回 `permission_denied`，不得伪装成零结果。
 - Wiby 只在免费瀑布后段尝试，共享公共服务失败不自动重试，并在结果中保留
@@ -90,7 +89,7 @@ tags:
 
 ## 当前验证
 
-- 默认离线门禁：74 个测试文件，747 passed，2 个联网 E2E 按设计 skipped。
+- 默认离线门禁：73 个测试文件，742 passed，2 个联网 E2E 按设计 skipped。
 - TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
   quality benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors、0 warnings；`npm run lint` 通过 `--max-warnings 0`
@@ -108,8 +107,8 @@ tags:
   doctor、平台 launcher、stdio initialize/tools/list 和退出全部通过，均发现
   8 个工具及 16 个 Provider，并实际解析
   `@hono/node-server` 1.19.15；没有调用搜索或提取工具。
-- Web Crypto、新闻语义、取消和失败透明度修复改变了源码；上述 tarball 现在只作
-  历史证据，不能发布。PR CI 通过后必须从最终提交重新生成唯一候选并重跑发布矩阵。
+- Web Crypto 与工具面收敛改变了源码；上述 tarball 现在只作历史证据，不能发布。
+  PR CI 通过后必须从最终提交重新生成唯一候选并重跑发布矩阵。
 - 六个安装单元均提示 `whatwg-encoding@3.1.1` 已弃用，来源是固定的
   `cheerio@1.0.0` 传递依赖；没有 `EBADENGINE`。Pino 10 候选 `ff5dea0`
   及旧候选 `0c89ec1` / `3f170675` 只作历史证据，不得发布。
@@ -118,8 +117,8 @@ tags:
   2 个 moderate。保留该元数据差异，不降级 MCP SDK，也不强制引入要求
   Node 20 的 Hono 2.x；本项目不注册受影响的 `serve-static`。
 - 当前分支保留 `73c34969` 的一次有限 DDG Live E2E 作为时间点非降级观察；
-  DDG Web/HTML/Lite 主链没有改变，本轮只删除了把普通 DDG 网页改名为新闻的
-  独立包装。本轮未重复探测 DDG/Sogou，也不据此声明可用率或准确率。
+  DDG Web/HTML/Lite 主链没有改变；移除新闻工具不影响该主链。本轮未重复探测
+  DDG/Sogou，也不据此声明可用率或准确率。
 
 ## 下一步
 

@@ -154,16 +154,16 @@ describe('ToolPolicy', () => {
     });
 
     it('returns false for a denied tool', () => {
-      const policy = new ToolPolicy(undefined, ['free_extract', 'free_search_news']);
+      const policy = new ToolPolicy(undefined, ['free_extract', 'fetch_github_readme']);
       expect(policy.isToolEnabled('free_extract')).toBe(false);
-      expect(policy.isToolEnabled('free_search_news')).toBe(false);
+      expect(policy.isToolEnabled('fetch_github_readme')).toBe(false);
     });
 
     it('denied takes priority over allowed', () => {
-      const policy = new ToolPolicy(['free_search', 'free_extract', 'free_search_news'], ['free_extract']);
+      const policy = new ToolPolicy(['free_search', 'free_extract', 'fetch_github_readme'], ['free_extract']);
       expect(policy.isToolEnabled('free_extract')).toBe(false);
       expect(policy.isToolEnabled('free_search')).toBe(true);
-      expect(policy.isToolEnabled('free_search_news')).toBe(true);
+      expect(policy.isToolEnabled('fetch_github_readme')).toBe(true);
     });
 
     it('allows tools not in denied list when no allowlist set', () => {

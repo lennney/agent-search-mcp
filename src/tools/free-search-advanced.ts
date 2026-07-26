@@ -62,7 +62,7 @@ Not recommended for: Simple queries — use free_search instead.
                   message:
                     'free_search_advanced.time_range is deprecated because the selected general-search adapters cannot enforce one cross-engine recency contract.',
                   suggestion:
-                    'Remove time_range. For news-only retrieval, use free_search_news and inspect each result published_at when present.',
+                    'Remove time_range and verify publication dates in the returned sources.',
                 },
               }, null, 2),
             }],

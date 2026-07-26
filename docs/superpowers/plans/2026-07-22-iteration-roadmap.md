@@ -275,14 +275,11 @@ HTTP 模式下 MCP 工具映射为 REST 端点，OpenAPI 可让非 MCP 客户端
 
 ## C1: 新闻搜索语义收敛 (P0)
 
-**状态**: 2026-07-26 完成。原 DDG HTML 方案被撤回：该端点返回通用网页，
-不能只修改 `source` 就宣称为新闻，也不能兑现 `day/week/month`。
+**状态**: 2026-07-27 撤销。DDG HTML 只是通用网页，Bing News 的受限 Live
+Smoke 也未得到稳定 RSS 响应，因此删除 `free_search_news`、Bing News 运行时
+路径及专属测试。通用搜索继续拒绝无法跨引擎兑现的 `time_range`。
 
-稳定实现只调用现有 Bing News RSS，并按 `published_at` 执行 24 小时、7 天、
-30 天过滤；无日期条目被排除。MCP 取消进入 HTTP，Provider 失败进入
-`partialFailures`。以后增加第二新闻源仍需按新增引擎门禁单独评审。
-
-**验证**: 离线 RSS fixture 覆盖真实新闻端点、时间过滤、取消和失败透明度。
+以后重新引入新闻工具仍需按新增引擎门禁单独评审，并先取得可复现的真实源证据。
 
 ---
 
@@ -633,10 +630,11 @@ cheerio 解析器依赖 CSS 类名（`.result`, `.result__a`, `.result__snippet`
 | Phase 3 | 中文搜索护城河 | ✅ 完成 | 中文权威源、查询优化、摘要长度 |
 | Phase 4 | 答案引擎 | ✅ 完成 | search_with_synthesis (零 LLM) |
 | Phase 5 | 扩充免费引擎 | ✅ 完成 | Wikipedia + Startpage |
-| Phase 6 | 语言检测 + 新闻搜索 | ✅ 完成 | detectLanguage, rate_limits, news search, Yandex, Mojeek |
+| Phase 6 | 语言检测 + 搜索扩展 | ✅ 完成 | detectLanguage, rate_limits, Yandex, Mojeek |
 | ~~Phase 6~~ | ~~插件系统~~ | 🚫 跳过 | 加引擎比加系统更有价值 |
 
-**成果总结**: 旧路线图从 140 测试→438 测试，4→8 免费引擎，6→8 MCP 工具，4 生产依赖不变。
+**成果总结**: 旧路线图从 140 测试→438 测试，4→8 免费引擎，
+当前保留 7 个 MCP 工具，4 生产依赖不变。
 ## 2026-07-26: Agent Search core evidence track
 
 This track belongs to **Agent Search only**. Slim Guard remains a separate

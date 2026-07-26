@@ -144,7 +144,6 @@ flowchart LR
 | `fetch_csdn_article` | 获取 CSDN 文章 | 中文技术文章 |
 | `fetch_juejin_article` | 获取掘金文章 | 中文开发者文章 |
 | `search_with_synthesis` | 搜索证据和 LLM 综合提示 | 基于引用证据生成回答 |
-| `free_search_news` | 近期新闻搜索 | 时效性信息发现 |
 
 ### 能力控制
 
@@ -170,10 +169,6 @@ Wiby 使用官方 JSON API，是无需账号和 API Key 的真实零密钥来源
 `free_search_advanced.time_range` 仍保留在兼容 schema 中。通用网页 Provider
 没有统一且可验证的时间过滤合同，因此服务会在搜索前返回
 `UNSUPPORTED_FILTER`。
-
-`free_search_news` 使用零密钥的 Bing News RSS。`day`、`week`、`month`
-分别表示文章发布时间不超过 24 小时、7 天和 30 天；没有发布时间的条目会被排除，
-上游失败保留在 `partialFailures`。
 
 ---
 

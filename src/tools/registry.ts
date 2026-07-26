@@ -8,7 +8,6 @@ import {
 } from './fetch-tools.js';
 import { registerFreeExtract } from './free-extract.js';
 import { registerFreeSearchAdvanced } from './free-search-advanced.js';
-import { registerFreeSearchNews } from './free-search-news.js';
 import { setupFreeSearchTool } from './free-search.js';
 import { registerSearchWithSynthesis } from './search-with-synthesis.js';
 
@@ -66,12 +65,6 @@ export const toolRegistry = [
     summary: { en: 'Search evidence with an LLM synthesis hint', zh: '搜索证据和 LLM 综合提示' },
     bestFor: { en: 'Agent-authored answers from cited evidence', zh: '基于引用证据生成回答' },
     register: registerSearchWithSynthesis,
-  },
-  {
-    id: 'free_search_news',
-    summary: { en: 'Recent news search', zh: '近期新闻搜索' },
-    bestFor: { en: 'Time-sensitive discovery', zh: '时效性信息发现' },
-    register: registerFreeSearchNews,
   },
 ] as const satisfies readonly ToolCapability[];
 
