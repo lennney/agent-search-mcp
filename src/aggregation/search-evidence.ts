@@ -23,43 +23,56 @@ export interface SearchEvidenceEvaluation {
   qualityGate: ConfidenceBasketResult;
 }
 
+export interface SearchEvidenceEvaluator {
+  evaluate(rawResults: SearchResult[]): SearchEvidenceEvaluation;
+  assess(results: ScoredResult[]): ConfidenceBasketResult;
+}
+
 /**
- * Normalize raw search results into the exact evidence basket used by routing
- * and final output. This keeps filtering, deduplication, ranking, domain
- * policy, and the stop gate on one interface.
+ * Create one evidence evaluator per search request. Normalization and quality
+ * assessment share the same immutable policy, including post-semantic checks.
  */
-export function evaluateSearchEvidence(
-  rawResults: SearchResult[],
+export function createSearchEvidenceEvaluator(
   policy: SearchEvidencePolicy,
-): SearchEvidenceEvaluation {
-  const filtered = filterLowQuality(rawResults);
+): SearchEvidenceEvaluator {
   const includeDomains = normalizeDomainFilters(policy.includeDomains);
   const excludeDomains = normalizeDomainFilters(policy.excludeDomains);
   const includeFilterRequested = (policy.includeDomains?.length ?? 0) > 0;
-  const domainFiltered = filtered.filter((result) => {
-    const hostname = getHostname(result.url);
-    if (includeFilterRequested) {
-      if (!hostname || !matchesAnyDomain(hostname, includeDomains)) return false;
-    }
-    if (hostname && matchesAnyDomain(hostname, excludeDomains)) return false;
-    return true;
-  });
-  const { results: urlDeduped, frequencies } = dedupByUrl(domainFiltered);
-  const ranked = scoreAndRank(
-    dedupByTitle(urlDeduped),
-    policy.query,
-    policy.engineWeights,
-    frequencies,
-  );
-  const results = ranked.filter((result) => {
-    if (result.confidence < (policy.minConfidence ?? 0)) return false;
-    if (result.source_count < (policy.minSourceCount ?? 1)) return false;
-    return true;
-  });
 
   return {
-    results,
-    qualityGate: checkConfidenceBasket(results, policy.qualityGate),
+    evaluate(rawResults: SearchResult[]): SearchEvidenceEvaluation {
+      const filtered = filterLowQuality(rawResults);
+      const domainFiltered = filtered.filter((result) => {
+        const hostname = getHostname(result.url);
+        if (includeFilterRequested) {
+          if (!hostname || !matchesAnyDomain(hostname, includeDomains)) {
+            return false;
+          }
+        }
+        if (hostname && matchesAnyDomain(hostname, excludeDomains)) return false;
+        return true;
+      });
+      const { results: urlDeduped, frequencies } = dedupByUrl(domainFiltered);
+      const ranked = scoreAndRank(
+        dedupByTitle(urlDeduped),
+        policy.query,
+        policy.engineWeights,
+        frequencies,
+      );
+      const results = ranked.filter((result) => {
+        if (result.confidence < (policy.minConfidence ?? 0)) return false;
+        if (result.source_count < (policy.minSourceCount ?? 1)) return false;
+        return true;
+      });
+
+      return {
+        results,
+        qualityGate: checkConfidenceBasket(results, policy.qualityGate),
+      };
+    },
+    assess(results: ScoredResult[]): ConfidenceBasketResult {
+      return checkConfidenceBasket(results, policy.qualityGate);
+    },
   };
 }
 

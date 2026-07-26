@@ -11,6 +11,12 @@ const infrastructureState = vi.hoisted(() => ({
     outputStyle: 'normal' as 'normal' | 'compact',
     minConfidence: 0,
     minSourceCount: 1,
+    semanticDedup: false,
+    semanticRerank: false,
+    dedupThreshold: 0.85,
+    dedupModel: 'test-dedup',
+    rerankTopK: 5,
+    rerankModel: 'test-rerank',
   },
 }));
 
@@ -58,27 +64,33 @@ vi.mock('../../src/aggregation/index.js', () => ({
     engine === 'duckduckgo' || engine === 'bing' ? 'bing' : engine
   )),
   scoreAndRank: vi.fn((r) => r.map((x) => ({ ...x, confidence: 0.8, relevance: 0.6, source_count: 1, score: 0.6 }))),
-  evaluateSearchEvidence: vi.fn((rawResults, policy) => {
-    const results = aggregationState.filterLowQuality(rawResults)
-      .map((item) => ({
-        ...item,
-        confidence: 0.8,
-        relevance: 0.6,
-        source_count: 1,
-        score: 0.6,
-      }))
-      .filter((item) => (
-        item.confidence >= (policy.minConfidence ?? 0)
-        && item.source_count >= (policy.minSourceCount ?? 1)
-      ));
-    return {
-      results,
-      qualityGate: aggregationState.checkConfidenceBasket(
+  createSearchEvidenceEvaluator: vi.fn((policy) => ({
+    evaluate: (rawResults) => {
+      const results = aggregationState.filterLowQuality(rawResults)
+        .map((item) => ({
+          ...item,
+          confidence: 0.8,
+          relevance: 0.6,
+          source_count: 1,
+          score: 0.6,
+        }))
+        .filter((item) => (
+          item.confidence >= (policy.minConfidence ?? 0)
+          && item.source_count >= (policy.minSourceCount ?? 1)
+        ));
+      return {
         results,
-        policy.qualityGate,
-      ),
-    };
-  }),
+        qualityGate: aggregationState.checkConfidenceBasket(
+          results,
+          policy.qualityGate,
+        ),
+      };
+    },
+    assess: (results) => aggregationState.checkConfidenceBasket(
+      results,
+      policy.qualityGate,
+    ),
+  })),
   formatResults: vi.fn((r) => {
     const results = r.map((x) => ({
       title: x.title,
@@ -104,6 +116,11 @@ vi.mock('../../src/aggregation/index.js', () => ({
   hasChinese: vi.fn(() => false),
   generateChineseVariants: vi.fn(() => []),
   detectLanguage: vi.fn(() => 'en'),
+  semanticDedup: vi.fn(async (results) => ({
+    results,
+    removedCount: 0,
+  })),
+  semanticRerank: vi.fn(async (_query, results) => results),
 }));
 
 vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
@@ -149,6 +166,8 @@ import {
   expandQuery,
   filterLowQuality,
   formatResults,
+  semanticDedup,
+  semanticRerank,
 } from '../../src/aggregation/index.js';
 
 function makeResults(count: number, source: string) {
@@ -158,6 +177,29 @@ function makeResults(count: number, source: string) {
     snippet: `Snippet ${i}`,
     source,
   }));
+}
+
+function resetAggregationMocks(): void {
+  aggregationState.checkConfidenceBasket.mockReset();
+  aggregationState.checkConfidenceBasket.mockReturnValue({
+    sufficient: true,
+    basketConfidence: 0.85,
+    basketRelevance: 0.6,
+    relevantResultsCount: 5,
+    relevanceThreshold: 0.35,
+    providerFamilyCount: 2,
+    topResultsCount: 5,
+    analyzedCount: 10,
+  });
+  (semanticDedup as any).mockReset();
+  (semanticDedup as any).mockImplementation(async (results: unknown[]) => ({
+    results,
+    removedCount: 0,
+  }));
+  (semanticRerank as any).mockReset();
+  (semanticRerank as any).mockImplementation(
+    async (_query: string, results: unknown[]) => results,
+  );
 }
 
 let searchWithFallback: typeof import('../../src/tools/free-search.js').searchWithFallback;
@@ -173,10 +215,13 @@ beforeAll(async () => {
 describe('searchWithFallback — parallel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetAggregationMocks();
     infrastructureState.cacheGet.mockReturnValue(null);
     infrastructureState.config.outputStyle = 'normal';
     infrastructureState.config.minConfidence = 0;
     infrastructureState.config.minSourceCount = 1;
+    infrastructureState.config.semanticDedup = false;
+    infrastructureState.config.semanticRerank = false;
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
     (searchBing as any).mockResolvedValue(makeResults(3, 'bing'));
@@ -387,6 +432,55 @@ describe('searchWithFallback — parallel', () => {
     }
   });
 
+  it('uses the post-semantic basket for routing diagnostics', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.semanticDedup = true;
+    (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
+    (searchExa as any).mockResolvedValue(makeResults(2, 'exa'));
+    (checkConfidenceBasket as any).mockImplementation((results: unknown[]) => ({
+      sufficient: results.length >= 2,
+      basketConfidence: results.length >= 2 ? 0.8 : 0.4,
+      basketRelevance: results.length >= 2 ? 0.6 : 0.3,
+      relevantResultsCount: results.length,
+      relevanceThreshold: 0.35,
+      providerFamilyCount: results.length >= 2 ? 2 : 1,
+      topResultsCount: results.length,
+      analyzedCount: results.length,
+    }));
+    (semanticDedup as any).mockResolvedValueOnce({
+      results: [{
+        ...makeResults(1, 'semantic')[0],
+        confidence: 0.8,
+        relevance: 0.6,
+        source_count: 1,
+        score: 0.6,
+      }],
+      removedCount: 4,
+    });
+
+    try {
+      const result = await searchWithFallback({
+        query: 'post-semantic-routing',
+        count: 3,
+        engines: ['duckduckgo', 'exa'],
+      });
+
+      expect(searchExa).toHaveBeenCalled();
+      expect(semanticDedup).toHaveBeenCalledTimes(2);
+      expect(result.meta.execution?.quality_gate_stage).toBe('post_semantic');
+      expect(result.meta.execution?.quality_gate?.sufficient).toBe(true);
+      expect(result.meta.execution?.early_stop).toBe(false);
+      expect(result.meta.execution?.stop_reason).toBe('phases_exhausted');
+    } finally {
+      if (previousApiKey === undefined) {
+        delete process.env.EXA_API_KEY;
+      } else {
+        process.env.EXA_API_KEY = previousApiKey;
+      }
+    }
+  });
+
   it('reports only the optional phase for a paid-only request', async () => {
     const previousApiKey = process.env.EXA_API_KEY;
     process.env.EXA_API_KEY = 'test-key';
@@ -564,10 +658,13 @@ describe('searchWithFallback — parallel', () => {
 describe('searchWithFallback — waterfall', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetAggregationMocks();
     infrastructureState.cacheGet.mockReturnValue(null);
     infrastructureState.config.outputStyle = 'normal';
     infrastructureState.config.minConfidence = 0;
     infrastructureState.config.minSourceCount = 1;
+    infrastructureState.config.semanticDedup = false;
+    infrastructureState.config.semanticRerank = false;
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
   });
@@ -615,6 +712,74 @@ describe('searchWithFallback — waterfall', () => {
     expect(searchBaidu).not.toHaveBeenCalled();
     expect(result.meta.execution?.early_stop).toBe(true);
     expect(result.meta.execution?.stop_reason).toBe('quality_gate_satisfied');
+  });
+
+  it('does not let a pre-semantic gate skip selected waterfall phases', async () => {
+    infrastructureState.config.semanticDedup = true;
+    (searchWikipedia as any).mockResolvedValue(makeResults(1, 'wikipedia'));
+    (checkConfidenceBasket as any).mockImplementation((results: unknown[]) => ({
+      sufficient: results.length >= 2,
+      basketConfidence: 0.8,
+      basketRelevance: 0.6,
+      relevantResultsCount: results.length,
+      relevanceThreshold: 0.35,
+      providerFamilyCount: results.length >= 2 ? 2 : 1,
+      topResultsCount: results.length,
+      analyzedCount: results.length,
+    }));
+    (semanticDedup as any).mockResolvedValueOnce({
+      results: [{
+        ...makeResults(1, 'semantic')[0],
+        confidence: 0.8,
+        relevance: 0.6,
+        source_count: 1,
+        score: 0.6,
+      }],
+      removedCount: 5,
+    });
+
+    const result = await searchWithFallback({
+      query: 'semantic-waterfall-phases',
+      engines: ['duckduckgo', 'sogou', 'wikipedia'],
+      waterfall: true,
+      expandQueries: false,
+    });
+
+    expect(searchDuckDuckGo).toHaveBeenCalled();
+    expect(searchSogou).toHaveBeenCalled();
+    expect(searchWikipedia).toHaveBeenCalled();
+    expect(semanticDedup).toHaveBeenCalledTimes(2);
+    expect(result.meta.execution?.phases_completed).toEqual(['1a', '1c']);
+    expect(result.meta.execution?.quality_gate_stage).toBe('post_semantic');
+    expect(result.meta.execution?.early_stop).toBe(false);
+  });
+
+  it('skips query expansion only after the post-semantic gate passes', async () => {
+    infrastructureState.config.semanticDedup = true;
+    (expandQuery as any).mockReturnValue(['alternative-query']);
+
+    try {
+      const result = await searchWithFallback({
+        query: 'semantic-expansion-gate',
+        engines: ['duckduckgo', 'sogou'],
+        waterfall: true,
+      });
+
+      expect(searchDuckDuckGo).not.toHaveBeenCalledWith(
+        'alternative-query',
+        expect.any(Number),
+      );
+      expect(searchSogou).not.toHaveBeenCalledWith(
+        'alternative-query',
+        expect.any(Number),
+      );
+      expect(result.meta.execution?.phases_completed).toEqual(['1a']);
+      expect(result.meta.execution?.quality_gate_stage).toBe('post_semantic');
+      expect(result.meta.execution?.early_stop).toBe(true);
+      expect(result.meta.execution?.stop_reason).toBe('quality_gate_satisfied');
+    } finally {
+      (expandQuery as any).mockReturnValue([]);
+    }
   });
 
   it('reads the same cache-key contract used by parallel search', async () => {

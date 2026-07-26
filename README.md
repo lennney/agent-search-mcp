@@ -46,7 +46,9 @@ gate and `stop_reason`. Compact mode supports progressive disclosure so agents
 can inspect the top results first and call `free_extract` only when deeper
 content is needed. Both routing modes use the same evidence-evaluation module,
 and domain filters match only the requested host or its real subdomains before
-deduplication.
+deduplication. When semantic dedup or rerank is enabled, every routing
+checkpoint evaluates the transformed display basket before skipping later work;
+`quality_gate_stage` makes that boundary inspectable.
 
 ### Inspectable evidence packets
 

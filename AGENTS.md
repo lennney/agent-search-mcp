@@ -83,6 +83,8 @@ fasm extract "https://..."
 - 原始结果数量不能单独触发提前停止。逐条 relevance、平均 confidence 和
   provider-family 覆盖必须分别通过；默认 relevance floor 是待 pooled qrels
   校准的内部启发式。
+- 启用 semantic dedup/rerank 时，提前停止只能依据 post-semantic display
+  basket；`meta.execution.quality_gate_stage` 必须反映实际判断阶段。
 - DDG Lite 只在 HTML HTTP 202 后、同一总 deadline 内机会性尝试一次；它不是
   限流绕过。调用方取消或其他 provider/IP 级限制不得触发重复请求。
 - `free_search_advanced.time_range` 当前仅是兼容保留字段，未端到端执行；完成

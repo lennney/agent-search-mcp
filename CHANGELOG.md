@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Made semantic-enabled routing evaluate the transformed display basket at
+  every checkpoint before skipping later free/optional phases or query
+  expansion. Execution metadata now identifies the gate as `pre_semantic` or
+  `post_semantic`.
 - Unified parallel and waterfall result normalization behind one search-evidence
   interface so domain policy, deduplication, scoring, output eligibility, and
   the routing quality gate cannot drift between execution modes.

@@ -17,7 +17,7 @@ import type { SearchResult, SearchProvider, EngineError } from '../types.js';
 import {
   detectLanguage,
   enrichResults,
-  evaluateSearchEvidence,
+  createSearchEvidenceEvaluator,
   expandQuery,
   filterLowQuality,
   formatResults,
@@ -59,6 +59,10 @@ const serverMetrics = new ServerMetrics(cache);
 const rateLimiter = new RateLimiter();
 const config = loadConfig();
 const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
+
+function isSemanticRoutingEnabled(): boolean {
+  return config.semanticDedup || config.semanticRerank;
+}
 
 /** Group adapters by upstream provider while preserving caller preference. */
 function getProviderChains(engines: SearchProvider[]): SearchProvider[][] {
@@ -303,6 +307,7 @@ interface SearchResponse {
       stop_reason:
         | 'quality_gate_satisfied'
         | 'phases_exhausted';
+      quality_gate_stage?: 'pre_semantic' | 'post_semantic';
       quality_gate?: ConfidenceBasketResult;
     };
   };
@@ -470,6 +475,7 @@ function getEffectiveResultThresholds(
 }
 
 async function executeParallelSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+  const semanticRoutingEnabled = isSemanticRoutingEnabled();
   const {
     query,
     count = 10,
@@ -530,6 +536,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const searchedEngines: string[] = [];
   let parallelEvaluation: SearchEvidenceEvaluation | undefined;
   let parallelGate: ConfidenceBasketResult | undefined;
+  let preparedSemanticResults: ScoredResult[] | undefined;
   let stoppedEarly = false;
   let freePhaseAttempted = false;
   let optionalPhaseAttempted = false;
@@ -537,6 +544,20 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     uniqueEngines.map(getProviderFamily),
   ).size;
   const requiredProviderFamilies = Math.min(2, Math.max(requestedProviderFamilies, 1));
+  const evidenceEvaluator = createSearchEvidenceEvaluator({
+    query,
+    engineWeights: ENGINE_WEIGHTS,
+    minConfidence: effectiveThresholds.minConfidence,
+    minSourceCount: effectiveThresholds.minSourceCount,
+    includeDomains,
+    excludeDomains,
+    qualityGate: {
+      minResults: Math.min(count, 3),
+      minAvgConfidence: 0.6,
+      minProviderFamilies: requiredProviderFamilies,
+      topK: 5,
+    },
+  });
   const searchProviderChain = async (
     primary: SearchProvider,
     limit: number,
@@ -582,20 +603,20 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     });
   };
   const evaluateParallelEvidence = (): SearchEvidenceEvaluation => {
-    return evaluateSearchEvidence(allResults, {
-      query,
-      engineWeights: ENGINE_WEIGHTS,
-      minConfidence: effectiveThresholds.minConfidence,
-      minSourceCount: effectiveThresholds.minSourceCount,
-      includeDomains,
-      excludeDomains,
-      qualityGate: {
-        minResults: Math.min(count, 3),
-        minAvgConfidence: 0.6,
-        minProviderFamilies: requiredProviderFamilies,
-        topK: 5,
-      },
-    });
+    return evidenceEvaluator.evaluate(allResults);
+  };
+  const assessParallelEvidence = async (): Promise<void> => {
+    parallelEvaluation = evaluateParallelEvidence();
+    if (semanticRoutingEnabled) {
+      preparedSemanticResults = await applySemanticProcessing(
+        parallelEvaluation.results,
+        query,
+        options.signal,
+      );
+      parallelGate = evidenceEvaluator.assess(preparedSemanticResults);
+      return;
+    }
+    parallelGate = parallelEvaluation.qualityGate;
   };
 
   // Batch 1: Free engines
@@ -613,9 +634,8 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     // Result count is necessary but not sufficient: only stop if the current
     // display basket also has enough relevant, reliable, independent evidence.
     if (allResults.length >= count * 1.5) {
-      parallelEvaluation = evaluateParallelEvidence();
-      parallelGate = parallelEvaluation.qualityGate;
-      if (parallelGate.sufficient) {
+      await assessParallelEvidence();
+      if (parallelGate?.sufficient) {
         stoppedEarly =
           i + BATCH_SIZE < phase1Engines.length
           || paidToSearch.length > 0;
@@ -634,13 +654,12 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   // rows to meet `count` but too few to reach the batching threshold could
   // silently skip an explicitly requested optional provider.
   if (!parallelEvaluation) {
-    parallelEvaluation = evaluateParallelEvidence();
-    parallelGate = parallelEvaluation.qualityGate;
+    await assessParallelEvidence();
   }
   if (
     !stoppedEarly
     && allResults.length >= count
-    && parallelEvaluation.qualityGate.sufficient
+    && parallelGate?.sufficient
     && paidToSearch.length > 0
   ) {
     stoppedEarly = true;
@@ -649,7 +668,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   logger.info({ count: allResults.length }, 'Phase 1 results');
 
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
-  const qualityGateFailed = !parallelEvaluation.qualityGate.sufficient;
+  const qualityGateFailed = !parallelGate?.sufficient;
   if (allResults.length < count || qualityGateFailed) {
     if (paidToSearch.length > 0) {
       optionalPhaseAttempted = true;
@@ -663,8 +682,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
       );
 
       collectProviderChainOutcomes(phase2Results, paidToSearch);
-      parallelEvaluation = evaluateParallelEvidence();
-      parallelGate = parallelEvaluation.qualityGate;
+      await assessParallelEvidence();
 
       logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
@@ -672,9 +690,11 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     }
   }
 
-  // The same evaluated evidence basket drives both routing and final output.
-  const { formatted } = await applyPostProcessing(
-    parallelEvaluation.results,
+  const semanticResults = semanticRoutingEnabled
+    ? preparedSemanticResults ?? []
+    : parallelEvaluation?.results ?? [];
+  const { formatted } = await finalizeSearchResults(
+    semanticResults,
     query,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
     options.signal,
@@ -698,6 +718,9 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
         stop_reason: stoppedEarly
           ? 'quality_gate_satisfied'
           : 'phases_exhausted',
+        quality_gate_stage: semanticRoutingEnabled
+          ? 'post_semantic'
+          : 'pre_semantic',
         ...(parallelGate ? { quality_gate: parallelGate } : {}),
       },
     },
@@ -726,22 +749,16 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
 }
 
 /**
- * Shared post-processing pipeline for both parallel and waterfall search.
- * Handles semantic dedup/rerank, confidence + domain filtering, enrichment,
- * and final formatting. Used by both executeParallelSearch and
- * executeWaterfallSearch to avoid duplication.
+ * Apply optional semantic dedup/rerank without formatting or enrichment so
+ * routing can assess the exact transformed display basket.
  */
-async function applyPostProcessing(
+async function applySemanticProcessing(
   scored: ScoredResult[],
   query: string,
-  enrich: boolean | undefined,
-  enrichMax: number | undefined,
-  enrichMinConfidence: number | undefined,
   signal?: AbortSignal,
-): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
+): Promise<ScoredResult[]> {
   signal?.throwIfAborted();
-  // Semantic dedup (optional)
-  if (config.semanticDedup || config.semanticRerank) {
+  if (isSemanticRoutingEnabled()) {
     try {
       if (config.semanticDedup) {
         const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
@@ -757,7 +774,22 @@ async function applyPostProcessing(
       logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
     }
   }
+  signal?.throwIfAborted();
+  return scored;
+}
 
+/**
+ * Enrich and format a normalized, optionally semantic-processed basket.
+ */
+async function finalizeSearchResults(
+  scored: ScoredResult[],
+  query: string,
+  enrich: boolean | undefined,
+  enrichMax: number | undefined,
+  enrichMinConfidence: number | undefined,
+  signal?: AbortSignal,
+): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
+  signal?.throwIfAborted();
   // Content enrichment (optional)
   if (enrich) {
     const enriched = await enrichResults(scored, {
@@ -805,6 +837,7 @@ function selectWaterfallPhase(
 }
 
 async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth: number = 0): Promise<SearchResponse> {
+  const semanticRoutingEnabled = isSemanticRoutingEnabled();
   // Guard against infinite recursion from query expansion
   if (depth > 2) {
     logger.warn({ query: options.query, depth }, 'Waterfall recursion depth exceeded, returning empty');
@@ -893,23 +926,25 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
 
   let lastBasket: ConfidenceBasketResult | undefined;
   let stoppedEarly = false;
+  let preparedSemanticResults: ScoredResult[] | undefined;
 
-  const evaluateCurrentEvidence = (): SearchEvidenceEvaluation => {
-    return evaluateSearchEvidence(allResults, {
-      query,
-      engineWeights: ENGINE_WEIGHTS,
-      minConfidence: effectiveThresholds.minConfidence,
-      minSourceCount: effectiveThresholds.minSourceCount,
-      includeDomains,
-      excludeDomains,
-      qualityGate: {
-        minResults: waterfallMinResults,
-        minAvgConfidence: waterfallMinConfidence,
-        minProviderFamilies: requiredProviderFamilies,
-        topK: 5,
-      },
-    });
-  };
+  const evidenceEvaluator = createSearchEvidenceEvaluator({
+    query,
+    engineWeights: ENGINE_WEIGHTS,
+    minConfidence: effectiveThresholds.minConfidence,
+    minSourceCount: effectiveThresholds.minSourceCount,
+    includeDomains,
+    excludeDomains,
+    qualityGate: {
+      minResults: waterfallMinResults,
+      minAvgConfidence: waterfallMinConfidence,
+      minProviderFamilies: requiredProviderFamilies,
+      topK: 5,
+    },
+  });
+  const evaluateCurrentEvidence = (): SearchEvidenceEvaluation => (
+    evidenceEvaluator.evaluate(allResults)
+  );
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
     phasesCompleted.push(phaseLabel);
@@ -928,7 +963,16 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     }
 
     const evaluation = evaluateCurrentEvidence();
-    lastBasket = evaluation.qualityGate;
+    if (semanticRoutingEnabled) {
+      preparedSemanticResults = await applySemanticProcessing(
+        evaluation.results,
+        query,
+        options.signal,
+      );
+      lastBasket = evidenceEvaluator.assess(preparedSemanticResults);
+    } else {
+      lastBasket = evaluation.qualityGate;
+    }
 
     logger.info(
       { phase: phaseLabel, total: allResults.length, basket: lastBasket },
@@ -970,9 +1014,11 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   }
 
   // ── Phase 3: Query Expansion (if confidence still low) ──────────
+  let expansionRan = false;
   if (!basketFull && options.expandQueries !== false) {
     const { alternatives, source } = expansionPlan;
     if (alternatives.length > 0) {
+      expansionRan = true;
       phasesCompleted.push('3');
       logger.info({ alternatives, source }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
@@ -1007,9 +1053,20 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   // Query expansion may add evidence after the last routing check, so evaluate
   // once more before producing the response.
   const finalEvaluation = evaluateCurrentEvidence();
-  lastBasket = finalEvaluation.qualityGate;
-  const { formatted } = await applyPostProcessing(
-    finalEvaluation.results,
+  const finalScored = semanticRoutingEnabled
+    && preparedSemanticResults
+    && !expansionRan
+    ? preparedSemanticResults
+    : await applySemanticProcessing(
+      finalEvaluation.results,
+      query,
+      options.signal,
+    );
+  lastBasket = semanticRoutingEnabled
+    ? evidenceEvaluator.assess(finalScored)
+    : finalEvaluation.qualityGate;
+  const { formatted } = await finalizeSearchResults(
+    finalScored,
     query,
     options.enrich, options.enrichMax, options.enrichMinConfidence,
     options.signal,
@@ -1030,6 +1087,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
         stop_reason: stoppedEarly
           ? 'quality_gate_satisfied'
           : 'phases_exhausted',
+        quality_gate_stage: semanticRoutingEnabled
+          ? 'post_semantic'
+          : 'pre_semantic',
         ...(lastBasket ? { quality_gate: lastBasket } : {}),
       },
     },

@@ -267,6 +267,25 @@ clarify → research brief → supervisor → researcher
 [query-aware late chunking](https://github.com/jina-ai/node-DeepResearch/blob/fd323b521a51264d497bec333bfb997da1bf3210/src/tools/jina-latechunk.ts#L8-L127)、
 [citation candidate alignment](https://github.com/jina-ai/node-DeepResearch/blob/fd323b521a51264d497bec333bfb997da1bf3210/src/tools/build-ref.ts#L142-L229)。
 
+### 本轮增量代码对照
+
+- Perplexica/Vane 的 `baseSearch` 先做 query-result similarity 过滤，再做
+  semantic dedup，最后截断为展示结果。Agent Search 已吸收这一顺序约束：
+  路由停止门必须评估变换后的 display basket，而不是变换前的原始列表。
+  [固定源码](https://github.com/ItzCrazyKns/Perplexica/blob/7dc5d088f7262fbc5e39037f84940a8a2193c5fb/src/lib/agents/search/researcher/actions/search/baseSearch.ts)
+- Jina reranker 分批处理文档、保留原始索引、全局排序并记录 Token 使用量。
+  本轮只吸收“重排输出是后续判断的权威序列”，不增加远程 rerank 依赖；
+  Token 使用量进入后续预算遥测候选。
+  [固定源码](https://github.com/jina-ai/node-DeepResearch/blob/fd323b521a51264d497bec333bfb997da1bf3210/src/tools/jina-rerank.ts)
+- LLMLingua 把 context、sentence、token 三层预算拆开，并允许
+  `target_token` 驱动粗到细压缩。后续可把当前字符预算深化为分层预算，
+  但 provenance、失败和哈希关联不进入可删除内容。
+  [固定源码](https://github.com/microsoft/LLMLingua/blob/e0e9d99beb94098bbd924aa53c2c112eac41c758/llmlingua/prompt_compressor.py)
+- GitHub MCP Gateway 把 Guard 的资源标注与 Reference Monitor 的准入决策
+  分开，并先规范化策略。这个模式属于 Slim Guard，不下沉到搜索核心；
+  Agent Search 只输出可供策略消费的结构化证据。
+  [固定源码](https://github.com/github/gh-aw-mcpg/blob/e53395eac55c939fee47bc2fc214a503eb7c320e/internal/guard/guard.go)
+
 ### Agent 层与 MCP 核心的明确边界
 
 | 能力 | Search Agent | Agent Search MCP |

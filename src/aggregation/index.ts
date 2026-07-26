@@ -11,9 +11,10 @@ export {
 export { scoreAndRank } from './scorer.js';
 export { checkConfidenceBasket } from './scorer.js';
 export type { ScoredResult, ConfidenceBasketResult, ConfidenceBasketOptions } from './scorer.js';
-export { evaluateSearchEvidence } from './search-evidence.js';
+export { createSearchEvidenceEvaluator } from './search-evidence.js';
 export type {
   SearchEvidenceEvaluation,
+  SearchEvidenceEvaluator,
   SearchEvidencePolicy,
 } from './search-evidence.js';
 export { formatResults } from './format.js';

@@ -116,9 +116,9 @@ Phase 2: Brave + Tavily + Exa + You.com
 
 返回的 `meta.execution` 会说明 `stop_reason` 和质量门观测值。历史
 调用节省数字只适用于当时的查询集和 runner，不是当前门槛的通用保证。
-质量门是 semantic dedup/rerank 之前的确定性 routing snapshot；两项语义
-功能默认关闭。启用时最终数量或顺序可能变化，需在后续集成校准中把
-post-semantic display 与停止决策闭环。
+两项语义功能默认关闭。启用后，每个 routing checkpoint 都会先执行
+semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
+后续免费/可选阶段或查询扩展；`quality_gate_stage` 会公开实际判断阶段。
 
 ### 2. 多源验证 (Multi-Source Verification)
 

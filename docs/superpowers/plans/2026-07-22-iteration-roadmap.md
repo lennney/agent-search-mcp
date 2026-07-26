@@ -735,8 +735,9 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 - [ ] Calibrate the provisional per-result relevance floor on a non-empty
       pooled capture. It is an internal routing heuristic, not a public
       relevance probability.
-- [ ] Close the semantic-enabled path: validate the routing gate against the
-      post-semantic display basket (semantic features remain off by default).
+- [x] Close the semantic-enabled path: each routing checkpoint now validates
+      the post-semantic display basket before skipping later free/optional
+      phases or query expansion (semantic features remain off by default).
 - [ ] Either implement `free_search_advanced.time_range` end to end or deprecate
       the reserved compatibility field; do not advertise it as active filtering.
 
