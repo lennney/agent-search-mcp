@@ -23,10 +23,9 @@ tags:
 - Search failures, provider families, request budgets, evidence provenance, and
   routing stop reasons are machine-readable instead of being hidden as empty
   results.
-- A pre-expansion package passed installation and stdio smoke on Windows and
-  Linux with Node 18, 20, and 22. The package containing all 16 adapters must
-  repeat that matrix before publication. This release makes no live search
-  quality or availability claim.
+- Release verification replays one retained tarball across Windows and Linux
+  with Node 18, 20, and 22. Exact artifact evidence is linked from the release
+  notes. This release makes no live search quality or availability claim.
 
 ### Features
 
@@ -64,6 +63,9 @@ tags:
 - Restored the declared Node 18.17 runtime contract by keeping Pino on its 9.x
   line. Pino 10 pulled `thread-stream` 4, whose package metadata requires
   Node 20 even though a basic Node 18 runtime smoke could still start.
+- Updated the locked MCP SDK transitive dependency to
+  `@hono/node-server` 1.19.15, the Node 18-compatible security backport for
+  GHSA-frvp-7c67-39w9, without forcing the Node 20-only 2.x line.
 - Added an offline, system-neutral comparison capture importer. External search
   exports are bounded, license-disclosed, query-set-bound, hashed, and
   normalized into the existing traced pooling contract without adding a
