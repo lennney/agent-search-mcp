@@ -5,6 +5,7 @@ import { Readable } from 'node:stream';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getProtocolReadiness } from './protocol.js';
+import { readCurrentVersion } from './version-check.js';
 
 const CORS_REQUEST_HEADERS = [
   'Authorization',
@@ -86,7 +87,7 @@ export function createHttpServer(
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         status: 'ok',
-        version: '3.1.3',
+        version: readCurrentVersion(),
         protocol: getProtocolReadiness(),
       }));
       return;

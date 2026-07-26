@@ -247,7 +247,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     const result = (response as JsonRpcResponse).result as Record<string, unknown>;
     expect(result).toHaveProperty('serverInfo');
     expect((result.serverInfo as Record<string, unknown>).name).toBe('agent-search-mcp');
-    expect((result.serverInfo as Record<string, unknown>).version).toBeTruthy();
+    expect((result.serverInfo as Record<string, unknown>).version).toBe('3.2.0');
   }, 20000);
 
   it('lists tools after initialization', async () => {

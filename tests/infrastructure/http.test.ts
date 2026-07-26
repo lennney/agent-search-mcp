@@ -26,7 +26,7 @@ describe('createHttpServer', () => {
       
       const body = await res.json();
       expect(body.status).toBe('ok');
-      expect(body.version).toBe('3.1.3');
+      expect(body.version).toBe('3.2.0');
       expect(body.protocol).toEqual({
         stable: '2025-11-25',
         target: '2026-07-28',

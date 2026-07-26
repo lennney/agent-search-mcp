@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { Config } from './infrastructure/config.js';
 import { ToolPolicy } from './infrastructure/tool-policy.js';
+import { readCurrentVersion } from './infrastructure/version-check.js';
 import { registerCapabilities } from './tools/capabilities.js';
 import {
   healthTracker,
@@ -21,7 +22,7 @@ export function createAgentSearchServer(config: Config): McpServer {
   const server = new McpServer(
     {
       name: 'agent-search-mcp',
-      version: '3.1.3',
+      version: readCurrentVersion(),
     },
     {
       capabilities: {

@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { ToolPolicy } from '../infrastructure/tool-policy.js';
+import { readCurrentVersion } from '../infrastructure/version-check.js';
 import { renderPublicCapabilityMatrix } from './public-capabilities.js';
 
 export function registerCapabilities(
@@ -17,7 +18,7 @@ Free and open-source multi-engine MCP Search.
 
 - GitHub: https://github.com/lennney/agent-search-mcp
 - npm: \`npx agent-search-mcp\`
-- Version: 3.1.3
+- Version: ${readCurrentVersion()}
 - License: Apache-2.0
 - Runtime: Node.js >=18.17
 
