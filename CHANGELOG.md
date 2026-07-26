@@ -13,6 +13,14 @@ tags:
 
 ### Features
 
+- Added one provider-routing policy interface shared by parallel and waterfall
+  search. The default `free_first` mode never spends configured optional API
+  credentials; `quality_escalation`, `paid_first`, and `free_only` are explicit
+  alternatives. Default routing selects only the first configured provider in
+  the candidate order; multiple optional providers require explicit selection.
+- Bounded live E2E behind explicit `LIVE_E2E=true` authorization, a maximum of
+  two network operations, a 10-second minimum interval, cleared optional
+  credentials, and a one-attempt search budget.
 - Added an offline, system-neutral comparison capture importer. External search
   exports are bounded, license-disclosed, query-set-bound, hashed, and
   normalized into the existing traced pooling contract without adding a

@@ -59,3 +59,9 @@ export type {
   ProviderCooldownRecord,
   ProviderCooldownStore,
 } from './provider-cooldown-store.js';
+export { createSearchProviderPlan } from './search-provider-policy.js';
+export type {
+  SearchProviderMode,
+  SearchProviderPlanOptions,
+  SearchProviderStage,
+} from './search-provider-policy.js';

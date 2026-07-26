@@ -208,6 +208,8 @@ The runtime registers 12 adapters: 8 zero-key adapters and 4 optional API adapte
 |---|---|---|
 | `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | Tool registration allowlist and denylist; deny wins |
 | `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | Engine execution allowlist and denylist; deny wins |
+| `SEARCH_PROVIDER_MODE` | free_first | Default routing: free_first, quality_escalation, paid_first, or free_only |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom | Selects the first configured optional provider; not a quality claim |
 | `SEARCH_BUDGET_MAX_CALLS` | 16 | Adapter-attempt budget |
 | `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | End-to-end elapsed-time budget |
 | `SEARCH_BUDGET_MAX_RESULTS` | 100 | Admitted raw-result budget |
@@ -254,6 +256,8 @@ search results.
 | `TAVILY_API_KEY` | — | Tavily API key |
 | `EXA_API_KEY` | — | Exa API key |
 | `YDC_API_KEY` | — | You.com API key |
+| `SEARCH_PROVIDER_MODE` | `free_first` | Default routing: `free_first`, `quality_escalation`, `paid_first`, or `free_only` |
+| `PAID_ENGINE_ORDER` | `brave,exa,tavily,youcom` | Selects the first configured optional provider; not a quality ranking |
 | `LOG_LEVEL` | `info` | `info` or `debug` |
 | `MODE` | `stdio` | Transport: `stdio`, `http`, or `both` |
 | `PORT` | `3000` | HTTP server port (when `MODE=http` or `both`) |
@@ -269,6 +273,20 @@ search results.
 | `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
 | `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
 | `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
+
+API keys are bring-your-own. Merely configuring one does not authorize paid
+requests: the default `free_first` mode stays zero-key. Use
+`quality_escalation` to call configured optional providers only after free
+evidence is insufficient, or `paid_first` to try them before the free fallback.
+`free_only` forbids optional-provider calls even when credentials are present.
+Default routing selects only the first credentialed entry in
+`PAID_ENGINE_ORDER`; multiple optional providers require an explicit `engines`
+request.
+
+Live E2E is opt-in and bounded. In PowerShell, run
+`$env:LIVE_E2E='true'; npm run test:e2e:live`. The runner permits at most two
+network operations, waits 10 seconds between them, clears optional-provider
+credentials, and limits each search request to one adapter attempt.
 | `USE_PROXY` | `false` | Route DuckDuckGo and Sogou through the explicit project proxy |
 | `PROXY_URL` | `http://127.0.0.1:7890` | Shared HTTP(S) proxy when `USE_PROXY=true` |
 | `DUCKDUCKGO_PROXY_URL` | — | DuckDuckGo-only proxy override; enables proxying for DDG |

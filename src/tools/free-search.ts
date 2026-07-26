@@ -60,6 +60,7 @@ import {
   createSearchCacheKey,
   isCacheableSearchResponse,
   isSearchResponseCacheValue,
+  createSearchProviderPlan,
   type SearchRequestBudgetSnapshot,
 } from '../infrastructure/index.js';
 
@@ -129,6 +130,24 @@ async function searchEngine(
   callerSignal?: AbortSignal,
 ): Promise<EngineOutcome> {
   signal?.throwIfAborted();
+  if (
+    config.searchProviderMode === 'free_only'
+    && PAID_ENGINES.includes(engine)
+  ) {
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: new EngineAdapterError(
+        'permission_denied',
+        `${engine} is disabled by SEARCH_PROVIDER_MODE=free_only`,
+        {
+          retryable: false,
+          suggestion: 'Choose a zero-key engine or change SEARCH_PROVIDER_MODE',
+        },
+      ),
+    };
+  }
   // Skip engines blocked by policy
   if (!enginePolicy.isAllowed(engine)) {
     logger.info({ engine }, 'Engine blocked by policy');
@@ -367,6 +386,27 @@ function hasApiKey(engine: SearchProvider): boolean {
   return hasEngineCredential(engine);
 }
 
+function normalizePaidEngineOrder(order: readonly string[]): SearchProvider[] {
+  const paid = new Set(PAID_ENGINES);
+  return [...new Set(order)]
+    .filter((engine): engine is SearchProvider => paid.has(engine as SearchProvider));
+}
+
+function getDefaultProviderPlan(waterfall: boolean) {
+  return createSearchProviderPlan({
+    mode: config.searchProviderMode,
+    freeStages: waterfall
+      ? [
+        WATERFALL_PHASES.phase1a,
+        WATERFALL_PHASES.phase1b,
+        WATERFALL_PHASES.phase1c,
+      ]
+      : [['duckduckgo', 'sogou']],
+    paidEngines: normalizePaidEngineOrder(config.paidEngineOrder),
+    hasCredential: hasApiKey,
+  });
+}
+
 function getMissingCredentialFailures(
   requestedEngines: SearchProvider[] | undefined,
 ): EngineError[] {
@@ -473,7 +513,9 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
 
 function makeSearchCacheKey(options: SearchWithFallbackOptions): string {
   const count = options.count ?? 10;
-  const engines = options.engines ?? ['duckduckgo', 'sogou'];
+  const engines = options.engines
+    ?? getDefaultProviderPlan(options.waterfall === true)
+      .flatMap(stage => stage.engines);
   return createSearchCacheKey({
     request: {
       query: options.query,
@@ -701,13 +743,16 @@ async function executeParallelSearch(
   const {
     query,
     count = 10,
-    engines: userEngines = ['duckduckgo', 'sogou'] as SearchProvider[],
+    engines: explicitEngines,
     minConfidence = 0,
     minSourceCount = 1,
     language,
     includeDomains,
     excludeDomains,
   } = options;
+  const defaultPlan = getDefaultProviderPlan(false);
+  const userEngines = explicitEngines
+    ?? defaultPlan.flatMap(stage => stage.engines);
   const effectiveThresholds = getEffectiveResultThresholds(
     minConfidence,
     minSourceCount,
@@ -744,8 +789,19 @@ async function executeParallelSearch(
       engine => PAID_ENGINES.includes(engine) && hasApiKey(engine),
     ))
     .filter(chain => chain.length > 0);
-  const phase1Engines = freeProviderChains.map(chain => chain[0]);
-  const paidToSearch = optionalProviderChains.map(chain => chain[0]);
+  const paidFirst = explicitEngines === undefined
+    && config.searchProviderMode === 'paid_first'
+    && optionalProviderChains.length > 0;
+  const phase1ProviderChains = paidFirst
+    ? optionalProviderChains
+    : freeProviderChains;
+  const phase2ProviderChains = paidFirst
+    ? freeProviderChains
+    : optionalProviderChains;
+  const phase1Engines = phase1ProviderChains.map(chain => chain[0]);
+  const phase2Engines = phase2ProviderChains.map(chain => chain[0]);
+  const phase1Kind = paidFirst ? 'optional' : 'free';
+  const phase2Kind = paidFirst ? 'free' : 'optional';
   const providerChainByPrimary = new Map(
     [...freeProviderChains, ...optionalProviderChains]
       .map(chain => [chain[0], chain] as const),
@@ -851,12 +907,16 @@ async function executeParallelSearch(
   };
 
   // Batch 1: Free engines
-  logger.info({ engines: phase1Engines }, 'Phase 1: free engines (batch)');
+  logger.info(
+    { engines: phase1Engines, kind: phase1Kind },
+    'Parallel primary phase',
+  );
   
   for (let i = 0; i < phase1Engines.length; i += BATCH_SIZE) {
     if (!budget.canContinue()) break;
     const batch = phase1Engines.slice(i, i + BATCH_SIZE);
-    freePhaseAttempted = true;
+    if (phase1Kind === 'free') freePhaseAttempted = true;
+    else optionalPhaseAttempted = true;
     const batchResults = await Promise.allSettled(
       batch.map(engine => searchProviderChain(engine, count))
     );
@@ -870,7 +930,7 @@ async function executeParallelSearch(
       if (parallelGate?.sufficient) {
         stoppedEarly =
           i + BATCH_SIZE < phase1Engines.length
-          || paidToSearch.length > 0;
+          || phase2Engines.length > 0;
         logger.info(
           { count: allResults.length, qualityGate: parallelGate, stoppedEarly },
           stoppedEarly
@@ -892,7 +952,7 @@ async function executeParallelSearch(
     !stoppedEarly
     && allResults.length >= count
     && parallelGate?.sufficient
-    && paidToSearch.length > 0
+    && phase2Engines.length > 0
   ) {
     stoppedEarly = true;
   }
@@ -902,23 +962,27 @@ async function executeParallelSearch(
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
   const qualityGateFailed = !parallelGate?.sufficient;
   if (budget.canContinue() && (allResults.length < count || qualityGateFailed)) {
-    if (paidToSearch.length > 0) {
-      optionalPhaseAttempted = true;
+    if (phase2Engines.length > 0) {
+      if (phase2Kind === 'free') freePhaseAttempted = true;
+      else optionalPhaseAttempted = true;
       const remaining = qualityGateFailed
         ? count
         : Math.max(count - allResults.length, 1);
-      logger.info({ engines: paidToSearch, remaining }, 'Phase 2: paid engines');
-
-      const phase2Results = await Promise.allSettled(
-        paidToSearch.map(engine => searchProviderChain(engine, remaining))
+      logger.info(
+        { engines: phase2Engines, kind: phase2Kind, remaining },
+        'Parallel fallback phase',
       );
 
-      collectProviderChainOutcomes(phase2Results, paidToSearch);
+      const phase2Results = await Promise.allSettled(
+        phase2Engines.map(engine => searchProviderChain(engine, remaining))
+      );
+
+      collectProviderChainOutcomes(phase2Results, phase2Engines);
       await assessParallelEvidence();
 
       logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
-      logger.info('Phase 2: no paid engines available');
+      logger.info('Parallel fallback phase: no engines available');
     }
   }
 
@@ -945,8 +1009,10 @@ async function executeParallelSearch(
         engine_calls: searchedEngines.length,
         searched_engines: [...searchedEngines],
         phases_completed: [
-          ...(freePhaseAttempted ? ['free'] : []),
-          ...(optionalPhaseAttempted ? ['optional'] : []),
+          ...(phase1Kind === 'free' && freePhaseAttempted ? ['free'] : []),
+          ...(phase1Kind === 'optional' && optionalPhaseAttempted ? ['optional'] : []),
+          ...(phase2Kind === 'free' && freePhaseAttempted && phase1Kind !== 'free' ? ['free'] : []),
+          ...(phase2Kind === 'optional' && optionalPhaseAttempted && phase1Kind !== 'optional' ? ['optional'] : []),
         ],
         early_stop: stoppedEarly,
         stop_reason: stoppedEarly
@@ -1133,7 +1199,7 @@ async function executeWaterfallSearch(
     Math.max(requestedProviderFamilyCount, 1),
   );
   const paidAvailable = selectWaterfallPhase(
-    WATERFALL_PHASES.phase2,
+    normalizePaidEngineOrder(config.paidEngineOrder),
     requestedEngines,
   ).filter(hasApiKey);
   const expansionPlan = (() => {
@@ -1151,7 +1217,7 @@ async function executeWaterfallSearch(
       source: 'generic' as const,
     };
   })();
-  const freePhases = [
+  const explicitFreeStages = [
     {
       label: '1a',
       engines: selectWaterfallPhase(WATERFALL_PHASES.phase1a, requestedEngines),
@@ -1165,6 +1231,21 @@ async function executeWaterfallSearch(
       engines: selectWaterfallPhase(WATERFALL_PHASES.phase1c, requestedEngines),
     },
   ];
+  const providerStages = requestedEngines === undefined
+    ? (() => {
+      let freeStageIndex = 0;
+      const freeLabels = ['1a', '1b', '1c'];
+      return getDefaultProviderPlan(true).map(stage => ({
+        label: stage.kind === 'optional'
+          ? '2'
+          : freeLabels[freeStageIndex++],
+        engines: stage.engines,
+      }));
+    })()
+    : [
+      ...explicitFreeStages,
+      { label: '2', engines: paidAvailable },
+    ].filter(stage => stage.engines.length > 0);
 
   let lastBasket: ConfidenceBasketResult | undefined;
   let stoppedEarly = false;
@@ -1240,15 +1321,15 @@ async function executeWaterfallSearch(
   }
 
   let basketFull = false;
-  for (let phaseIndex = 0; phaseIndex < freePhases.length; phaseIndex++) {
-    const phase = freePhases[phaseIndex];
+  for (let phaseIndex = 0; phaseIndex < providerStages.length; phaseIndex++) {
+    const phase = providerStages[phaseIndex];
     if (phase.engines.length === 0) continue;
     if (!budget.canContinue()) break;
     basketFull = await searchBatch(phase.engines, phase.label);
     if (basketFull) {
       stoppedEarly =
-        freePhases.slice(phaseIndex + 1).some(candidate => candidate.engines.length > 0)
-        || paidAvailable.length > 0
+        providerStages.slice(phaseIndex + 1)
+          .some(candidate => candidate.engines.length > 0)
         || expansionPlan.alternatives.length > 0;
       logger.info(
         { phase: phase.label, stoppedEarly },
@@ -1257,18 +1338,6 @@ async function executeWaterfallSearch(
           : 'Waterfall basket satisfied at the end of selected work',
       );
       break;
-    }
-  }
-
-  if (!basketFull && budget.canContinue()) {
-    if (paidAvailable.length > 0) {
-      logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");
-      basketFull = await searchBatch(paidAvailable, '2');
-      if (basketFull) {
-        stoppedEarly = expansionPlan.alternatives.length > 0;
-      }
-    } else {
-      logger.info("Phase 2: no paid engines available");
     }
   }
 

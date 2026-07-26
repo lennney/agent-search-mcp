@@ -25,6 +25,8 @@ describe('loadConfig', () => {
     delete process.env.SEARCH_CACHE_DIRECTORY;
     delete process.env.SEARCH_CACHE_TTL_MS;
     delete process.env.SEARCH_CACHE_MAX_ENTRIES;
+    delete process.env.SEARCH_PROVIDER_MODE;
+    delete process.env.PAID_ENGINE_ORDER;
     
     const config = loadConfig();
     expect(config.mode).toBe('stdio');
@@ -42,6 +44,21 @@ describe('loadConfig', () => {
     expect(config.searchCacheDirectory).toBe('');
     expect(config.searchCacheTtlMs).toBe(60_000);
     expect(config.searchCacheMaxEntries).toBe(1_000);
+    expect(config.searchProviderMode).toBe('free_first');
+    expect(config.paidEngineOrder).toEqual(['brave', 'exa', 'tavily', 'youcom']);
+  });
+
+  it('parses explicit provider routing configuration', () => {
+    process.env.SEARCH_PROVIDER_MODE = 'quality_escalation';
+    process.env.PAID_ENGINE_ORDER = 'exa, brave';
+    const config = loadConfig();
+    expect(config.searchProviderMode).toBe('quality_escalation');
+    expect(config.paidEngineOrder).toEqual(['exa', 'brave']);
+  });
+
+  it('fails closed to free_first for an unknown provider mode', () => {
+    process.env.SEARCH_PROVIDER_MODE = 'always_paid';
+    expect(loadConfig().searchProviderMode).toBe('free_first');
   });
 
   it('reads and clamps opt-in exact-cache configuration', () => {

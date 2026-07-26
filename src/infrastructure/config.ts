@@ -1,3 +1,5 @@
+import type { SearchProviderMode } from './search-provider-policy.js';
+
 export interface Config {
   mode: 'stdio' | 'http' | 'both';
   port: number;
@@ -25,6 +27,8 @@ export interface Config {
   searchCacheDirectory: string;
   searchCacheTtlMs: number;
   searchCacheMaxEntries: number;
+  searchProviderMode: SearchProviderMode;
+  paidEngineOrder: string[];
   minConfidence: number;
   minSourceCount: number;
   semanticDedup: boolean;
@@ -98,6 +102,22 @@ export const publicCapabilityControls = [
       zh: '引擎执行允许列表和拒绝列表；拒绝优先',
     },
   },
+  {
+    environment: 'SEARCH_PROVIDER_MODE',
+    defaultValue: 'free_first',
+    description: {
+      en: 'Default routing: free_first, quality_escalation, paid_first, or free_only',
+      zh: '默认路由：free_first、quality_escalation、paid_first 或 free_only',
+    },
+  },
+  {
+    environment: 'PAID_ENGINE_ORDER',
+    defaultValue: 'brave,exa,tavily,youcom',
+    description: {
+      en: 'Selects the first configured optional provider; not a quality claim',
+      zh: '选择首个已配置可选渠道，不代表质量排名',
+    },
+  },
   ...([
     ['searchBudgetMaxCalls', 'Adapter-attempt budget', '适配器尝试次数预算'],
     ['searchBudgetMaxElapsedMs', 'End-to-end elapsed-time budget', '端到端耗时预算'],
@@ -134,6 +154,13 @@ export function loadConfig(): Config {
   const evidenceBudgetChars = boundedInteger(
     boundedIntegerConfig.evidenceBudgetChars,
   );
+  const rawSearchProviderMode = process.env.SEARCH_PROVIDER_MODE;
+  const searchProviderMode: SearchProviderMode =
+    rawSearchProviderMode === 'quality_escalation'
+    || rawSearchProviderMode === 'paid_first'
+    || rawSearchProviderMode === 'free_only'
+      ? rawSearchProviderMode
+      : 'free_first';
   
   return {
     mode,
@@ -171,6 +198,11 @@ export function loadConfig(): Config {
     searchCacheDirectory: process.env.SEARCH_CACHE_DIRECTORY || '',
     searchCacheTtlMs: boundedInteger(boundedIntegerConfig.searchCacheTtlMs),
     searchCacheMaxEntries: boundedInteger(boundedIntegerConfig.searchCacheMaxEntries),
+    searchProviderMode,
+    paidEngineOrder: (process.env.PAID_ENGINE_ORDER || 'brave,exa,tavily,youcom')
+      .split(',')
+      .map(engine => engine.trim())
+      .filter(Boolean),
     minConfidence: legacyMinConfidence <= 1 ? Math.max(legacyMinConfidence, 0) : 0,
     minSourceCount: Math.min(12, Number.isFinite(explicitMinSourceCount)
       ? Math.max(explicitMinSourceCount, 1)

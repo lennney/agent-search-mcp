@@ -16,6 +16,31 @@ const SERVER_PATH = resolve(__dirname, '../../dist/index.js');
 const E2E_SKIP = !existsSync(SERVER_PATH);
 const LIVE_NETWORK_E2E = process.env.RUN_LIVE_NETWORK_E2E === 'true';
 const liveNetworkIt = LIVE_NETWORK_E2E ? it : it.skip;
+const LIVE_REQUEST_LIMIT = Number.parseInt(
+  process.env.LIVE_E2E_MAX_REQUESTS || '2',
+  10,
+);
+const LIVE_MIN_INTERVAL_MS = Number.parseInt(
+  process.env.LIVE_E2E_MIN_INTERVAL_MS || '10000',
+  10,
+);
+let liveRequests = 0;
+let lastLiveRequestAt = 0;
+
+async function claimLiveRequest(): Promise<void> {
+  if (liveRequests >= LIVE_REQUEST_LIMIT) {
+    throw new Error(`Live E2E request limit exceeded: ${LIVE_REQUEST_LIMIT}`);
+  }
+  const waitMs = Math.max(
+    LIVE_MIN_INTERVAL_MS - (Date.now() - lastLiveRequestAt),
+    0,
+  );
+  if (lastLiveRequestAt > 0 && waitMs > 0) {
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
+  liveRequests += 1;
+  lastLiveRequestAt = Date.now();
+}
 
 beforeAll(() => {
   if (E2E_SKIP) {
@@ -146,6 +171,10 @@ function spawnServer(): ChildProcess {
       BRAVE_API_KEY: '',
       TAVILY_API_KEY: '',
       EXA_API_KEY: '',
+      YDC_API_KEY: '',
+      SEARCH_PROVIDER_MODE: 'free_only',
+      // One adapter attempt per live request: no automatic network retry.
+      SEARCH_BUDGET_MAX_CALLS: LIVE_NETWORK_E2E ? '1' : '16',
     },
   });
 }
@@ -258,6 +287,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
   }, 20000);
 
   liveNetworkIt('calls free_search and returns results', async () => {
+    await claimLiveRequest();
     proc = spawnServer();
     // free_search searches all 4 free engines (ddg, sogou, bing, baidu) in
     // parallel batches. Baidu has a 10s timeout, so total search time is ~13s
@@ -309,6 +339,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
   }, 60000);
 
   liveNetworkIt('calls free_extract and returns content', async () => {
+    await claimLiveRequest();
     proc = spawnServer();
     reader = createMessageReader(proc, 20000);
     await waitForStartup(500);

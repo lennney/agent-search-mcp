@@ -189,6 +189,8 @@ mcp_servers:
 |---|---|---|
 | `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | 工具注册允许列表和拒绝列表；拒绝优先 |
 | `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | 引擎执行允许列表和拒绝列表；拒绝优先 |
+| `SEARCH_PROVIDER_MODE` | free_first | 默认路由：free_first、quality_escalation、paid_first 或 free_only |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom | 选择首个已配置可选渠道，不代表质量排名 |
 | `SEARCH_BUDGET_MAX_CALLS` | 16 | 适配器尝试次数预算 |
 | `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | 端到端耗时预算 |
 | `SEARCH_BUDGET_MAX_RESULTS` | 100 | 接纳原始结果数量预算 |
@@ -216,6 +218,8 @@ HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 
 | `TAVILY_API_KEY` | — | Tavily API Key |
 | `EXA_API_KEY` | — | Exa API Key |
 | `YDC_API_KEY` | — | You.com API Key |
+| `SEARCH_PROVIDER_MODE` | `free_first` | 默认路由：`free_first`、`quality_escalation`、`paid_first` 或 `free_only` |
+| `PAID_ENGINE_ORDER` | `brave,exa,tavily,youcom` | 选择首个已配置可选渠道，不代表质量排名 |
 | `LOG_LEVEL` | `info` | 日志级别：`info` 或 `debug` |
 | `MODE` | `stdio` | 传输方式：`stdio`、`http` 或 `both` |
 | `PORT` | `3000` | HTTP 服务端口（`MODE=http` 或 `both` 时） |
@@ -229,6 +233,16 @@ HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 
 | `MIN_CONFIDENCE` | `0` | 置信度阈值（0.0–1.0）；历史值 2–3 自动映射为来源数 |
 | `MIN_SOURCE_COUNT` | `1` | 最少独立上游 provider family 数；兼容接受 1–12，当前适配器集合最多 11 |
 | `HTTP_AUTH_TOKEN` | — | HTTP 模式必需的 Bearer Token |
+
+付费渠道使用用户自带 Key。仅配置 Key 不会授权产生付费请求：默认
+`free_first` 仍保持零密钥搜索；`quality_escalation` 只在免费证据不足时升级，
+`paid_first` 先尝试已配置付费渠道再回退免费渠道，`free_only` 则始终禁止付费调用。
+默认路由只选择 `PAID_ENGINE_ORDER` 中第一个已配置渠道；只有显式传入多个
+`engines` 才会请求多个可选渠道。
+
+联网 E2E 必须显式授权且有硬上限。PowerShell 使用
+`$env:LIVE_E2E='true'; npm run test:e2e:live`；runner 最多执行两次网络操作，
+两次之间等待 10 秒，清空可选渠道凭证，并把每次搜索限制为一次适配器尝试。
 | `HTTP_ALLOW_UNAUTHENTICATED` | `false` | 显式关闭 HTTP 认证（仅限受信任本地网络） |
 | `ALLOWED_ORIGINS` | — | 允许访问 HTTP 端点的浏览器 Origin，逗号分隔 |
 | `USE_PROXY` | `false` | 让 DuckDuckGo 和 Sogou 使用项目显式代理 |

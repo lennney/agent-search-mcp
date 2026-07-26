@@ -49,6 +49,10 @@ tags:
   超限返回观察值、上限与 `budget_exhausted`，调用方取消仍直接 reject。
 - 瀑布查询扩展只执行一代，生成查询不得再次扩展。
 - 显式请求缺少凭证的可选 API 时返回 `permission_denied`，不得伪装成零结果。
+- 默认路由由 `SearchProviderMode` 统一解释：`free_first` 不会因为存在 API Key
+  自动产生付费调用；只有显式 `quality_escalation` / `paid_first` 才使用已配置
+  可选渠道，默认只选 `PAID_ENGINE_ORDER` 中首个有凭证的渠道；`free_only`
+  始终禁止付费调用。除此安全上限外，显式 `engines` 仍是权威选择。
 
 ### 注册与评测边界
 
@@ -77,7 +81,7 @@ tags:
 
 ## 当前验证
 
-- 默认离线门禁：68 个测试文件，708 passed，2 个联网 E2E 按设计 skipped。
+- 默认离线门禁：69 个测试文件，720 passed，2 个联网 E2E 按设计 skipped。
 - TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
   quality benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors；既有 warnings 未在本轮扩散。
@@ -85,13 +89,16 @@ tags:
 
 ## 下一步
 
-1. 在合法且已资格确认的备用网络出口，低频捕获非空 Sogou 中文 fixture 和
+1. 从待发布 commit 生成精确 npm tarball，完成 Node 18/20/22 和 Windows/Linux
+   安装、stdio 初始化及进程退出 smoke；不在此步骤运行真实搜索。
+2. 在合法且已资格确认的备用网络出口，显式开启有限联网 E2E，低频捕获非空
+   Sogou 中文 fixture 和
    DDG Lite 机会性 fixture；当前出口不再使用。
-2. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
+3. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
    离线 importer 进入 pooling，不能把配置级探针写成产品对比。
-3. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
+4. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
    `benchmark:calibrate-relevance`；完成前保持内部阈值 `0.35` 不变。
-4. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
+5. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
    搜索质量或 DDG 可用率数字。
 
 ## 文档权威

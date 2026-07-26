@@ -124,6 +124,8 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
       searchBudgetMaxCalls: 16,
       searchBudgetMaxElapsedMs: 30_000,
       searchBudgetMaxResults: 100,
+      searchProviderMode: 'free_first',
+      paidEngineOrder: ['brave', 'exa', 'tavily', 'youcom'],
       evidenceBudgetChars: 1200,
       snippetLength: 200,
       maxFullResults: 3,

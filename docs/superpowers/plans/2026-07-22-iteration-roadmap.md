@@ -1,6 +1,7 @@
-# agent-search-mcp 迭代路线图 — v3.1.0 → v3.2.0
+# agent-search-mcp 迭代路线图 — v3.1.x → 下一可发布版本
 
-> **状态**: v3.1.0 已发布。11 引擎、DDGS 独立化、工具可见性控制、TDQS 修复全部完成。
+> **状态**: v3.1.0 已发布；仓库当前为 12 个搜索适配器（8 个零密钥 + 4 个可选 API）。
+> 当前工作先通过发布候选门禁，不预先承诺版本号或发布日期。
 > **旧 6 阶段路线图** (2026-07-16): ✅ Phase 1-6 全部完成 — 见尾部"旧路线图状态"表。
 > **本篇为新路线图**: 基于竞品调研和 v3.1.0 状态制定的 4 个迭代方向 + 持续分发。
 
@@ -846,5 +847,62 @@ Evidence:
 - [`docs/evidence/2026-07-26-search-pooling-contract.md`](../../evidence/2026-07-26-search-pooling-contract.md)
 - [`docs/research/2026-07-26-search-quality-evaluation.md`](../../research/2026-07-26-search-quality-evaluation.md)
 - [`docs/contracts/slim-guard-evidence-handoff-v1.md`](../../contracts/slim-guard-evidence-handoff-v1.md)
+
+### P1.4 - free core, paid quality escalation, and release readiness
+
+产品默认面继续服务零密钥用户。付费渠道只使用用户自带凭证，并且必须由
+显式策略启用；配置了凭证不等于授权每次请求产生费用。
+
+#### Routing policy
+
+- [x] 在一个小型路由策略 interface 后实现以下模式，避免各工具分别解释环境变量：
+  - `free_first`（默认）：零密钥渠道先行，不自动产生付费调用；
+  - `quality_escalation`：免费证据未通过质量门槛时，才调用已配置的付费渠道；
+  - `paid_first`：已配置的付费渠道先行，失败或证据不足时回退免费渠道；
+  - `free_only`：即使存在 API key 也禁止付费调用。
+- [x] 用户显式传入 `engines` 时保持最高优先级；缺少凭证继续返回
+      `permission_denied`，不得静默替换为另一个付费渠道。
+- [ ] 默认付费顺序先以 `brave,exa,tavily,youcom` 作为待评测候选，不把顺序写死为
+      “质量排名”；只有完成同查询集评测后才能调整默认值。
+- [ ] 在 `meta.execution` 中记录实际阶段、调用渠道、停止原因和预算耗尽原因；
+      不记录 key、查询外的凭证信息或估算账单。
+- [ ] 先深化现有 Brave / Exa / Tavily 的时效、地域、域名和检索深度能力；
+      在现有渠道没有通过质量评测前，不继续堆叠通用搜索适配器。
+- [ ] Perplexity Search 只作为下一付费候选进入离线适配器评测；通过准入门槛且获得
+      “增加引擎”授权后，才进入运行时注册表。
+
+#### Bounded E2E policy
+
+联网测试不是默认测试的一部分，且不得为了获得结果规避上游挑战或增加请求频率。
+
+| 层级 | 网络 | 触发方式 | 范围 |
+|------|------|----------|------|
+| 单元/fixture | 无 | 每次提交 | 所有适配器解析、路由、预算、失败语义 |
+| MCP smoke | 无 | 每次提交 | stdio/HTTP 初始化、工具发现、结构化输出、关闭 |
+| Live qualification | 有 | 手动或受控 runner | 固定少量查询、单次尝试、保守间隔；只判断 runner 是否合格 |
+| Release live smoke | 有 | 发布候选一次 | 1 个英文 + 1 个中文查询；每类只选一个已授权渠道，不做全引擎 fan-out |
+| Quality capture | 有 | 独立批准 | 固定查询集、可恢复运行、外部结果离线导入；不与发布 smoke 合并 |
+
+- [x] 为 live E2E 增加请求上限、最小间隔和 `LIVE_E2E=true` 显式开关；缺少开关时
+      必须 skip，不得自动联网。
+- [ ] 免费 live smoke 不把 DDG/Sogou 同时作为硬发布门槛：挑战响应必须透明记录，
+      但单一公共出口被限流不应诱发自动重试。
+- [ ] 付费 live smoke 只调用显式选择且存在凭证的一个渠道；测试输出只保留状态、
+      延迟、结果数和脱敏错误。
+
+#### Release-candidate gate
+
+- [ ] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
+- [ ] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
+      `fasm.cmd`，Linux runner 验证包安装与进程退出。
+- [ ] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
+- [ ] 从待发布 commit 生成 npm pack，使用该精确 tarball 做安装 smoke；发布时不得重新打包
+      不同内容。
+- [ ] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
+      质量声明，不从当前受限出口反复探测。
+- [ ] README、CHANGELOG、HANDOVER 和生成能力矩阵与运行时一致；发布说明不宣称未经
+      adjudication 的准确率、可用率或付费渠道排名。
+- [ ] 门禁完成后创建检查点 commit。版本 bump、npm publish、GitHub Release 和推广仍需
+      分别获得明确授权。
 
 ---

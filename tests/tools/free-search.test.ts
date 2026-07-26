@@ -21,6 +21,12 @@ const infrastructureState = vi.hoisted(() => ({
     searchCacheDirectory: '',
     searchCacheTtlMs: 60_000,
     searchCacheMaxEntries: 1_000,
+    searchProviderMode: 'free_first' as
+      | 'free_first'
+      | 'quality_escalation'
+      | 'paid_first'
+      | 'free_only',
+    paidEngineOrder: ['brave', 'exa', 'tavily', 'youcom'],
     outputStyle: 'normal' as 'normal' | 'compact',
     minConfidence: 0,
     minSourceCount: 1,
@@ -245,6 +251,8 @@ describe('searchWithFallback — parallel', () => {
     infrastructureState.config.searchBudgetMaxCalls = 16;
     infrastructureState.config.searchBudgetMaxElapsedMs = 30_000;
     infrastructureState.config.searchBudgetMaxResults = 100;
+    infrastructureState.config.searchProviderMode = 'free_first';
+    infrastructureState.config.paidEngineOrder = ['brave', 'exa', 'tavily', 'youcom'];
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
     (searchBing as any).mockResolvedValue(makeResults(3, 'bing'));
@@ -257,6 +265,66 @@ describe('searchWithFallback — parallel', () => {
     expect(res.meta.total).toBeGreaterThan(0);
     expect(searchDuckDuckGo).toHaveBeenCalled();
     expect(searchSogou).toHaveBeenCalled();
+  });
+
+  it('does not spend paid credentials in the default free_first mode', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.paidEngineOrder = ['exa'];
+    (searchExa as any).mockResolvedValue(makeResults(3, 'exa'));
+
+    try {
+      await searchWithFallback({ query: 'free-default', count: 2 });
+      expect(searchDuckDuckGo).toHaveBeenCalled();
+      expect(searchExa).not.toHaveBeenCalled();
+    } finally {
+      if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
+      else process.env.EXA_API_KEY = previousApiKey;
+    }
+  });
+
+  it('uses configured paid providers first only in paid_first mode', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.searchProviderMode = 'paid_first';
+    infrastructureState.config.paidEngineOrder = ['exa'];
+    (searchExa as any).mockResolvedValue(makeResults(3, 'exa'));
+
+    try {
+      const result = await searchWithFallback({ query: 'paid-first', count: 1 });
+      expect(searchExa).toHaveBeenCalled();
+      expect(searchDuckDuckGo).not.toHaveBeenCalled();
+      expect(searchSogou).not.toHaveBeenCalled();
+      expect(result.meta.execution?.phases_completed).toEqual(['optional']);
+      expect(result.meta.execution?.early_stop).toBe(true);
+    } finally {
+      if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
+      else process.env.EXA_API_KEY = previousApiKey;
+    }
+  });
+
+  it('escalates to paid providers after insufficient free results', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.searchProviderMode = 'quality_escalation';
+    infrastructureState.config.paidEngineOrder = ['exa'];
+    (searchDuckDuckGo as any).mockResolvedValue([]);
+    (searchSogou as any).mockResolvedValue([]);
+    (searchExa as any).mockResolvedValue(makeResults(2, 'exa'));
+
+    try {
+      const result = await searchWithFallback({
+        query: 'quality-escalation',
+        count: 2,
+      });
+      expect(searchDuckDuckGo).toHaveBeenCalled();
+      expect(searchSogou).toHaveBeenCalled();
+      expect(searchExa).toHaveBeenCalled();
+      expect(result.meta.execution?.phases_completed).toEqual(['free', 'optional']);
+    } finally {
+      if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
+      else process.env.EXA_API_KEY = previousApiKey;
+    }
   });
 
   it('returns a machine-readable partial response when the call budget is exhausted', async () => {
@@ -649,6 +717,29 @@ describe('searchWithFallback — parallel', () => {
     }
   });
 
+  it('blocks an explicitly requested paid provider in free_only mode', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.searchProviderMode = 'free_only';
+
+    try {
+      const result = await searchWithFallback({
+        query: 'free-only-explicit-paid',
+        count: 1,
+        engines: ['exa'],
+      });
+      expect(searchExa).not.toHaveBeenCalled();
+      expect(result.partialFailures).toContainEqual(expect.objectContaining({
+        engine: 'exa',
+        type: 'permission_denied',
+        message: expect.stringContaining('free_only'),
+      }));
+    } finally {
+      if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
+      else process.env.EXA_API_KEY = previousApiKey;
+    }
+  });
+
   it('does not claim an early stop when the selected free work is already complete', async () => {
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
 
@@ -808,6 +899,8 @@ describe('searchWithFallback — waterfall', () => {
     infrastructureState.config.minSourceCount = 1;
     infrastructureState.config.semanticDedup = false;
     infrastructureState.config.semanticRerank = false;
+    infrastructureState.config.searchProviderMode = 'free_first';
+    infrastructureState.config.paidEngineOrder = ['brave', 'exa', 'tavily', 'youcom'];
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
   });
@@ -816,6 +909,31 @@ describe('searchWithFallback — waterfall', () => {
     const res = await searchWithFallback({ query: 'wf', waterfall: true });
     expect(res).toBeDefined();
     expect(res.query).toBe('wf');
+  });
+
+  it('runs the paid stage before free stages in paid_first waterfall mode', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.searchProviderMode = 'paid_first';
+    infrastructureState.config.paidEngineOrder = ['exa'];
+    (searchExa as any).mockResolvedValue(makeResults(3, 'exa'));
+
+    try {
+      const result = await searchWithFallback({
+        query: 'paid-first-waterfall',
+        count: 1,
+        waterfall: true,
+        expandQueries: false,
+      });
+      expect(searchExa).toHaveBeenCalled();
+      expect(searchDuckDuckGo).not.toHaveBeenCalled();
+      expect(searchSogou).not.toHaveBeenCalled();
+      expect(result.meta.execution?.phases_completed).toEqual(['2']);
+      expect(result.meta.execution?.early_stop).toBe(true);
+    } finally {
+      if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
+      else process.env.EXA_API_KEY = previousApiKey;
+    }
   });
 
   it('searches only explicitly requested engines in waterfall mode', async () => {

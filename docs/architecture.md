@@ -262,6 +262,8 @@ export function register{Name}(server: McpServer): void
 | `TAVILY_API_KEY` | — | Tavily Search API key |
 | `EXA_API_KEY` | — | Exa Search API key |
 | `YDC_API_KEY` | — | You.com Search API key |
+| `SEARCH_PROVIDER_MODE` | free_first | 免费默认、质量升级、付费优先或仅免费 |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom | 按顺序选择首个已配置可选渠道 |
 | `MODE` | stdio | 运行模式: stdio / http / both |
 | `PORT` | 3000 | HTTP 模式端口 |
 
