@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T22:16:56+08:00'
+timestamp: '2026-07-26T22:31:36+08:00'
 description: 当前状态、稳定契约和下一步
 tags:
 - agent-search-mcp
@@ -96,40 +96,37 @@ tags:
   `package.json` 及引擎注册表一致；Registry 的 stdio 安装项不再暴露
   `MODE` / `PORT` 传输覆盖。
 - 外部导入、pooling、runner qualification 的纯函数与失败边界有单元测试。
-- 首次精确 tarball 矩阵发现 Pino 10 的 `thread-stream` 4 声明 Node >=20；
-  发布候选已收敛回 Pino 9.x。必须从修复后的新 commit 重新生成 tarball，
-  `ff5dea0` 对应产物只作否决证据，不得发布。
+- 当前精确候选来自
+  `0c89ec1438f8aecd3b9b21d47fe239964f0ec514`；唯一 tarball 包含 77 个文件，
+  大小 106,095 bytes，SHA-256 为
+  `E5D1D7683A25BA9CAB32038A901F38A60F23127C858DB253432E762DAAC670EC`。
+  Windows 与 WSL2 Ubuntu 的 Node 18.20.8 / 20.20.2 / 22.23.1 安装、
+  doctor、平台 launcher、stdio initialize/tools/list 和退出全部通过，均发现
+  8 个工具及 16 个 Provider；没有调用搜索或提取工具。
+- 六个安装单元均提示 `whatwg-encoding@3.1.1` 已弃用，来源是固定的
+  `cheerio@1.0.0` 传递依赖；没有 `EBADENGINE`。Pino 10 候选 `ff5dea0`
+  与扩展适配器前候选 `3f170675` 只作历史证据，不得发布。
 - `npm audit --omit=dev` 当前报告 MCP SDK 1.29.0 传递依赖
   `@hono/node-server` 的 2 个 moderate `serve-static` 路径穿越公告；本项目不注册
   静态文件服务，当前路径不可达。上游最新 SDK 仍依赖 Hono Node Server 1.x，
   不用强制 major override 掩盖风险，发布说明应保留该审计事实。
-- 先前精确候选 `3f170675837e6d98ed4dc80a9e745277efe30044` 的 tarball SHA-256 为
-  `4F849C96CD405C62E8DF4EA957B40154C1A8E7024778672324CC108E8FC87C56`；
-  产物保留在仓库外的
-  `C:\Users\LIU\.codex\release-artifacts\agent-search-mcp\3f170675837e6d98ed4dc80a9e745277efe30044\agent-search-mcp-3.2.0.tgz`。
-  Windows 与 WSL2 Ubuntu 上的 Node 18.20.8 / 20.20.2 / 22.23.1 安装、
-  doctor、stdio initialize/tools/list 和退出全部通过，均发现 8 个工具；本轮未调用
-  真实搜索，保留 `73c34969` 的一次有限 Live E2E 作为非降级观察。
-- 上述 tarball 早于本轮新增搜索适配器，只能作为历史证据，不得发布。必须在本轮
-  最终检查点后重新生成唯一 tarball，并对同一文件重跑 Windows/Linux
-  Node 18/20/22 门禁；新增适配器不构成重复探测 DDG/Sogou 的理由。
+- 当前候选保留 `73c34969` 的一次有限 DDG Live E2E 作为时间点非降级观察；
+  DDG Web/HTML/Lite、共享 HTTP 与取消实现未改变，限速修改没有改变 DDG 间隔。
+  本轮未重复探测 DDG/Sogou，也不据此声明可用率或准确率。
 
 ## 下一步
 
-1. 完成本轮离线门禁和本地检查点后，从该精确 commit 重新生成唯一 tarball，
-   记录 SHA-256、大小和文件数，并对同一文件重跑 Windows/Linux
-   Node 18/20/22 安装、doctor、stdio 和工具发现。
-2. 新候选通过后，仍需分别取得明确授权，才可 push、npm publish、创建 GitHub
+1. 当前候选通过后，仍需分别取得明确授权，才可 push、npm publish、创建 GitHub
    tag/Release 或更新 MCP Registry。
-3. Agent Search 上线后，再单独部署产品主页、把 GitHub Homepage 改到
+2. Agent Search 上线后，再单独部署产品主页、把 GitHub Homepage 改到
    `/en/agent-search-mcp`，随后刷新 Glama 等目录。
-4. 不为本次发布重复探测 DDG/Sogou；只有后续搜索主链发生变化，或进入单独的
+3. 不为本次发布重复探测 DDG/Sogou；只有后续搜索主链发生变化，或进入单独的
    低频质量采样任务时，才重新取得联网授权。
-5. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
+4. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
    离线 importer 进入 pooling，不能把配置级探针写成产品对比。
-6. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
+5. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
    `benchmark:calibrate-relevance`；完成前保持内部阈值 `0.35` 不变。
-7. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
+6. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
    搜索质量或 DDG 可用率数字。
 
 ## 文档权威
@@ -140,4 +137,5 @@ tags:
 - 当前计划：`docs/superpowers/plans/2026-07-22-iteration-roadmap.md`。
 - 评测方法：`benchmarks/README.md`。
 - 历史变更：Git / `CHANGELOG.md`；plan/review/evidence 只作追溯，不复制到本文件。
-- 发布候选证据：`docs/evidence/2026-07-26-release-candidate-smoke.md`。
+- 当前发布候选证据：
+  `docs/evidence/2026-07-26-release-candidate-0c89ec1.md`。

@@ -899,15 +899,16 @@ Evidence:
 
 #### Release-candidate gate
 
-当前离线门禁已经通过。`c0baf6f` 和 `1fab86a` 晚于历史 tarball
-`3f170675`；历史产物只保留作证据，不能发布。
+当前候选来自 `0c89ec1`。唯一 tarball 的 SHA-256 为
+`E5D1D7683A25BA9CAB32038A901F38A60F23127C858DB253432E762DAAC670EC`；
+历史产物只保留作证据，不能发布。
 
 - [x] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
-- [ ] 从当前最终提交生成唯一 tarball；记录 commit、SHA-256、文件数和大小。
-- [ ] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
+- [x] 从当前最终提交生成唯一 tarball；记录 commit、SHA-256、文件数和大小。
+- [x] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
       `fasm.cmd`，Linux runner 验证包安装与进程退出。
 - [x] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
-- [ ] 使用同一个当前 tarball 完成全部安装 smoke；发布时不得重新打包不同内容。
+- [x] 使用同一个当前 tarball 完成全部安装 smoke；发布时不得重新打包不同内容。
 - [x] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
       质量声明，不从当前受限出口反复探测。
       本次保留 `73c34969` 的一次有限证据；后续修改没有改变 DDG/Sogou 请求链，
