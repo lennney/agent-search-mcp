@@ -1,7 +1,11 @@
-# Agent Search MCP
+# Agent Search MCP: Free Web Search for AI Agents
 
-> **Free, token-efficient web search for AI agents.**
-> Start with eight zero-key sources. Spend less context through waterfall stopping and compact output. Route Chinese queries natively and escalate to optional commercial APIs only when needed. `npx agent-search-mcp` is all you need.
+**A lightweight, free-first MCP web search router with compact multi-source evidence.**
+
+Agent Search MCP is an open-source, self-hosted MCP server and CLI. It starts
+without an API key, searches English and Chinese sources, keeps optional paid
+providers behind an explicit policy, and caps provider calls, search time,
+result count, and evidence size.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -10,162 +14,104 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
-[中文文档](README_zh.md) · [Benchmarks](./benchmarks/) · [CHANGELOG](./CHANGELOG.md)
-
-If Agent Search MCP earns a place in your stack, [star the repository](https://github.com/lennney/agent-search-mcp) so more agents can find a genuinely zero-key search path.
+[中文文档](README_zh.md) · [Benchmarks](./benchmarks/) · [Architecture](./docs/architecture.md) · [CHANGELOG](./CHANGELOG.md)
 
 ---
+
+## Install
+
+```bash
+npx -y agent-search-mcp
+```
+
+Requires Node.js >= 18.17. The default runtime does not require a browser,
+database, Python, or a search API account.
+
+### Connect an MCP client
+
+Use this stdio configuration in MCP clients that accept `mcpServers` JSON,
+including Claude Desktop, Cursor, VS Code, and Windsurf:
+
+```json
+{
+  "mcpServers": {
+    "agent-search": {
+      "command": "npx",
+      "args": ["-y", "agent-search-mcp"]
+    }
+  }
+}
+```
+
+Claude Code and Codex can register the same `npx -y agent-search-mcp` stdio
+command through their MCP settings.
+
+After a global install, check the local runtime without making a search request:
+
+```bash
+npm install -g agent-search-mcp
+fasm doctor
+```
 
 ## Why Agent Search MCP
 
-The immediate value is simple: **search without paying for an API, and return fewer tokens without blindly throwing away evidence**. The mechanism behind that promise is a search policy for **where to search, when to stop, how much context to spend, and what evidence to trust**. Agent Search MCP is that control layer: a local-first search router, not another single-backend search API.
+| Need | Product behavior |
+|---|---|
+| Free web search | Eight sources work without an API key or account |
+| Provider cost control | Paid providers run only under an explicit routing policy |
+| Token cost control | Compact output and one evidence budget bound response size |
+| Multi-source evidence | Results retain provenance, relevance, provider-family count, and partial failures |
+| Chinese web search | Sogou and Baidu handle Chinese queries without a translation layer |
+| Lightweight self-hosting | Pure Node.js runtime with stdio, Streamable HTTP, and CLI access |
 
-The route is deliberate: **zero-key start → Chinese-native routing → inspectable multi-source evidence → token-aware progressive search → optional commercial escalation**. The 12 adapters serve this route; adapter count is not the product story by itself.
+The default `free_first` policy never spends a configured API credential.
+`free_only` blocks paid providers. `quality_escalation` can call one configured
+paid provider after free evidence misses the quality gate, while `paid_first`
+tries that provider before the free fallback.
 
-| | Agent Search MCP | [MCP Web Hound](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11) | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **Start without a user API key** | **Yes — self-run adapters** | Yes — four scraped adapters | Limited — keyless Search/Extract | Limited — hosted free MCP | No |
-| **Zero-key path** | **Local policy router** | Local scraper router | Tavily service | Exa hosted service | — |
-| **Search backends** | **8 zero-key + 4 optional APIs** | 4 zero-key + 4 optional APIs | Tavily API | Exa index | Brave index |
-| **Cross-engine aggregation** | **Provider-family-aware** | URL merge; two parallel slots by default | Single upstream | Single upstream | Single upstream |
-| **Dedicated Chinese engines** | **Sogou + Baidu** | No | No | No | No |
-| **Persistent semantic query cache** | No — short-lived exact cache; optional result rerank | Yes — SQLite + sqlite-vec | Service-managed | Service-managed | Service-managed |
-| **Search failure evidence** | **Per-engine `partialFailures`** | Whole-tool error only when every provider fails | Single-upstream error | Single-upstream error | Single-upstream error |
-| **Local transport** | **stdio + Streamable HTTP** | stdio | stdio | stdio | stdio |
-| **Best fit** | Zero-key multilingual evidence with bounded context | Local semantic cache and simple diagnostics | Hosted search/extract/map/crawl | Semantic, code, and company research | Independent index + vertical search |
+Request budgets cap adapter attempts, elapsed time, and admitted results.
+The evidence budget caps query-relevant passages across the complete response.
+Compact mode keeps full detail for the first results and reduces later entries
+to source-preserving references.
 
-Comparison last checked 2026-07-26 against the linked official repositories and fixed source snapshots. MCP Web Hound has a real persistent semantic cache, NLI reranking, and a concise status/configuration experience; its GitHub/GitLab tools are separate direct-API tools rather than part of the web-search pipeline. Tavily's current local MCP exposes limited keyless Search/Extract; Exa's hosted MCP has a limited free no-key path while its local npm server uses `EXA_API_KEY`. Pricing, limits, stars, and downloads change quickly, so this table compares implementation boundaries instead. See the [source-level deep dive](./docs/research/2026-07-26-agent-search-product-architecture.md#mcp-web-hound).
+### Measured token reduction
 
-### How the search policy works
+The checked-in bilingual fixture measures formatting with a locked tokenizer:
+
+| Output | Average tokens per query | Savings vs normal |
+|---|---:|---:|
+| Normal | 2311.0 | |
+| Compact | 1655.8 | 28.4% |
+| Compact+ | 1607.5 | 30.4% |
+
+This fixture verifies output formatting and evidence-packet behavior. It does
+not measure live engine availability or search quality. See the
+[benchmark method and limitations](./benchmarks/#reproducible-fixture-replay).
+
+## How the search router works
 
 ```mermaid
 flowchart LR
-    A["Agent"] --> T["MCP search tools"]
-    T --> P["Policy router"]
-    P --> C["Cache, cancellation, health, rate limits"]
-    P --> Z["Zero-key stages<br/>Chinese-native + multilingual"]
-    P --> O["Optional commercial APIs"]
-    Z --> E["Evidence pipeline<br/>dedup, relevance, provider families"]
+    A["AI agent"] --> M["MCP search tools"]
+    M --> P["Provider and request policy"]
+    P --> F["Zero-key sources"]
+    P --> O["Optional paid provider"]
+    F --> E["Deduplicate, rank, and preserve failures"]
     O --> E
-    E --> B["Query-aware passages<br/>shared evidence budget"]
-    B --> R["Compact content + structuredContent"]
+    E --> B["Evidence and token budget"]
+    B --> R["Compact multi-source result"]
 ```
 
-The router spends providers and context progressively. It stops only when the
-observable evidence gate passes, and it keeps failure, provenance, and budget
-metadata available to the calling Agent. The full module map is in
-[System Architecture](./docs/architecture.md).
+The router evaluates each search batch against separate result, relevance,
+confidence, and provider-family gates. It stops after the evidence passes those
+gates and exposes the decision in `meta.execution`. Provider failures stay
+visible in `partialFailures`, so an empty result cannot hide an upstream error.
 
-### Zero-key by default
-
-Eight adapters need no credentials — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, and Mojeek. Brave, Tavily, Exa, and You.com remain optional when you want their APIs.
-
-DuckDuckGo uses its page-issued Web preload before the legacy HTML/Lite
-representations. Upstream CAPTCHA or anti-spider responses are returned as
-`bot_challenge` failures and put that provider into a bounded cooldown instead
-of being misreported as a missing API key or silently retried.
-
-### Progressive multi-source search
-
-Parallel and waterfall orchestration, URL/title deduplication, ranking, and
-graceful fallback are built in. Later batches are skipped only when result
-count, per-result relevance, average source confidence, and independent
-provider-family coverage pass separately; `meta.execution` reports the observed
-gate and `stop_reason`. Compact mode supports progressive disclosure so agents
-can inspect the top results first and call `free_extract` only when deeper
-content is needed. Both routing modes use the same evidence-evaluation module,
-and domain filters match only the requested host or its real subdomains before
-deduplication. When semantic dedup or rerank is enabled, every routing
-checkpoint evaluates the transformed display basket before skipping later work;
-`quality_gate_stage` makes that boundary inspectable.
-
-### Inspectable evidence packets
-
-Full results select a deterministic query-relevant passage and keep provenance,
-relevance, independent provider-family count, upstream publication time, and extraction
-metadata as separate fields. One response-level character budget bounds passage
-content, while compact placeholders retain their source list and engine
-failures remain visible in `partialFailures`.
-`free_search` and `free_search_advanced` publish this packet through MCP
-`structuredContent` with one shared `outputSchema`; their text channel is a
-compact view of the same packet, not a second JSON contract.
-
-### Token control is a product feature
-
-`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS`, `MIN_CONFIDENCE`, and `MIN_SOURCE_COUNT` let operators trade context size against detail. A historical 30-query live run measured **28.7% fewer tokens in Compact mode**, **35.5% in Compact+**, and **75% fewer engine calls than naive eight-engine fan-out**. These are scoped measurements for that query set and environment, not universal guarantees. The frozen-fixture replay now includes evidence metadata and reproducibly measures 28.4% / 30.4% formatting savings.
-
-### Native Chinese search
-
-Sogou + Baidu search the Chinese web directly — WeChat content, Baidu Baike, Chinese forums. Not a translation layer, not an afterthought.
-
----
-
-## Quick Start
-
-```bash
-# One command — no install, no API keys
-npx agent-search-mcp
-```
-
-Requires Node.js >= 18.17.
-
-### Client Configuration
-
-<details>
-<summary><b>Claude Code / Claude Desktop</b></summary>
-
-```json
-{
-  "mcpServers": {
-    "agent-search": {
-      "command": "npx",
-      "args": ["-y", "agent-search-mcp"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Cursor / VS Code / Codex</b></summary>
-
-```json
-{
-  "mcpServers": {
-    "agent-search": {
-      "command": "npx",
-      "args": ["-y", "agent-search-mcp"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Windsurf</b></summary>
-
-```json
-{
-  "mcpServers": {
-    "agent-search": {
-      "command": "npx",
-      "args": ["-y", "agent-search-mcp"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Hermes</b></summary>
-
-```yaml
-mcp_servers:
-  agent-search:
-    command: npx
-    args: ["-y", "agent-search-mcp"]
-```
-</details>
+The [source-level product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md)
+explains where Agent Search MCP differs from Tavily, Exa, Brave Search,
+Firecrawl, and MCP Web Hound. It compares routing, evidence, local operation,
+paid-provider boundaries, and Chinese search without volatile pricing or
+popularity claims.
 
 ---
 
@@ -216,246 +162,85 @@ The runtime registers 12 adapters: 8 zero-key adapters and 4 optional API adapte
 | `EVIDENCE_BUDGET_CHARS` | 1200 | Evidence-character budget |
 <!-- END GENERATED CAPABILITY MATRIX -->
 
-All tools are read-only and idempotent with MCP 2025 annotations.
-`free_search_advanced.time_range` remains in the compatibility schema but is
-deprecated: providing it returns `UNSUPPORTED_FILTER` before any engine call,
-because general-search adapters do not share one enforceable recency contract.
+All tools are read-only and idempotent. Search cancellation reaches rate-limit
+waits, retries, provider requests, and optional enrichment. Enrichment can
+improve a snippet but cannot increase source confidence or independent source
+count.
 
-`search_with_synthesis.min_confidence` uses the same normalized `0-1`
-source-reliability scale as the other search tools. Use `min_source_count` for
-independent upstream-provider corroboration. Adapters from one provider family
-do not increase this count. Legacy `min_confidence=2/3` inputs remain
-accepted and are mapped to source count.
-
-Search execution keeps fallback resilient without hiding operational evidence:
-thrown adapter failures are returned in `partialFailures`, while successful and
-skipped engines continue normally. MCP request cancellation is propagated into
-rate-limit waits, retries, engine HTTP calls, and optional enrichment.
-
-Enrichment only replaces a weak snippet with extracted page content. It does
-not increase `confidence` or `source_count`, because extraction is not an
-independent source. Parallel and waterfall modes use the same cache contract,
-including cache reads in waterfall mode.
-
-Operational visibility does not consume another default tool slot:
-`search://health` reports provider/circuit state,
-`mcp://health/metrics` reports latency and cache metrics, and
-`search://capabilities` describes the active surface. HTTP deployments also
-expose an unauthenticated probe-only `GET /health`; it never returns API keys or
-search results.
+`free_search_advanced.time_range` remains in the compatibility schema. The
+server returns `UNSUPPORTED_FILTER` before searching because the general web
+providers do not share one enforceable recency contract.
 
 ---
 
 ## Configuration
 
-### Environment Variables
+The generated capability table above lists the default request budgets. These
+settings cover the common deployment choices:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BRAVE_API_KEY` | — | Brave Search API key |
-| `TAVILY_API_KEY` | — | Tavily API key |
-| `EXA_API_KEY` | — | Exa API key |
-| `YDC_API_KEY` | — | You.com API key |
-| `SEARCH_PROVIDER_MODE` | `free_first` | Default routing: `free_first`, `quality_escalation`, `paid_first`, or `free_only` |
-| `PAID_ENGINE_ORDER` | `brave,exa,tavily,youcom` | Selects the first configured optional provider; not a quality ranking |
-| `LOG_LEVEL` | `info` | `info` or `debug` |
-| `MODE` | `stdio` | Transport: `stdio`, `http`, or `both` |
-| `PORT` | `3000` | HTTP server port (when `MODE=http` or `both`) |
-| `OUTPUT_STYLE` | `normal` | `compact` for token-optimized output |
-| `SNIPPET_LENGTH` | `200` | Max snippet characters (60–500) |
-| `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
-| `EVIDENCE_BUDGET_CHARS` | `1200` | Shared passage budget per response (200-20000 characters) |
-| `SEARCH_BUDGET_MAX_CALLS` | `16` | Maximum actual adapter attempts, including retries (1-100) |
-| `SEARCH_BUDGET_MAX_ELAPSED_MS` | `30000` | End-to-end request deadline in milliseconds (1000-120000) |
-| `SEARCH_BUDGET_MAX_RESULTS` | `100` | Maximum raw results admitted before scoring (1-500) |
-| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
-| `MIN_SOURCE_COUNT` | `1` | Minimum upstream provider families; accepts 1–12 for compatibility, while the current adapter set exposes at most 11 |
-| `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
-| `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
-| `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
+| Goal | Environment variables |
+|---|---|
+| Add an optional provider | `BRAVE_API_KEY`, `TAVILY_API_KEY`, `EXA_API_KEY`, or `YDC_API_KEY` |
+| Choose spend policy | `SEARCH_PROVIDER_MODE`, `PAID_ENGINE_ORDER` |
+| Reduce response tokens | `OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS` |
+| Restrict tools or engines | `ENABLED_TOOLS`, `DISABLED_TOOLS`, `ALLOWED_ENGINES`, `DENIED_ENGINES` |
+| Use an explicit proxy | `DUCKDUCKGO_PROXY_URL`, `SOGOU_PROXY_URL`, or `USE_PROXY=true` with `PROXY_URL` |
+| Persist the exact-result cache | `SEARCH_CACHE_DIRECTORY`, `SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES` |
+| Enable optional semantic processing | `SEMANTIC_DEDUP`, `SEMANTIC_RERANK`, `DEDUP_THRESHOLD`, `RERANK_TOP_K` |
 
-API keys are bring-your-own. Merely configuring one does not authorize paid
-requests: the default `free_first` mode stays zero-key. Use
-`quality_escalation` to call configured optional providers only after free
-evidence is insufficient, or `paid_first` to try them before the free fallback.
-`free_only` forbids optional-provider calls even when credentials are present.
-Default routing selects only the first credentialed entry in
-`PAID_ENGINE_ORDER`; multiple optional providers require an explicit `engines`
-request.
-
-Live E2E is opt-in and bounded. In PowerShell, run
-`$env:LIVE_E2E='true'; npm run test:e2e:live`. The runner permits at most two
-network operations, waits 10 seconds between them, clears optional-provider
-credentials, and limits each search request to one adapter attempt.
-| `USE_PROXY` | `false` | Route DuckDuckGo and Sogou through the explicit project proxy |
-| `PROXY_URL` | `http://127.0.0.1:7890` | Shared HTTP(S) proxy when `USE_PROXY=true` |
-| `DUCKDUCKGO_PROXY_URL` | — | DuckDuckGo-only proxy override; enables proxying for DDG |
-| `SOGOU_PROXY_URL` | — | Sogou-only proxy override; enables proxying for Sogou |
-| `PROVIDER_COOLDOWN_STORE_PATH` | — | Optional JSON store for cooldown recovery across local process restarts |
-| `SEARCH_CACHE_DIRECTORY` | — | Opt in to restart-safe exact-result caching in this local directory |
-| `SEARCH_CACHE_TTL_MS` | `60000` | Exact-result freshness window (1000-86400000 ms) |
-| `SEARCH_CACHE_MAX_ENTRIES` | `1000` | Maximum memory or local-file exact-cache entries (1-10000) |
-| `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
-| `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
-| `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |
-| `RERANK_TOP_K` | `5` | Results to keep after semantic rerank |
-
-**Zero config works** — the 8 free engines need no API keys.
-
-The exact-result cache remains memory-only unless `SEARCH_CACHE_DIRECTORY` is
-set. Opting in stores complete search responses locally; cache keys bind the
-request policy and freshness contract, while stale, malformed, empty, and
-budget-exhausted responses are never reused.
-
-DuckDuckGo is implemented entirely in Node.js (Web preload → HTML → Lite);
-Python and `ddgs` are not used. Proxy URLs may contain standard URL credentials,
-but credentials are stripped from dispatcher errors. System
-`HTTP_PROXY`/`HTTPS_PROXY` variables are intentionally ignored so MCP server
-traffic cannot be rerouted implicitly. The CLI shortcut
-`fasm search "query" --proxy http://127.0.0.1:7890` sets the explicit project
-proxy for DDG and Sogou.
-
-### Tool Visibility
-
-```bash
-# Only specific tools
-ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
-
-# Disable specific tools
-DISABLED_TOOLS=free_extract,fetch_github_readme
-```
-
-`DISABLED_TOOLS` takes priority over `ENABLED_TOOLS`.
+Adding an API key does not authorize paid traffic. The routing policy controls
+provider use. The default exact-result cache stays in memory; setting
+`SEARCH_CACHE_DIRECTORY` opts into local persistence. Semantic processing is
+the only optional feature that uses Python and Model2Vec.
 
 ### HTTP deployment
 
-HTTP mode is secure-by-default: `/mcp` requires `Authorization: Bearer <token>`, and browser requests with an `Origin` header must match `ALLOWED_ORIGINS`. Keep `/health` available for probes, terminate TLS at a trusted reverse proxy, and rotate the token as a secret. See the [HTTP deployment guide](./docs/http-deployment.md).
-
-### MCP 2026-07-28 readiness
-
-The production entrypoint currently speaks MCP `2025-11-25`. `/health` reports
-that stable version separately from the experimental `2026-07-28` target, and
-HTTP CORS allows the new routing and W3C trace headers. Full 2026 wire support
-requires the TypeScript SDK v2 and Node.js 20+. An isolated Node.js 20+
-prototype now pins SDK v2 beta.5, explicitly negotiates `2026-07-28`, and
-serves both HTTP and stdio without changing the production dependency tree:
-
-```bash
-npm --prefix experiments/mcp-2026 install
-npm run experimental:2026:test
-HTTP_AUTH_TOKEN=replace-me npm run experimental:2026:http
-```
-
-It remains opt-in until the official conformance suite publishes and passes
-the 2026 scenarios. SDK v2 `auto` fallback to the stable server is covered over
-both real HTTP and stdio entrypoints, with an experimental Node 20/22 CI matrix
-configured to keep that path covered. Its HTTP boundary also rejects duplicate
-standard and `Mcp-Param-*` routing fields before Node combines them, while the
-pinned SDK verifies parameter-header canonicalization against tool input
-schemas. The P2 behavior matrix also verifies CORS/Origin and Bearer policy,
-W3C trace propagation to the search boundary, real-socket cancellation,
-tool-list cache hints, and automatic cache refresh after `tools/list_changed`.
-Its redacted raw HTTP capture records the local Node runtime and exact SDK
-pins without presenting configured CI targets as executed evidence. See the
-[2026 readiness plan](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md).
-
-### Engine Filtering
-
-```bash
-ALLOWED_ENGINES=sogou,baidu    # Chinese-only
-DENIED_ENGINES=yandex,mojeek   # Exclude specific engines
-```
+HTTP mode requires `HTTP_AUTH_TOKEN` unless you set
+`HTTP_ALLOW_UNAUTHENTICATED=true`. Browser requests with an `Origin` header must
+match `ALLOWED_ORIGINS`. See the [HTTP deployment guide](./docs/http-deployment.md)
+for TLS termination, token rotation, and reverse-proxy examples.
 
 ---
 
 ## CLI
 
-`agent-search-mcp` ships with a standalone CLI (`fasm`).
-The packaged entrypoint resolves npm's platform shim/symlink target, including
-the Windows `fasm.cmd` shim.
+The package includes the `fasm` CLI:
 
 ```bash
-# Search
 fasm search "TypeScript MCP server"
 fasm search "query" --count 5 --engines bing,baidu,youcom --json
-
-# Extract
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
-
-# Diagnose local search configuration without network probes or writes
 fasm doctor
 fasm doctor --json
-
-# HTTP server (Bearer auth is required for MCP HTTP mode)
 HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
 
-`doctor-report-v1` reports local configuration readiness as
-`present`/`missing`/`invalid`, including provenance such as the relevant
-environment-variable name. It never prints credential or proxy values.
+`fasm doctor` reads local configuration without network probes and never prints
+credential or proxy values.
 
 ---
 
-## Benchmark
+## Documentation and evidence
 
-The benchmark has three evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. The frozen formatting replay verifies the evidence-packet summary (currently 28.4% / 30.4%). A new review-gated pipeline preserves raw response hashes and engine outcomes, then reports graded retrieval, citation support, latency, and failure transparency separately. Because the search tool does not synthesize an answer, answer correctness and tokens per correct answer remain explicitly unmeasured. Bootstrap labels are ineligible for public quality claims; the checked-in real pilot has not yet completed AI review. None of these tracks is a universal production guarantee.
+| Document | Contents |
+|---|---|
+| [System architecture](./docs/architecture.md) | Routing, evidence, provider families, and configuration |
+| [Product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md) | Source-level review of Agent search products |
+| [Benchmarks](./benchmarks/) | Token fixture, live-run scope, and quality evaluation method |
+| [v3.2.0 release notes](./docs/releases/v3.2.0.md) | Provider policy, budgets, and migration notes |
+| [Release candidate evidence](./docs/evidence/2026-07-26-release-candidate-smoke.md) | Packed-install and Node 18/20/22 smoke results |
+| [MCP 2026 readiness](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md) | Isolated protocol experiment and remaining gates |
 
-A second real-network qualification capture now returns 10 Wikipedia
-candidates for each of two bilingual questions and generates two blinded
-reviewer packets. It validates the reviewer workflow only: it is single-engine,
-not yet a multi-system pool, and contains no completed judgments.
+## Companion: Slim Guard
 
-The benchmark toolchain can now combine two or more traced system captures
-into a deterministic URL pool, create provenance-blinded reviewer packets, and
-validate completed AI or human review/adjudication artifacts. The default
-automated path uses two blinded pointwise judges from different model families
-and a third family for disagreement adjudication. This is infrastructure,
-not a quality result: no public comparison is eligible until a real
-multi-system capture has completed review and adjudication.
-
-Once that gate is satisfied, the same toolchain reconstructs each system's
-protected ranking and emits per-system pooled-qrels metrics. Reported Recall is
-candidate-pool-relative; answer accuracy is not inferred from result relevance.
-Reviewer raw agreement and pairwise kappa remain attached to the comparison so
-adjudication does not erase evidence about labeling difficulty.
-The protected pool also retains internal routing signals so a completed
-adjudication can generate a deterministic relevance-threshold curve; small
-calibration runs cannot silently change the production floor or become public
-quality claims.
-Small reviewed pilots remain ineligible for headline comparisons:
-overall reports require 30 adjudicated rows with 30 distinct queries; slices
-require 10 rows with 10 distinct queries. Eligible multi-system reports also
-include deterministic paired-bootstrap 95% confidence intervals for every
-system pair instead of presenting point estimates alone. AI-produced reports
-are permanently labeled `ai-reviewed` with claim scope `ai-judged`.
-
-→ [Methodology, queries, limitations, and reports](./benchmarks/)
-
----
-
-## Companion Tools
-
-**🛡️ [mcp-slim-guard](https://github.com/lennney/mcp-slim-guard)** — Add security + compression to your MCP stack
+Agent Search controls retrieval work and compresses search evidence.
+[mcp-slim-guard](https://github.com/lennney/mcp-slim-guard) sits between an
+agent and MCP servers to handle tool-schema compression and security policy.
 
 ```bash
 npm install -g mcp-slim-guard
-mcp-slim-guard init
-mcp-slim-guard start
 ```
-
-```
-AI Agent → mcp-slim-guard (security + compression) → agent-search-mcp
-```
-
-| Feature | Benefit |
-|---------|---------|
-| **Schema compression** | Reclaim ~83% of context window — 1,736 → 300 tokens |
-| **Tool allow/deny** | Glob-based whitelist/blacklist for tool access control |
-| **SSRF protection** | IP blacklist + domain whitelist blocks internal network requests |
-| **Injection detection** | 17 heuristic patterns prevent prompt/shell/SQL injection |
-| **Rate limiting** | Token bucket per-tool, default 60 req/min |
-| **Audit logging** | Structured JSON audit log with rotation + gzip |
 
 ---
 
@@ -471,9 +256,8 @@ npm run dev        # stdio mode
 npm run dev:http   # HTTP mode (port 3000)
 ```
 
-The build helper is cross-platform; CI checks Node.js 18/20/22 on Linux and performs a Windows build smoke test.
-The private `experiments/mcp-2026` package requires Node.js 20+ and has its own
-lockfile so SDK v2 beta dependencies cannot change the stable package.
+The stable package supports Node.js 18, 20, and 22. The isolated MCP 2026
+experiment requires Node.js 20 or newer.
 
 ---
 
@@ -482,3 +266,6 @@ lockfile so SDK v2 beta dependencies cannot change the stable package.
 [Apache 2.0](LICENSE)
 
 Based on [open-websearch](https://github.com/Aas-ee/open-websearch) by Aas-ee.
+
+If Agent Search MCP helps your agent, [star the repository](https://github.com/lennney/agent-search-mcp)
+so other developers can find the project.
