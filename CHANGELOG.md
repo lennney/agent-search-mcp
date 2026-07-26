@@ -21,6 +21,12 @@ tags:
 - Bounded live E2E behind explicit `LIVE_E2E=true` authorization, a maximum of
   two network operations, a 10-second minimum interval, cleared optional
   credentials, and a one-attempt search budget.
+
+### Fixes
+
+- Restored the declared Node 18.17 runtime contract by keeping Pino on its 9.x
+  line. Pino 10 pulled `thread-stream` 4, whose package metadata requires
+  Node 20 even though a basic Node 18 runtime smoke could still start.
 - Added an offline, system-neutral comparison capture importer. External search
   exports are bounded, license-disclosed, query-set-bound, hashed, and
   normalized into the existing traced pooling contract without adding a

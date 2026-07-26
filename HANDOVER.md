@@ -86,6 +86,13 @@ tags:
   quality benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors；既有 warnings 未在本轮扩散。
 - 外部导入、pooling、runner qualification 的纯函数与失败边界有单元测试。
+- 首次精确 tarball 矩阵发现 Pino 10 的 `thread-stream` 4 声明 Node >=20；
+  发布候选已收敛回 Pino 9.x。必须从修复后的新 commit 重新生成 tarball，
+  `ff5dea0` 对应产物只作否决证据，不得发布。
+- `npm audit --omit=dev` 当前报告 MCP SDK 1.29.0 传递依赖
+  `@hono/node-server` 的 2 个 moderate `serve-static` 路径穿越公告；本项目不注册
+  静态文件服务，当前路径不可达。上游最新 SDK 仍依赖 Hono Node Server 1.x，
+  不用强制 major override 掩盖风险，发布说明应保留该审计事实。
 
 ## 下一步
 
