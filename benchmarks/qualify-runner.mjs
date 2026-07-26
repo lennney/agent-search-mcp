@@ -11,6 +11,7 @@ import {
   evaluateRunnerQualification,
   observeSearchFailure,
   observeSearchResponse,
+  runnerQualificationExitCode,
 } from './lib/runner-qualification.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -111,6 +112,7 @@ try {
     `Runner qualification ${report.readiness.status}: `
     + `${report.readiness.qualified_queries}/${report.readiness.observed_queries} queries`,
   );
+  process.exitCode = runnerQualificationExitCode(report);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;

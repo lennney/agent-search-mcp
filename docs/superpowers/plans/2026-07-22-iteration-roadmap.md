@@ -821,6 +821,9 @@ Research:
       do not present this as a parser or API-key failure.
 - [x] Add a privacy-preserving runner qualification gate. The 2026-07-26 local
       DDG/Wikipedia adapter probe is ready on 10/10 bilingual queries.
+      The gate now exits non-zero for `insufficient-runner`; a later same-day
+      retest qualified 8/10 after DDG HTTP 202 challenge/cooldown, so no quality
+      capture was produced from that run.
 - [x] Add an explicit Node 18.17-compatible Undici proxy transport for DDG and
       Sogou after dependency review. Keep it request-local, redact credentials,
       preserve cancellation, and do not consume ambient proxy variables.

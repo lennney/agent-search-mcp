@@ -188,6 +188,13 @@ export function evaluateRunnerQualification(input, options = {}) {
   };
 }
 
+export function runnerQualificationExitCode(report) {
+  const status = report?.readiness?.status;
+  if (status === 'ready') return 0;
+  if (status === 'insufficient-runner') return 2;
+  qualificationError('report readiness status is invalid');
+}
+
 function summarizeObservation(observation) {
   const {
     result_ids: resultIds,

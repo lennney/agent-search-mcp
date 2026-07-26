@@ -81,6 +81,9 @@ queries. The report stores query IDs, hashes, provider families, failure types,
 counts, and durations; it omits query text, titles, URLs, snippets, and bodies.
 This gate proves only that a runner can create a non-empty, diverse pool. It is
 not a product comparison, a relevance judgment, or a public quality claim.
+The command exits with code `2` when the report is `insufficient-runner`, while
+still writing the privacy-preserving diagnostic report. Capture/review
+automation must stop on that non-zero exit.
 
 ## Review-gated search quality
 

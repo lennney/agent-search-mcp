@@ -149,3 +149,15 @@ tags:
 - The scoped P1.2 architecture-informed queue is complete. Remaining P1 work
   depends on live Sogou/pooled quality evidence rather than more local surface
   expansion.
+
+## 2026-07-26 runner-qualification fail-closed checkpoint
+
+- A repeat 10-query DDG/Wikipedia qualification reached only 8/10 after DDG
+  returned HTTP 202 and entered challenge cooldown. No quality fixture was
+  captured from that insufficient runner.
+- `benchmark:qualify-runner` now keeps writing its redacted diagnostic report
+  but exits with code 2 for `insufficient-runner`, so automation cannot silently
+  continue into capture/review.
+- Remaining P1 evidence work requires a legitimate qualified network exit; do
+  not bypass provider challenges or reinterpret qualification as product
+  comparison.

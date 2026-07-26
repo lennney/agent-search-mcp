@@ -126,6 +126,8 @@ tags:
 
 ### Fixes
 
+- Runner qualification automation now fails closed with exit code 2 when the
+  network exit is insufficient, while retaining the redacted diagnostic report.
 - Fixed packaged `fasm` startup on Windows by resolving the executable entry
   against the CLI module, corrected compiled version detection so update checks
   use the root package version, and bounded waterfall query expansion to one

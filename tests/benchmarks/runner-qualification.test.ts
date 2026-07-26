@@ -4,6 +4,7 @@ import {
   evaluateRunnerQualification,
   observeSearchFailure,
   observeSearchResponse,
+  runnerQualificationExitCode,
 } from '../../benchmarks/lib/runner-qualification.mjs';
 
 function response(
@@ -97,6 +98,7 @@ describe('benchmark runner qualification', () => {
       candidate_set_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       ranking_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
+    expect(runnerQualificationExitCode(report)).toBe(0);
   });
 
   it('rejects identical single-family results as a fake multi-system pool', () => {
@@ -122,6 +124,13 @@ describe('benchmark runner qualification', () => {
       ],
       distinct_rankings: 1,
     }));
+    expect(runnerQualificationExitCode(report)).toBe(2);
+  });
+
+  it('rejects an unknown readiness state instead of failing open', () => {
+    expect(() => runnerQualificationExitCode({
+      readiness: { status: 'unknown' },
+    })).toThrow('report readiness status is invalid');
   });
 
   it('retains only the error class for failed probes', () => {
