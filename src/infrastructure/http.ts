@@ -1,5 +1,5 @@
 import * as http from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, webcrypto } from 'node:crypto';
 import { once } from 'node:events';
 import { Readable } from 'node:stream';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
@@ -129,6 +129,7 @@ export function createHttpServer(
     }
 
     if (createMcpServer && isMcpRoute) {
+      ensureWebCrypto();
       const mcpServer = createMcpServer();
       const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
@@ -193,6 +194,15 @@ export function createHttpServer(
     },
     getPort: () => actualPort,
   };
+}
+
+function ensureWebCrypto(): void {
+  if (globalThis.crypto !== undefined) return;
+  Object.defineProperty(globalThis, 'crypto', {
+    configurable: true,
+    writable: true,
+    value: webcrypto,
+  });
 }
 
 function hasValidBearerToken(authorization: string | undefined, expectedToken: string): boolean {

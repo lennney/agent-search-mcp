@@ -1,6 +1,6 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { logger } from '../infrastructure/logger.js';
-import { searchDuckDuckGoHtml, searchDuckDuckGoNewsHtml } from './duckduckgo-html.js';
+import { searchDuckDuckGoHtml } from './duckduckgo-html.js';
 import { searchDuckDuckGoWeb } from './duckduckgo-web.js';
 import { isEngineAdapterError } from './engine-error.js';
 
@@ -40,15 +40,4 @@ export async function searchDuckDuckGo(query: string, limit: number = 10, option
   return options
     ? searchDuckDuckGoHtml(query, limit, options)
     : searchDuckDuckGoHtml(query, limit);
-}
-
-/**
- * Search DuckDuckGo News through the native HTML representation.
- */
-export async function searchDuckduckgoNews(
-  query: string,
-  limit: number = 10,
-  _timeRange: string = 'w',
-): Promise<SearchResult[]> {
-  return searchDuckDuckGoNewsHtml(query, limit);
 }

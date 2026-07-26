@@ -1,44 +1,46 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { searchDuckduckgoNews } from '../engines/duckduckgo.js';
 import { searchBingNews } from '../engines/bing.js';
+import { classifyEngineError } from '../engines/engine-error.js';
 import { logger } from '../infrastructure/logger.js';
-import type { SearchResult } from '../types.js';
+import type { EngineError, SearchResult } from '../types.js';
 
 export function registerFreeSearchNews(server: McpServer) {
   server.registerTool(
     'free_search_news',
     {
       description:
-        'Search news articles across multiple free engines. Returns recent news with source, date, and snippet.\n\n' +
+        'Search recent news through the zero-key Bing News RSS feed. Returns source, date, and snippet.\n\n' +
         'Best for: Recent news, current events, time-sensitive content.\n' +
         'Not recommended for: General web search — use free_search instead.\n\n' +
-        '@readOnly true @idempotent true — makes outbound HTTP requests to DDG News + Bing News.',
+        '@readOnly true @idempotent true — makes one outbound HTTP request to Bing News RSS.',
       inputSchema: {
         query: z.string().describe('News search query'),
         count: z.number().int().min(1).max(20).optional().default(10).describe('Number of results (1-20)'),
-        time_range: z.enum(['day', 'week', 'month']).optional().default('week').describe('Time range filter'),
+        time_range: z.enum(['day', 'week', 'month']).optional().default('week')
+          .describe('Maximum article age: 24 hours, 7 days, or 30 days; undated items are excluded'),
       },
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async (input) => {
+    async (input, extra) => {
       try {
         const results: SearchResult[] = [];
+        const partialFailures: EngineError[] = [];
 
         try {
-          const ddgResults = await searchDuckduckgoNews(input.query, input.count, input.time_range);
-          results.push(...ddgResults);
+          const bingResults = await searchBingNews(input.query, input.count, {
+            timeRange: input.time_range,
+            signal: extra?.signal,
+            throwOnError: true,
+          });
+          results.push(...bingResults);
         } catch (e) {
-          logger.warn({ err: String(e) }, 'DDG News failed, falling back');
-        }
-
-        if (results.length < input.count) {
-          try {
-            const bingResults = await searchBingNews(input.query, input.count);
-            results.push(...bingResults);
-          } catch (e) {
-            logger.warn({ err: String(e) }, 'Bing News failed');
-          }
+          extra?.signal?.throwIfAborted();
+          logger.warn({ err: String(e) }, 'Bing News failed');
+          partialFailures.push(classifyEngineError(
+            'bing',
+            e instanceof Error ? e : new Error(String(e)),
+          ));
         }
 
         return {
@@ -48,10 +50,12 @@ export function registerFreeSearchNews(server: McpServer) {
               query: input.query,
               results: results.slice(0, input.count),
               meta: { total: results.length },
+              ...(partialFailures.length > 0 ? { partialFailures } : {}),
             }, null, 2),
           }],
         };
       } catch (error) {
+        if (extra?.signal.aborted) throw error;
         return {
           content: [{
             type: 'text',

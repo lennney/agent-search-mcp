@@ -10,7 +10,6 @@ vi.mock('../../src/engines/duckduckgo-html.js', () => ({
       engines: ['duckduckgo'],
     },
   ]),
-  searchDuckDuckGoNewsHtml: vi.fn(async () => []),
 }));
 
 vi.mock('../../src/engines/duckduckgo-web.js', () => ({

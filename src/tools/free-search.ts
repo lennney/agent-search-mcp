@@ -12,6 +12,7 @@ import { searchTencentWsa } from '../engines/tencent-wsa.js';
 import { searchBocha } from '../engines/bocha.js';
 import { searchSerper } from '../engines/serper.js';
 import {
+  classifyEngineError,
   EngineAdapterError,
   isEngineAdapterError,
 } from '../engines/engine-error.js';
@@ -370,43 +371,6 @@ function isRetryableError(err: Error): boolean {
   return false;
 }
 
-/**
- * Classify a raw error into a structured EngineError for agent-friendly recovery.
- */
-function classifyEngineError(engine: string, err: Error): EngineError {
-  if (isEngineAdapterError(err)) {
-    return {
-      engine,
-      type: err.failureType,
-      message: err.message,
-      suggestion: err.suggestion,
-    };
-  }
-  const msg = err.message.toLowerCase();
-
-  if (msg.includes('malformed') || msg.includes('parse error') || msg.includes('parser')) {
-    return { engine, type: 'parse_error', message: err.message, suggestion: 'Use another engine while the response parser is checked' };
-  }
-  if (msg.includes('timeout') || msg.includes('abort') || msg.includes('etimedout')) {
-    return { engine, type: 'timeout', message: err.message, suggestion: 'Retry with a shorter query or try again later' };
-  }
-  if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('forbidden')) {
-    return { engine, type: 'permission_denied', message: err.message, suggestion: 'Check API key configuration' };
-  }
-  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) {
-    return { engine, type: 'rate_limited', message: err.message, suggestion: 'Retry in 30s or reduce request rate' };
-  }
-  if (msg.includes('http 4') || msg.includes('400') || msg.includes('404')) {
-    return { engine, type: 'upstream_4xx', message: err.message, suggestion: 'Check query syntax or try a different engine' };
-  }
-  if (msg.includes('http 5') || msg.includes('500') || msg.includes('502') || msg.includes('503')) {
-    return { engine, type: 'upstream_5xx', message: err.message, suggestion: 'Engine may be temporarily unavailable, retry later' };
-  }
-  if (msg.includes('econnrefused') || msg.includes('econnreset') || msg.includes('enotfound') || msg.includes('network')) {
-    return { engine, type: 'unknown', message: err.message, suggestion: 'Network error — check connectivity or try a different engine' };
-  }
-  return { engine, type: 'unknown', message: err.message, suggestion: 'Try a different engine or check the query' };
-}
 function hasApiKey(engine: SearchProvider): boolean {
   return hasEngineCredential(engine);
 }

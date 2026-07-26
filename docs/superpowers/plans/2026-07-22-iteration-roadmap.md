@@ -273,32 +273,16 @@ HTTP 模式下 MCP 工具映射为 REST 端点，OpenAPI 可让非 MCP 客户端
 > **竞品对标**: web-search-mcp (Playwright 浏览器搜索), gajae-code (TLS 指纹)
 > **核心**: 消除 Python 最后的硬依赖 + 让 DDG 可用率接近 100%
 
-## C1: DDG News HTML 回退 (P0)
+## C1: 新闻搜索语义收敛 (P0)
 
-**目标**: `searchDuckduckgoNews()` 在无 Python 时返回结果而非空数组。
+**状态**: 2026-07-26 完成。原 DDG HTML 方案被撤回：该端点返回通用网页，
+不能只修改 `source` 就宣称为新闻，也不能兑现 `day/week/month`。
 
-当前：`searchDuckduckgoNews()` 在 `getPythonBin() === null` 时直接 `return []`。
+稳定实现只调用现有 Bing News RSS，并按 `published_at` 执行 24 小时、7 天、
+30 天过滤；无日期条目被排除。MCP 取消进入 HTTP，Provider 失败进入
+`partialFailures`。以后增加第二新闻源仍需按新增引擎门禁单独评审。
 
-参照 `duckduckgo-html.ts` `searchDuckDuckGoHtml()` 模式，实现 News HTML 版本。
-
-DDG News URL: `https://html.duckduckgo.com/html/?q=...`（与 web 搜索同端点，但渲染新闻卡片）
-
-或者：`https://duckduckgo.com/news` 的 HTML 结构。
-
-**改动清单**:
-
-| 文件 | 操作 | 说明 |
-|------|------|------|
-| `src/engines/duckduckgo-html.ts` | 扩展 | 新增 `searchDuckDuckGoNewsHtml()` |
-| `src/engines/duckduckgo.ts` | 修改 | `searchDuckduckgoNews()` Python 不可用时调用 HTML 回退 |
-| `tests/engines/duckduckgo-html.test.ts` | 扩展 | News HTML 测试用例 |
-| `tests/tools/free-search-ddg-unavailable.test.ts` | 扩展 | News 回退测试 |
-
-**关键实现**: DDG News 无专用 HTML 端点。新闻搜索需从通用 HTML 结果中过滤 news 类结果，或参考 `gh.franksnyder` 的 DDG News API 封装。
-
-**测试**: vitest — mock DDG News HTML 响应，验证回退路径正确 (+10-15 tests)
-
-**验证**: `npm test` ✅, 模拟无 Python 环境验证 News 可搜
+**验证**: 离线 RSS fixture 覆盖真实新闻端点、时间过滤、取消和失败透明度。
 
 ---
 

@@ -171,6 +171,10 @@ Wiby 使用官方 JSON API，是无需账号和 API Key 的真实零密钥来源
 没有统一且可验证的时间过滤合同，因此服务会在搜索前返回
 `UNSUPPORTED_FILTER`。
 
+`free_search_news` 使用零密钥的 Bing News RSS。`day`、`week`、`month`
+分别表示文章发布时间不超过 24 小时、7 天和 30 天；没有发布时间的条目会被排除，
+上游失败保留在 `partialFailures`。
+
 ---
 
 ## 配置

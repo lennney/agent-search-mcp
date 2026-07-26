@@ -180,6 +180,11 @@ count.
 server returns `UNSUPPORTED_FILTER` before searching because the general web
 providers do not share one enforceable recency contract.
 
+`free_search_news` uses the zero-key Bing News RSS feed. Its `day`, `week`, and
+`month` ranges mean a maximum published age of 24 hours, 7 days, or 30 days;
+undated feed items are excluded. Upstream failures remain visible in
+`partialFailures`.
+
 ---
 
 ## Configuration

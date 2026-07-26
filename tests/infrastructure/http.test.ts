@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as http from 'node:http';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -183,6 +183,42 @@ it('GET /mcp without transport returns 404', async () => {
     } finally {
       await client.close();
       await server.close();
+    }
+  });
+
+  it('serves MCP HTTP requests when Node does not provide global Web Crypto', async () => {
+    vi.stubGlobal('crypto', undefined);
+    const server = createHttpServer(() => {
+      const mcpServer = new McpServer(
+        { name: 'node-18-http-test', version: '1.0.0' },
+        { capabilities: { tools: {} } },
+      );
+      mcpServer.registerTool('node-18-ready', {}, async () => ({
+        content: [{ type: 'text', text: 'ok' }],
+      }));
+      return mcpServer;
+    }, {
+      port: 0,
+      enableCors: false,
+      corsOrigin: '*',
+    });
+    await server.listen();
+
+    const client = new Client({
+      name: 'node-18-http-client',
+      version: '1.0.0',
+    });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://127.0.0.1:${server.getPort()}/mcp`),
+    );
+
+    try {
+      await client.connect(transport);
+      expect((await client.listTools()).tools.map(tool => tool.name)).toContain('node-18-ready');
+    } finally {
+      await client.close();
+      await server.close();
+      vi.unstubAllGlobals();
     }
   });
 });

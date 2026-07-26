@@ -183,6 +183,13 @@ tags:
 
 ### Fixes
 
+- Restored Node 18 Streamable HTTP by installing Node's built-in Web Crypto
+  implementation only when the runtime does not expose `globalThis.crypto`.
+- Corrected `free_search_news` to use the actual zero-key Bing News RSS feed
+  instead of relabeling ordinary DuckDuckGo Web results. The `day`, `week`, and
+  `month` filters now enforce 24-hour, 7-day, and 30-day publication windows;
+  MCP cancellation reaches the provider request and failures remain visible in
+  `partialFailures`.
 - Default test runs no longer call live search/extraction providers. The two
   network E2E cases require the explicit `test:e2e:live` command.
 - Live runner qualification now waits 10 seconds between query groups by

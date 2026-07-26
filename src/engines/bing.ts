@@ -10,6 +10,18 @@ export const bingProvider = {
   languages: ['en', 'zh'],
 };
 
+export type NewsTimeRange = 'day' | 'week' | 'month';
+
+export interface BingNewsSearchOptions extends EngineSearchOptions {
+  timeRange?: NewsTimeRange;
+}
+
+const NEWS_TIME_RANGE_MS: Record<NewsTimeRange, number> = {
+  day: 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000,
+};
+
 export async function searchBing(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${limit}`;
@@ -70,7 +82,11 @@ function parseBingResults(html: string, limit: number): SearchResult[] {
   return results;
 }
 
-export async function searchBingNews(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchBingNews(
+  query: string,
+  limit: number = 10,
+  options?: BingNewsSearchOptions,
+): Promise<SearchResult[]> {
   try {
     const url = `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&count=${limit}&format=rss`;
     const res = await fetch(url, {
@@ -78,21 +94,44 @@ export async function searchBingNews(query: string, limit: number = 10): Promise
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/rss+xml, application/xml, text/xml',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!res.ok) {
+      if (options?.throwOnError) throw new Error(`Bing News HTTP ${res.status}`);
       logger.warn({ status: res.status }, 'Bing News HTTP error');
       return [];
     }
 
     const xml = await res.text();
-    return parseBingNewsXML(xml, limit);
+    return filterNewsByTimeRange(
+      parseBingNewsXML(xml, limit),
+      options?.timeRange ?? 'week',
+      Date.now(),
+    );
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     logger.warn({ err: msg.slice(0, 200) }, 'Bing News search failed');
     return [];
   }
+}
+
+function filterNewsByTimeRange(
+  results: SearchResult[],
+  timeRange: NewsTimeRange,
+  now: number,
+): SearchResult[] {
+  const cutoff = now - NEWS_TIME_RANGE_MS[timeRange];
+  return results.filter(result => {
+    const publishedAt = result.published_at
+      ? Date.parse(result.published_at)
+      : Number.NaN;
+    return Number.isFinite(publishedAt)
+      && publishedAt >= cutoff
+      && publishedAt <= now;
+  });
 }
 
 function parseBingNewsXML(xml: string, limit: number): SearchResult[] {

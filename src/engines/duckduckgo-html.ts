@@ -194,22 +194,6 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
   }
 }
 
-/**
- * Search DuckDuckGo News using the native HTML representation.
- * Uses the same HTML endpoint as web search — DDG News has no dedicated
- * HTML endpoint, so we delegate to the web HTML parser and relabel results.
- *
- * This keeps news on the same transport, timeout, and zero-key runtime as the
- * regular DuckDuckGo adapter.
- */
-export async function searchDuckDuckGoNewsHtml(query: string, limit: number = 10): Promise<SearchResult[]> {
-  const results = await searchDuckDuckGoHtml(query, limit);
-  // Relabel source to distinguish from regular web search results
-  return results.map(r => ({
-    ...r,
-    source: 'duckduckgo-news',
-  }));
-}
 function parseDdgHtml(
   html: string,
   limit: number,
