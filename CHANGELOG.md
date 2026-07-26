@@ -9,32 +9,6 @@ tags:
 ---
 # Changelog
 
-## Unreleased
-
-### Added
-
-- Added Wiby as a zero-key, official JSON small-Web source. It is attempted
-  late in the free waterfall, uses a conservative per-provider interval, does
-  not retry shared-service failures, and retains the attribution required by
-  Wiby's API terms.
-- Added optional Tencent Web Search API, Bocha, and Serper adapters for users
-  who bring their own credentials. Default `free_first` routing never calls
-  them automatically.
-
-### Changed
-
-- Made lint warning-free and enforced `--max-warnings 0`. Runtime and adapter
-  diagnostics now use the structured stderr logger, while human-facing CLI
-  output has a narrowly scoped lint exception.
-- Replaced permissive third-party JSON casts in Brave, Tavily, and the semantic
-  bridge with defensive `unknown` parsing and bounded result validation.
-- Centralized the adapter ID list so MCP schemas, CLI validation, routing, and
-  tests cannot drift as providers are added.
-- Mapped Tencent WSA to the Sogou provider family and Serper to the Google
-  family so adapter overlap cannot inflate independent-source confidence.
-- Removed the implicit all-engine selection from `free_search_advanced`; it now
-  obeys `free_first` and cannot spend merely because an API key is present.
-
 ## v3.2.0 (2026-07-26)
 
 > **Headline: Free by default, paid quality escalation when explicitly enabled,
@@ -49,12 +23,19 @@ tags:
 - Search failures, provider families, request budgets, evidence provenance, and
   routing stop reasons are machine-readable instead of being hidden as empty
   results.
-- The packed package has been installed and stdio-smoked on Windows and Linux
-  with Node 18, 20, and 22. Live search quality and availability figures remain
-  intentionally unclaimed.
+- A pre-expansion package passed installation and stdio smoke on Windows and
+  Linux with Node 18, 20, and 22. The package containing all 16 adapters must
+  repeat that matrix before publication. This release makes no live search
+  quality or availability claim.
 
 ### Features
 
+- Added Wiby as a zero-key, official JSON small-Web source. It runs late in the
+  free waterfall, does not retry shared-service failures, and retains the
+  attribution required by Wiby's API terms.
+- Added optional Tencent Web Search API, Bocha, and Serper adapters for users
+  who bring their own credentials. Default `free_first` routing does not call
+  them.
 - Added one provider-routing policy interface shared by parallel and waterfall
   search. The default `free_first` mode never spends configured optional API
   credentials; `quality_escalation`, `paid_first`, and `free_only` are explicit
@@ -66,6 +47,20 @@ tags:
 
 ### Runtime and quality infrastructure
 
+- Made lint warning-free and enforced `--max-warnings 0`. Runtime and adapter
+  diagnostics use the structured stderr logger; human-facing CLI output has a
+  file-scoped lint exception.
+- Replaced permissive third-party JSON casts in Brave, Tavily, and the semantic
+  bridge with defensive `unknown` parsing and bounded result validation.
+- Centralized adapter IDs so MCP schemas, CLI validation, routing, and tests
+  cannot drift as providers are added.
+- Mapped Tencent WSA to the Sogou provider family and Serper to the Google
+  family so adapter overlap cannot inflate independent-source confidence.
+- Removed the implicit all-engine selection from `free_search_advanced`; it
+  now obeys `free_first` and cannot spend because an API key is present.
+- Aligned MCP Registry credentials and spend controls with the engine registry,
+  with a regression test for package name, description, version, and optional
+  provider credentials.
 - Restored the declared Node 18.17 runtime contract by keeping Pino on its 9.x
   line. Pino 10 pulled `thread-stream` 4, whose package metadata requires
   Node 20 even though a basic Node 18 runtime smoke could still start.

@@ -2,7 +2,7 @@
   "name": "agent-search-mcp",
   "mcpName": "io.github.lennney/agent-search-mcp",
   "version": "3.2.0",
-  "description": "Free, lightweight MCP web search router for AI agents with zero-key sources, paid-provider controls, and compact multi-source evidence.",
+  "description": "Free, lightweight MCP search for AI agents with zero-key sources and compact multi-source evidence.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {

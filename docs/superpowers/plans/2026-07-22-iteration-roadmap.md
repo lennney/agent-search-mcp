@@ -865,15 +865,16 @@ Evidence:
 - [x] 默认可选顺序保留原有 `brave,exa,tavily,youcom` 优先级，并把
       `tencent_wsa,bocha,serper` 追加为显式 BYOK 候选；该顺序不是质量排名，
       只有完成同查询集评测后才能按质量调整。
-- [ ] 在 `meta.execution` 中记录实际阶段、调用渠道、停止原因和预算耗尽原因；
+- [x] 在 `meta.execution` 中记录实际阶段、调用渠道、停止原因和预算耗尽原因；
       不记录 key、查询外的凭证信息或估算账单。
 - [x] 经明确授权补充 Wiby 零密钥官方 JSON 源，以及 Tencent WSA、Bocha、
       Serper 三个可选 API；不引入浏览器运行时或新的生产依赖。
       Wiby 只在免费瀑布后段补充小型网页，三个 BYOK 渠道默认不调用。
 - [x] Provider family 合同将 Tencent WSA 与 Sogou、Serper 与
       Startpage/Google 保守归并，避免同上游多适配器虚增 `source_count`。
-- [ ] 先用离线 fixture 验证解析与失败语义，再在单独授权的受控 runner 上比较
-      新渠道；完成 pooled 评测前不宣称它们提高准确率或可用率。
+- [x] 使用离线 fixture 验证新增适配器的解析、取消和失败语义。
+- [ ] 在单独授权的受控 runner 上比较新渠道；完成 pooled 评测前不宣称它们提高
+      准确率或可用率。
 - [ ] Perplexity Search 只作为下一付费候选进入离线适配器评测；通过准入门槛且获得
       “增加引擎”授权后，才进入运行时注册表。
 
@@ -898,16 +899,19 @@ Evidence:
 
 #### Release-candidate gate
 
+当前离线门禁已经通过。`c0baf6f` 和 `1fab86a` 晚于历史 tarball
+`3f170675`；历史产物只保留作证据，不能发布。
+
 - [x] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
-- [x] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
+- [ ] 从当前最终提交生成唯一 tarball；记录 commit、SHA-256、文件数和大小。
+- [ ] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
       `fasm.cmd`，Linux runner 验证包安装与进程退出。
 - [x] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
-- [x] 从待发布 commit 生成 npm pack，使用该精确 tarball 做安装 smoke；发布时不得重新打包
-      不同内容。
+- [ ] 使用同一个当前 tarball 完成全部安装 smoke；发布时不得重新打包不同内容。
 - [x] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
       质量声明，不从当前受限出口反复探测。
-      本次候选复用 `73c34969` 的一次有限证据；两提交间无 `src/**` 变化，未再次探测
-      DDG/Sogou。
+      本次保留 `73c34969` 的一次有限证据；后续修改没有改变 DDG/Sogou 请求链，
+      因此未重复探测。这份证据只用于时间点非降级观察。
 - [x] README、CHANGELOG、HANDOVER 和生成能力矩阵与运行时一致；发布说明不宣称未经
       adjudication 的准确率、可用率或付费渠道排名。
 - [x] 门禁完成后创建检查点 commit。版本 bump、npm publish、GitHub Release 和推广仍需

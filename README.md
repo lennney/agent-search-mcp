@@ -57,7 +57,7 @@ fasm doctor
 
 | Need | Product behavior |
 |---|---|
-| Free web search | Eight sources work without an API key or account |
+| Free web search | Zero-key sources work without an API account |
 | Provider cost control | Paid providers run only under an explicit routing policy |
 | Token cost control | Compact output and one evidence budget bound response size |
 | Multi-source evidence | Results retain provenance, relevance, provider-family count, and partial failures |
@@ -238,7 +238,7 @@ credential or proxy values.
 | [Product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md) | Source-level review of Agent search products |
 | [Benchmarks](./benchmarks/) | Token fixture, live-run scope, and quality evaluation method |
 | [v3.2.0 release notes](./docs/releases/v3.2.0.md) | Provider policy, budgets, and migration notes |
-| [Release candidate evidence](./docs/evidence/2026-07-26-release-candidate-smoke.md) | Packed-install and Node 18/20/22 smoke results |
+| [Earlier release candidate evidence](./docs/evidence/2026-07-26-release-candidate-smoke.md) | Pre-expansion packed-install matrix and limitations |
 | [MCP 2026 readiness](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md) | Isolated protocol experiment and remaining gates |
 
 ## Companion: Slim Guard

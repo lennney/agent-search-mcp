@@ -296,9 +296,8 @@ function waitForStartup(ms: number = 500): Promise<void> {
   liveNetworkIt('calls free_search and returns results', async () => {
     await claimLiveRequest();
     proc = spawnServer();
-    // free_search searches all 4 free engines (ddg, sogou, bing, baidu) in
-    // parallel batches. Baidu has a 10s timeout, so total search time is ~13s
-    // under normal conditions, but can be significantly longer under load.
+    // The bounded live smoke selects DDG explicitly and permits one adapter
+    // attempt. It does not fan out across the free-provider set.
     reader = createMessageReader(proc, 50000);
     await waitForStartup(500);
 

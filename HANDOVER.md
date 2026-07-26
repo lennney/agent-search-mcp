@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T22:03:37+08:00'
+timestamp: '2026-07-26T22:16:56+08:00'
 description: 当前状态、稳定契约和下一步
 tags:
 - agent-search-mcp
@@ -86,12 +86,15 @@ tags:
 
 ## 当前验证
 
-- 默认离线门禁：73 个测试文件，739 passed，2 个联网 E2E 按设计 skipped。
+- 默认离线门禁：74 个测试文件，742 passed，2 个联网 E2E 按设计 skipped。
 - TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
   quality benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors、0 warnings；`npm run lint` 通过 `--max-warnings 0`
   阻止 warning 回归。Server/adapter 日志统一写入结构化 stderr，CLI 的
   人类输出使用精确文件级例外。
+- Registry 元数据由测试约束：包名、描述、版本和 7 个可选 Provider 凭证必须与
+  `package.json` 及引擎注册表一致；Registry 的 stdio 安装项不再暴露
+  `MODE` / `PORT` 传输覆盖。
 - 外部导入、pooling、runner qualification 的纯函数与失败边界有单元测试。
 - 首次精确 tarball 矩阵发现 Pino 10 的 `thread-stream` 4 声明 Node >=20；
   发布候选已收敛回 Pino 9.x。必须从修复后的新 commit 重新生成 tarball，

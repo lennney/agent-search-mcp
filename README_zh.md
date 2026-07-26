@@ -56,7 +56,7 @@ fasm doctor
 
 | 需求 | 产品行为 |
 |---|---|
-| 免费网页搜索 | 8 个来源无需 API Key 或账号 |
+| 免费网页搜索 | 零密钥来源无需搜索 API 账号 |
 | 渠道成本控制 | 只有显式路由策略才能调用付费渠道 |
 | Token 成本控制 | 紧凑输出和共享证据预算限制响应体积 |
 | 多源证据 | 结果保留来源、相关性、provider-family 数量和部分失败 |
@@ -226,7 +226,7 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 | [产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md) | Agent 搜索产品的源码级调查 |
 | [基准测试](./benchmarks/) | Token fixture、真实运行边界和质量评测方法 |
 | [v3.2.0 发布说明](./docs/releases/v3.2.0.md) | 渠道策略、预算和迁移说明 |
-| [发布候选证据](./docs/evidence/2026-07-26-release-candidate-smoke.md) | 打包安装和 Node 18/20/22 冒烟结果 |
+| [早期发布候选证据](./docs/evidence/2026-07-26-release-candidate-smoke.md) | 扩展适配器前的打包安装矩阵及限制 |
 | [MCP 2026 适配](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md) | 隔离实验和剩余门禁 |
 
 ## 配套产品：Slim Guard
