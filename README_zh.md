@@ -43,7 +43,7 @@
 ### 可检查的证据包
 
 完整结果把 provenance、relevance、独立 provider-family 数、上游发布时间和提取元数据分开保存。响应级字符预算限制 passage 内容；Compact 占位结果仍保留来源列表，引擎失败仍通过 `partialFailures` 可见。
-`free_search` 通过 MCP `structuredContent` 和 `outputSchema` 发布这一证据包；文本通道只是同一份数据的紧凑视图，不再维护第二套 JSON 合同。
+`free_search` 与 `free_search_advanced` 通过 MCP `structuredContent` 和同一个 `outputSchema` 发布这一证据包；文本通道只是同一份数据的紧凑视图，不再维护第二套 JSON 合同。
 
 ### Token 控制是产品能力
 

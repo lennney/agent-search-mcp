@@ -57,9 +57,9 @@ relevance, independent provider-family count, upstream publication time, and ext
 metadata as separate fields. One response-level character budget bounds passage
 content, while compact placeholders retain their source list and engine
 failures remain visible in `partialFailures`.
-`free_search` publishes this packet through MCP `structuredContent` with an
-`outputSchema`; its text channel is a compact view of the same packet, not a
-second JSON contract.
+`free_search` and `free_search_advanced` publish this packet through MCP
+`structuredContent` with one shared `outputSchema`; their text channel is a
+compact view of the same packet, not a second JSON contract.
 
 ### Token control is a product feature
 

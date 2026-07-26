@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { searchWithFallback } from './free-search.js';
+import {
+  createSearchToolResult,
+  searchOutputSchema,
+} from './search-output.js';
 
 export function registerFreeSearchAdvanced(server: McpServer) {
   server.registerTool(
@@ -41,6 +45,7 @@ Not recommended for: Simple queries — use free_search instead.
         enrich_max: z.number().min(1).max(10).optional().default(3)
           .describe('Max results to enrich per search'),
       },
+      outputSchema: searchOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async (input, extra) => {
@@ -82,7 +87,7 @@ Not recommended for: Simple queries — use free_search instead.
           enrichMax: input.enrich_max,
           signal: extra?.signal,
         });
-        return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
+        return createSearchToolResult(results);
       } catch (error) {
         if (extra?.signal.aborted) throw error;
         return {

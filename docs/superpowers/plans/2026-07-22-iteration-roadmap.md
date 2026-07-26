@@ -732,9 +732,9 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
       gate behind one search-evidence interface shared by parallel and
       waterfall routing. Domain policy now runs before deduplication and uses
       exact host/subdomain matching.
-- [x] Expose the primary Search Evidence Packet through MCP
-      `structuredContent` and `outputSchema`; keep the text channel as a
-      compact view instead of a second JSON contract.
+- [x] Expose one shared Search Evidence Packet for primary and advanced search
+      through MCP `structuredContent` and `outputSchema`; keep the text channel
+      as a compact view instead of a second JSON contract.
 - [ ] Calibrate the provisional per-result relevance floor on a non-empty
       pooled capture. It is an internal routing heuristic, not a public
       relevance probability.
