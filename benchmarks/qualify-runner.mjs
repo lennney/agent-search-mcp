@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import {
   parseEngineSelection,
@@ -11,6 +12,7 @@ import {
   evaluateRunnerQualification,
   observeSearchFailure,
   observeSearchResponse,
+  qualificationQueryDelayMs,
   runnerQualificationExitCode,
 } from './lib/runner-qualification.mjs';
 
@@ -37,6 +39,7 @@ try {
   const limit = integerOption('--limit') ?? 2;
   const queries = selectBenchmarkQueries(querySet, limit);
   const minimumQueries = integerOption('--minimum-queries') ?? limit;
+  const queryDelayMs = qualificationQueryDelayMs(optionValue('--query-delay-ms'));
 
   process.env.OUTPUT_STYLE = 'normal';
   process.env.MAX_FULL_RESULTS = '50';
@@ -80,6 +83,7 @@ try {
       id: normalized.id || `q${queryIndex + 1}`,
       systems: observations,
     });
+    if (queryIndex < queries.length - 1) await delay(queryDelayMs);
   }
 
   const report = evaluateRunnerQualification({
@@ -105,6 +109,10 @@ try {
         'counts and durations',
       ],
       omitted: ['query text', 'titles', 'URLs', 'snippets', 'response bodies'],
+    },
+    probe_policy: {
+      query_delay_ms: queryDelayMs,
+      no_automatic_retry: true,
     },
   };
   await writeJson(outputPath, output);

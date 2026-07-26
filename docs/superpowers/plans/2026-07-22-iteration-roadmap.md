@@ -834,6 +834,10 @@ Research:
 - [ ] Capture actual Agent Search and comparison-system results on the qualified
       runner, then run the small blinded AI review. Adapter readiness is not a
       product-quality claim.
+  - [x] Keep comparison providers outside runtime: normalize bounded,
+        license-disclosed offline exports into the existing traced capture
+        contract. Qualification probes use conservative pacing and no
+        automatic retries.
 
 Evidence:
 

@@ -14,6 +14,8 @@ const SERVER_PATH = resolve(__dirname, '../../dist/index.js');
 // E2E tests require a pre-built server. If dist/ is missing, skip all tests
 // with a clear message rather than a suite-level failure.
 const E2E_SKIP = !existsSync(SERVER_PATH);
+const LIVE_NETWORK_E2E = process.env.RUN_LIVE_NETWORK_E2E === 'true';
+const liveNetworkIt = LIVE_NETWORK_E2E ? it : it.skip;
 
 beforeAll(() => {
   if (E2E_SKIP) {
@@ -255,7 +257,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     }));
   }, 20000);
 
-  it('calls free_search and returns results', async () => {
+  liveNetworkIt('calls free_search and returns results', async () => {
     proc = spawnServer();
     // free_search searches all 4 free engines (ddg, sogou, bing, baidu) in
     // parallel batches. Baidu has a 10s timeout, so total search time is ~13s
@@ -306,7 +308,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect((textContent as Record<string, unknown>).text).toBeTruthy();
   }, 60000);
 
-  it('calls free_extract and returns content', async () => {
+  liveNetworkIt('calls free_extract and returns content', async () => {
     proc = spawnServer();
     reader = createMessageReader(proc, 20000);
     await waitForStartup(500);

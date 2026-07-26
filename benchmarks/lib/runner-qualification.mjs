@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { getProviderFamily } from './evidence-handoff.mjs';
-import { canonicalizePoolUrl } from './pooling.mjs';
+import { canonicalizeSearchResultUrl } from './search-result-contract.mjs';
 
 const SYSTEM_ID = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const SHA256 = /^[a-f0-9]{64}$/;
@@ -31,7 +31,7 @@ export function observeSearchResponse(response, durationMs) {
     if (!isRecord(result) || typeof result.url !== 'string') {
       qualificationError('search result URL is missing');
     }
-    resultIds.push(sha256(canonicalizePoolUrl(result.url)));
+    resultIds.push(sha256(canonicalizeSearchResultUrl(result.url)));
     for (const source of Array.isArray(result.sources) ? result.sources : []) {
       if (typeof source === 'string' && source.length > 0) {
         providerFamilies.add(getProviderFamily(source));
@@ -193,6 +193,15 @@ export function runnerQualificationExitCode(report) {
   if (status === 'ready') return 0;
   if (status === 'insufficient-runner') return 2;
   qualificationError('report readiness status is invalid');
+}
+
+export function qualificationQueryDelayMs(rawValue) {
+  if (rawValue === undefined) return 10_000;
+  const value = Number(rawValue);
+  if (!Number.isInteger(value) || value < 1_000 || value > 60_000) {
+    qualificationError('query delay must be an integer from 1000 to 60000 ms');
+  }
+  return value;
 }
 
 function summarizeObservation(observation) {

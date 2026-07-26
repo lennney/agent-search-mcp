@@ -4,6 +4,7 @@ import {
   AI_REVIEW_PROMPT_SHA256,
   AI_REVIEW_PROMPT_VERSION,
 } from './ai-review.mjs';
+import { canonicalizeSearchResultUrl } from './search-result-contract.mjs';
 
 const SYSTEM_ID = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const SAMPLE_METADATA = [
@@ -33,26 +34,11 @@ function round(value, digits = 2) {
 }
 
 export function canonicalizePoolUrl(value) {
-  let url;
   try {
-    url = new URL(value);
-  } catch {
-    poolError(`result URL is invalid: ${value}`);
+    return canonicalizeSearchResultUrl(value);
+  } catch (error) {
+    poolError(error instanceof Error ? error.message : error);
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    poolError(`result URL must use HTTP(S): ${value}`);
-  }
-  url.hash = '';
-  for (const key of [...url.searchParams.keys()]) {
-    if (/^(?:utm_.+|fbclid|gclid|msclkid)$/i.test(key)) {
-      url.searchParams.delete(key);
-    }
-  }
-  url.searchParams.sort();
-  const pathname = url.pathname.replace(/\/+$/, '') || '/';
-  const query = url.searchParams.toString();
-  const search = query ? `?${query}` : '';
-  return `${url.protocol}//${url.host.toLowerCase()}${pathname}${search}`;
 }
 
 export function poolLiveCaptures(inputs) {

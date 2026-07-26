@@ -161,3 +161,19 @@ tags:
 - Remaining P1 evidence work requires a legitimate qualified network exit; do
   not bypass provider challenges or reinterpret qualification as product
   comparison.
+
+## 2026-07-26 offline comparison-import checkpoint
+
+- Default `npm test` skips the DDG and example.com network E2E cases. Run
+  `npm run test:e2e:live` only when a deliberate provider/network probe is
+  authorized; it is not part of routine verification.
+- Live qualification now defaults to a 10-second inter-query delay, rejects
+  sub-second pacing, and performs no automatic retries. Do not run another live
+  probe from the current challenged exit.
+- `benchmark:import-external` normalizes an already-captured comparison export
+  into the traced `live-capture` format. It is benchmark-only: no competitor
+  SDK, credentials, or network behavior enters the MCP/CLI runtime.
+- Query text and review metadata come only from the repository query set;
+  external input supplies ordered IDs, bounded results or enumerated failure
+  types, timing, system version, and an explicit retention-license disclosure.
+  Arbitrary upstream error text is rejected rather than retained.

@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Added an offline, system-neutral comparison capture importer. External search
+  exports are bounded, license-disclosed, query-set-bound, hashed, and
+  normalized into the existing traced pooling contract without adding a
+  competitor SDK or credential path to the product runtime.
 - Generated the bilingual public engine/tool/control matrix from the runtime
   registries and bounded configuration metadata. Server registration,
   `search://capabilities`, and README drift checks now share those sources
@@ -126,6 +130,11 @@ tags:
 
 ### Fixes
 
+- Default test runs no longer call live search/extraction providers. The two
+  network E2E cases require the explicit `test:e2e:live` command.
+- Live runner qualification now waits 10 seconds between query groups by
+  default, rejects unsafe sub-second pacing, and never retries failed probes
+  automatically.
 - Runner qualification automation now fails closed with exit code 2 when the
   network exit is insufficient, while retaining the redacted diagnostic report.
 - Fixed packaged `fasm` startup on Windows by resolving the executable entry

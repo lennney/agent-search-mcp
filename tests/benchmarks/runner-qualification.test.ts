@@ -4,6 +4,7 @@ import {
   evaluateRunnerQualification,
   observeSearchFailure,
   observeSearchResponse,
+  qualificationQueryDelayMs,
   runnerQualificationExitCode,
 } from '../../benchmarks/lib/runner-qualification.mjs';
 
@@ -131,6 +132,17 @@ describe('benchmark runner qualification', () => {
     expect(() => runnerQualificationExitCode({
       readiness: { status: 'unknown' },
     })).toThrow('report readiness status is invalid');
+  });
+
+  it('uses conservative bounded pacing for live qualification probes', () => {
+    expect(qualificationQueryDelayMs(undefined)).toBe(10_000);
+    expect(qualificationQueryDelayMs('2500')).toBe(2_500);
+    expect(() => qualificationQueryDelayMs('999')).toThrow(
+      'query delay must be an integer from 1000 to 60000 ms',
+    );
+    expect(() => qualificationQueryDelayMs('60001')).toThrow(
+      'query delay must be an integer from 1000 to 60000 ms',
+    );
   });
 
   it('retains only the error class for failed probes', () => {

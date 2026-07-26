@@ -73,6 +73,7 @@ npm run benchmark:qualify-runner -- \
   --system wikipedia=wikipedia \
   --limit 10 \
   --minimum-queries 10 \
+  --query-delay-ms 10000 \
   --output benchmarks/reports/runner-qualification-2026-07-26-local.json
 ```
 
@@ -84,6 +85,29 @@ not a product comparison, a relevance judgment, or a public quality claim.
 The command exits with code `2` when the report is `insufficient-runner`, while
 still writing the privacy-preserving diagnostic report. Capture/review
 automation must stop on that non-zero exit.
+The probe waits 10 seconds between query groups by default and accepts only
+`1000..60000` milliseconds. It never retries a failed query automatically.
+
+External comparison systems stay outside the product runtime. Export their
+already-captured results as `external-search-results` JSON, disclose the
+retention license under the system ID, then normalize them offline:
+
+```bash
+npm run benchmark:import-external -- \
+  --input private/comparison-export.json \
+  --query-set benchmarks/queries/routing-calibration.json \
+  --output benchmarks/fixtures/comparison-live.json
+```
+
+The export contains `system: { id, version }`, `captured_at`,
+`content_licenses`, and ordered `samples`. Each sample has the query-set `id`,
+`duration_ms`, and exactly one of `results` or an enumerated `failure_type`
+(`timeout`, `rate_limited`, `permission_denied`, `upstream_error`,
+`unavailable`, or `unknown`); a result contains only `title`, HTTP(S) `url`, and
+optional `snippet`. Arbitrary provider error text is never retained. The
+importer takes query text and review metadata from the repository query set,
+bounds retained fields, hashes the source export, and emits the same traced
+`live-capture` contract used by pooling. It performs no provider request.
 
 ## Review-gated search quality
 
