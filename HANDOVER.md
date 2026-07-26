@@ -125,3 +125,14 @@ tags:
   prove a quality gain within latency and memory gates.
 - Next roadmap item: collect issue/usage evidence before considering dedicated
   GitHub/GitLab search tools.
+
+## 2026-07-26 code-hosting demand checkpoint
+
+- Live GitHub/npm usage was checked, including repository issues, public code
+  references, and package use. No user request or external integration required
+  dedicated GitHub/GitLab search.
+- Existing domain-filtered Web Search and `fetch_github_readme` cover the
+  evidenced need without adding token auth, pagination, rate-limit, cache,
+  budget, and evidence-contract branches. Dedicated tools are rejected for now.
+- Next roadmap item: generate the public capability matrix from runtime
+  registries/config so documentation cannot drift from shipped behavior.

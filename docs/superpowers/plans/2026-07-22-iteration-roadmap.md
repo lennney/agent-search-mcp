@@ -791,9 +791,13 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
       memory, cancellation, or zero-key startup gates.
   - Outcome: the candidate changes routes but has no completed quality evidence,
     so it remains benchmark-only and is not production-eligible.
-- [ ] Collect issue/usage evidence before adding GitHub/GitLab search tools.
+- [x] Collect issue/usage evidence before adding GitHub/GitLab search tools.
       Direct code-hosting APIs do not automatically inherit the Web Search
       cache, budget, failure, or evidence contract.
+  - Outcome (2026-07-26): package and repository usage exists, but there are no
+    issue/discussion or public integration requests for dedicated code-hosting
+    search. Keep domain-filtered Web Search plus `fetch_github_readme`; do not
+    add GitHub/GitLab tools without new demand evidence.
 - [ ] Generate the public capability matrix from the engine/tool registry and
       config schema so documentation cannot advertise unregistered tools or
       unused budgets.
