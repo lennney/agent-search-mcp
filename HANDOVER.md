@@ -1,8 +1,8 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T16:10:00+08:00'
-description: 当前状态、核心契约和下一步
+timestamp: '2026-07-26T17:35:00+08:00'
+description: 当前状态、稳定契约和下一步
 tags:
 - agent-search-mcp
 - handover
@@ -12,168 +12,93 @@ tags:
 
 ## 当前状态
 
-- `package.json` 当前版本为 `3.1.3`；检查点以当前 Git HEAD 为准。
+- `package.json` 当前版本为 `3.1.3`；精确变更历史以 Git 和 `CHANGELOG.md` 为准。
 - 稳定产品面是 Node.js >=18.17、TypeScript ESM、MCP stdio/HTTP 和 `fasm` CLI。
 - 12 个适配器均进入统一路由：8 个零密钥，4 个可选 API。
 - Slim Guard 是独立产品；本仓库只维护可选证据交接合同。
-- `2026-07-28` 仅在 `experiments/mcp-2026/` 验证，尚不宣称生产兼容。
-- 本轮不 bump 版本，不 push，不发布 npm/GitHub Release。
+- `2026-07-28` 能力仅在 `experiments/mcp-2026/` 验证，不宣称生产兼容。
+- 当前不 bump 版本、不 push、不发布 npm/GitHub Release。
 
-## 核心契约
+## 稳定契约
 
-- `src/aggregation/search-evidence.ts` 是搜索结果过滤、域名策略、去重、
-  评分和质量门的统一 interface；并行与瀑布路由必须复用它。
-- 域名过滤在去重前执行，只接受精确主机名或真实子域，避免相似域名误命中，
-  也避免被排除结果提前压掉允许域名的同标题结果。
+### 搜索与证据
+
+- `src/aggregation/search-evidence.ts` 统一处理域名策略、去重、评分和质量门；
+  并行与瀑布路由必须复用它。
+- 域名过滤在去重前执行，只接受精确主机名或真实子域。
 - Adapter 名不等于独立来源；`source_count` 按
-  `docs/contracts/provider-families-v1.json` 的 upstream provider family 统计。
-- 原始数量不能单独提前停止；relevance、confidence 和 provider-family
-  覆盖必须分别达标，执行结果通过 `meta.execution` 解释。
-- 开启 semantic dedup/rerank 后，每个路由检查点都必须用变换后的展示篮子
-  决定是否继续，并通过 `quality_gate_stage` 区分判断阶段。
-- `free_search_advanced.time_range` 保留输入兼容但已弃用；传入时在引擎调用前
-  返回机器可读的 `UNSUPPORTED_FILTER`，不再静默返回未过滤结果。
-- DDG Lite 只在 HTML HTTP 202 后、同一 deadline 内尝试一次，不能增加增信。
-- DDG 主链已收敛为纯 Node 的页面签发 Web preload → HTML → Lite；不再探测
-  Python/ddgs 或启动子进程。所有表示属于同一 provider family。
-- DDG/Sogou 共享 request-local Undici 代理 transport；支持引擎级覆盖和
-  `USE_PROXY=true` + `PROXY_URL`，不读取 ambient proxy 变量，凭证不进入错误。
-  DDG/Sogou 反爬挑战统一返回 `bot_challenge` 并冷却。
-- 瀑布查询扩展只执行一代；生成的备选查询不得再次触发查询扩展。
+  `docs/contracts/provider-families-v1.json` 的 upstream family 统计。
+- relevance、confidence 和 provider-family 覆盖分别达标后才能提前停止；
+  `meta.execution` 解释实际调用、阶段和失败。
+- Semantic dedup/rerank 开启后，路由检查点使用变换后的展示篮子。
+- `free_search_advanced.time_range` 仅保留输入兼容；传入时返回机器可读
+  `UNSUPPORTED_FILTER`，不得静默忽略。
+- `free_search` 与 `free_search_advanced` 共享 Search Evidence Packet；
+  `structuredContent` 是完整机器合同，文本通道只提供紧凑视图。
+
+### 上游可靠性
+
+- DDG 主链为纯 Node 的 Web preload → HTML → Lite，不探测 Python/ddgs；
+  Lite 只在 HTML HTTP 202 后、同一 deadline 内尝试一次。
+- DDG/Sogou 共享 request-local Undici 代理 transport；只读取显式引擎配置或
+  `USE_PROXY=true` + `PROXY_URL`，不读取 ambient proxy，也不泄露凭证。
+- DDG/Sogou 反爬统一返回 `bot_challenge` 并进入有界冷却。
+- `ProviderCooldownStore` 和 `SearchCache` 都以小型 store interface 解耦；
+  内存是默认实现，本地持久化必须显式启用并对损坏/过期数据 fail open。
+- `SearchRequestBudget` 统一限制适配器尝试、总耗时、原始结果和证据字符；
+  超限返回观察值、上限与 `budget_exhausted`，调用方取消仍直接 reject。
+- 瀑布查询扩展只执行一代，生成查询不得再次扩展。
+- 显式请求缺少凭证的可选 API 时返回 `permission_denied`，不得伪装成零结果。
+
+### 注册与评测边界
+
+- Engine registry 是引擎分组、凭证来源和公开能力矩阵的单一来源；
+  `toolRegistry` 是工具注册与公开工具矩阵的单一来源。
+- README 中带 marker 的能力表由 `capabilities:generate` 生成，
+  `capabilities:check` 阻止运行时与文档漂移。
 - 冻结 benchmark 只验证格式、Token 和指标代码，不代表搜索质量。
-- pooled capture 保留每个系统的内部路由信号，但 blinded reviewer packet
-  必须移除这些信号；只有 completed adjudication 能生成阈值校准报告。
-- `free_search` 与 `free_search_advanced` 共用带 `outputSchema` 的 Search
-  Evidence Packet；`structuredContent` 保留完整机器合同，文本通道只提供紧凑视图。
-- `fasm doctor` 只检查本地配置，不联网探测搜索源、不写配置；稳定 JSON 合同为
-  `doctor-report-v1`，只暴露状态和配置来源，不暴露 key/token/proxy 值。
-- 显式请求可选 API 适配器但凭证缺失或空白时，必须返回
-  `permission_denied`，不得伪装成零结果。
+- `query-classifier-v1` 仍是 benchmark-only 实验；没有 pooled live quality
+  证据前不得接入生产路由。
+- Pooled capture 保留系统内部信号；blinded reviewer packet 必须移除信号，
+  只有 completed adjudication 能生成阈值校准报告。
+- `benchmark:import-external` 只离线归一化已有竞品导出；竞品 SDK、凭证和
+  网络逻辑不得进入 MCP/CLI runtime。
+- `fasm doctor` 只读本地配置，不联网、不写配置、不暴露 key/token/proxy 值。
+
+## 网络使用规则
+
+- 默认 `npm test` 不访问真实搜索或提取服务；联网 E2E 仅通过
+  `npm run test:e2e:live` 显式运行。
+- Runner qualification 默认查询间隔为 10 秒，拒绝小于 1 秒的节奏，
+  不自动重试；`insufficient-runner` 写出脱敏报告后以退出码 2 失败关闭。
+- 当前出口最近一次 DDG/Wikipedia qualification 为 8/10，DDG 已出现
+  HTTP 202 challenge；不要从该出口继续探测或捕获质量 fixture。
+- 不使用指纹轮换、挑战规避或高频重试来获取 DDG/Sogou 结果。
 
 ## 当前验证
 
-- 稳定测试：643 passed / 60 files。
-- 实验 MCP 2026：21 passed / 7 files。
-- TypeScript/Windows build、冻结 Token benchmark 和 bootstrap quality
-  benchmark：通过；bootstrap 仍不具备质量声明资格。
-- Lint：0 errors / 64 个既有 warnings。
-- Node 18.20.8 transport 冒烟、npm pack dry-run，以及打包后 Windows
-  `fasm.cmd` 真实 DDG 搜索和 `doctor-report-v1`：通过；发布包不再包含
-  `scripts/**`。audit 无 high/critical，仍有 MCP SDK/Hono 链上的 2 个 moderate。
+- 默认离线门禁：68 个测试文件，708 passed，2 个联网 E2E 按设计 skipped。
+- TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
+  quality benchmark：通过；bootstrap 仍不具备质量声明资格。
+- Lint：0 errors；既有 warnings 未在本轮扩散。
+- 外部导入、pooling、runner qualification 的纯函数与失败边界有单元测试。
 
 ## 下一步
 
-1. 当前 runner qualification 已用 DDG/Wikipedia 配置通过 10/10 查询；下一步
-   捕获真正的 Agent Search 与比较系统 pooled result，不能把配置级探测写成产品对比。
-2. 使用已实现的显式代理 transport 和合法备用网络出口捕获非空 Sogou 中文
-   fixture；当前出口的 `/antispider/` 只作为结构化失败证据。
-3. 完成两模型 pointwise review 和第三模型分歧裁决，再运行
-   `npm run benchmark:calibrate-relevance`；校准报告就绪前保持 `0.35` 不变。
-4. 继续 P1.2：定义跨引擎调用数、耗时、结果数和证据字符数的统一请求预算；
-   超限必须返回机器可读的观察值与上限。
+1. 在合法且已资格确认的备用网络出口，低频捕获非空 Sogou 中文 fixture 和
+   DDG Lite 机会性 fixture；当前出口不再使用。
+2. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
+   离线 importer 进入 pooling，不能把配置级探针写成产品对比。
+3. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
+   `benchmark:calibrate-relevance`；完成前保持内部阈值 `0.35` 不变。
+4. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
+   搜索质量或 DDG 可用率数字。
 
 ## 文档权威
 
-- 当前状态：本文件。
+- 当前状态与下一步：本文件。
 - 产品和使用方式：`README.md` / `README_zh.md`。
 - 架构：`docs/architecture.md`。
 - 当前计划：`docs/superpowers/plans/2026-07-22-iteration-roadmap.md`。
 - 评测方法：`benchmarks/README.md`。
-- 历史 plan/review/evidence 只作追溯，不复制到 HANDOVER。
-
-## 2026-07-26 request-budget checkpoint
-
-- `SearchRequestBudget` owns adapter-attempt, elapsed-time, raw-result, and
-  evidence-character limits across parallel, waterfall, retry, and expansion.
-- Hard exhaustion returns observed/limit metadata and `budget_exhausted`;
-  caller cancellation still rejects. Adapters remain config-independent.
-- Live smoke: pure-Node DDG returned 10 results. Sogou produced a structured
-  `bot_challenge`; DDG+Sogou still returned DDG evidence with that failure.
-- Next P1.2 item: a replaceable durable provider-cooldown store.
-
-## 2026-07-26 provider-cooldown checkpoint
-
-- `ProviderCooldownStore` is the seam; memory remains the default adapter and
-  `PROVIDER_COOLDOWN_STORE_PATH` opts into restart-safe local JSON state;
-  two independent Node processes verified challenge capture then cooldown skip.
-- Stored records contain only provider, failure type, and expiry. Corrupt or
-  expired state fails open; policy/cooldown skips remain in `partialFailures`.
-- Next roadmap item: prototype the opt-in persistent exact-result cache behind
-  a similarly replaceable store interface.
-
-## 2026-07-26 persistent exact-cache checkpoint
-
-- `SearchCache` now owns one small store interface; memory remains the default,
-  while `SEARCH_CACHE_DIRECTORY` opts into atomic local-file persistence.
-- Versioned hashed keys bind filters, routing, provider policy, evidence schema,
-  output policy, and TTL. Only positive non-budget-exhausted responses persist;
-  stale/corrupt data fails open and cached rate-limit snapshots are discarded.
-- `benchmark:exact-cache` records cold start, RSS, p95 read/write, hit rate,
-  stale/error reuse, and eviction. CI runs it on Linux and Windows with Node
-  18/20/22. No native/vector dependency was added.
-- Next roadmap item: add a deterministic routing classifier as advisory evidence
-  before it can influence engine selection.
-
-## 2026-07-26 intent-routing benchmark checkpoint
-
-- `query-classifier-v1` is a pure, dependency-free experiment exercised on 32
-  EN/ZH docs/news/code/general contract cases. It is not called by MCP/CLI
-  search and does not alter cancellation, startup, cache, or engine selection.
-- The candidate changed 75% of baseline route plans with 100% deterministic
-  fixture conformance, but has no completed search-quality evidence. Therefore
-  `production_eligible=false`; do not integrate it until pooled live results
-  prove a quality gain within latency and memory gates.
-- Next roadmap item: collect issue/usage evidence before considering dedicated
-  GitHub/GitLab search tools.
-
-## 2026-07-26 code-hosting demand checkpoint
-
-- Live GitHub/npm usage was checked, including repository issues, public code
-  references, and package use. No user request or external integration required
-  dedicated GitHub/GitLab search.
-- Existing domain-filtered Web Search and `fetch_github_readme` cover the
-  evidenced need without adding token auth, pagination, rate-limit, cache,
-  budget, and evidence-contract branches. Dedicated tools are rejected for now.
-- Next roadmap item: generate the public capability matrix from runtime
-  registries/config so documentation cannot drift from shipped behavior.
-
-## 2026-07-26 capability-registry checkpoint
-
-- Engine access, credential provenance, and free/optional groups now derive
-  from `engines`; search routing no longer keeps duplicate engine arrays.
-- `toolRegistry` is the registration source used by the server and public
-  matrix. `search://capabilities` filters that registry through `ToolPolicy`.
-- README engine/tool/control tables are marker-delimited generated output.
-  `capabilities:check` runs in CI and fails on drift; no template framework or
-  dependency was added.
-- The scoped P1.2 architecture-informed queue is complete. Remaining P1 work
-  depends on live Sogou/pooled quality evidence rather than more local surface
-  expansion.
-
-## 2026-07-26 runner-qualification fail-closed checkpoint
-
-- A repeat 10-query DDG/Wikipedia qualification reached only 8/10 after DDG
-  returned HTTP 202 and entered challenge cooldown. No quality fixture was
-  captured from that insufficient runner.
-- `benchmark:qualify-runner` now keeps writing its redacted diagnostic report
-  but exits with code 2 for `insufficient-runner`, so automation cannot silently
-  continue into capture/review.
-- Remaining P1 evidence work requires a legitimate qualified network exit; do
-  not bypass provider challenges or reinterpret qualification as product
-  comparison.
-
-## 2026-07-26 offline comparison-import checkpoint
-
-- Default `npm test` skips the DDG and example.com network E2E cases. Run
-  `npm run test:e2e:live` only when a deliberate provider/network probe is
-  authorized; it is not part of routine verification.
-- Live qualification now defaults to a 10-second inter-query delay, rejects
-  sub-second pacing, and performs no automatic retries. Do not run another live
-  probe from the current challenged exit.
-- `benchmark:import-external` normalizes an already-captured comparison export
-  into the traced `live-capture` format. It is benchmark-only: no competitor
-  SDK, credentials, or network behavior enters the MCP/CLI runtime.
-- Query text and review metadata come only from the repository query set;
-  external input supplies ordered IDs, bounded results or enumerated failure
-  types, timing, system version, and an explicit retention-license disclosure.
-  Arbitrary upstream error text is rejected rather than retained.
+- 历史变更：Git / `CHANGELOG.md`；plan/review/evidence 只作追溯，不复制到本文件。

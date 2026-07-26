@@ -38,7 +38,8 @@ Hermes 仅可作为带 commit/path 的同步投影。
 
 ```bash
 npm run build                 # 编译 TypeScript
-npm test                      # 稳定测试
+npm test                      # 默认离线稳定测试
+npm run test:e2e:live         # 仅在明确授权真实网络探测时运行
 npm run lint                  # 源码 lint
 npm run dev                   # stdio
 npm run dev:http              # HTTP（端口 3000）
@@ -102,6 +103,8 @@ fasm extract "https://..."
   非空多系统 capture、完整裁决和明确口径；零结果不得被静默删除。
 - runner qualification 只证明当前出口可生成多配置、多 family 的非空候选池；
   adapter 配置级通过不能写成 Agent Search 产品质量或竞品胜负。
+- 日常测试不得访问真实搜索源。Live E2E/qualification/capture 必须显式触发、
+  使用保守间隔且不自动重试；出口出现 challenge 后停止继续探测。
 - 第三方摘要不自动继承 Apache-2.0。提交 capture 前核对再分发许可与署名。
 
 ## 完成标准
