@@ -274,9 +274,16 @@ fasm search "关键词" --count 5 --engines bing,baidu,youcom --json
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
 
+# 只读检查本地搜索配置，不发网络探测、不写配置
+fasm doctor
+fasm doctor --json
+
 # HTTP MCP 服务（默认要求 Bearer 认证）
 HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
+
+`doctor-report-v1` 使用 `present` / `missing` / `invalid` 表示本地配置就绪度，
+并给出相关环境变量名等来源；它不会输出凭证或代理值。
 
 ---
 

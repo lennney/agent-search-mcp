@@ -81,6 +81,17 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify doctor on Windows
+        shell: pwsh
+        run: |
+          $report = node dist/cli.js doctor --json | ConvertFrom-Json
+          if ($report.schema_version -ne 'doctor-report-v1') {
+            throw "Unexpected doctor schema: $($report.schema_version)"
+          }
+          if ($report.status -ne 'present') {
+            throw "Doctor did not validate zero-key startup: $($report.status)"
+          }
+
   experimental-2026:
     runs-on: ubuntu-latest
     timeout-minutes: 10

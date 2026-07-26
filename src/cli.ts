@@ -6,6 +6,10 @@ import { SearchProvider } from './types.js';
 import { searchWithFallback } from './tools/free-search.js';
 import { createHttpServer } from './infrastructure/http.js';
 import { loadConfig } from './infrastructure/config.js';
+import {
+  createDoctorReport,
+  formatDoctorReport,
+} from './infrastructure/doctor.js';
 import { checkForUpdates } from './infrastructure/version-check.js';
 
 // Read package.json version at module load
@@ -13,7 +17,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')).version;
 
 export interface CliArgs {
-  command: 'search' | 'extract' | 'serve' | 'help';
+  command: 'search' | 'extract' | 'serve' | 'doctor' | 'help';
   query?: string;
   url?: string;
   count?: number;
@@ -25,7 +29,7 @@ export interface CliArgs {
   version?: boolean;
 }
 
-const VALID_COMMANDS = ['search', 'extract', 'serve'];
+const VALID_COMMANDS = ['search', 'extract', 'serve', 'doctor'];
 const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom'];
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -92,6 +96,7 @@ Usage:
   fasm search <query> [options]    Search the web
   fasm extract <url> [options]     Extract page content
   fasm serve [options]             Start HTTP server
+  fasm doctor [--json]             Inspect local search readiness
   fasm --help                      Show this help
   fasm --version                   Show version
   fasm update                      Check for updates
@@ -113,6 +118,7 @@ Examples:
   fasm search "query" --count 5 --engines bing,baidu,youcom
   fasm extract "https://example.com" --json
   fasm serve --port 8080
+  fasm doctor --json
   fasm search "query" --proxy http://127.0.0.1:7890
 `);
 }
@@ -130,8 +136,10 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Check for updates in background (non-blocking, cached)
-  checkForUpdates();
+  // Doctor is a local-only diagnostic and must not make an update-check request.
+  if (args.command !== 'doctor') {
+    void checkForUpdates();
+  }
 
   // Search proxy is intentionally scoped to the core engine transport.
   if (args.command === 'search' && args.proxy) {
@@ -198,6 +206,14 @@ async function main(): Promise<void> {
     await server.listen();
     console.log(`Server running on http://localhost:${port}`);
     console.log('Press Ctrl+C to stop');
+  } else if (args.command === 'doctor') {
+    const report = createDoctorReport();
+    // CLI stdout is the documented user-facing channel, not MCP stdio.
+    // eslint-disable-next-line no-console
+    console.log(args.json
+      ? JSON.stringify(report, null, 2)
+      : formatDoctorReport(report));
+    if (report.status !== 'present') process.exitCode = 1;
   }
 }
 

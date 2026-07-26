@@ -7,6 +7,12 @@ import {
 } from 'undici';
 
 export type ProxyAwareEngine = 'duckduckgo' | 'sogou';
+export type ProxyConfigurationStatus = 'present' | 'missing' | 'invalid';
+
+export interface EngineProxyInspection {
+  status: ProxyConfigurationStatus;
+  provenance: string[];
+}
 
 const ENGINE_PROXY_ENV: Record<ProxyAwareEngine, string> = {
   duckduckgo: 'DUCKDUCKGO_PROXY_URL',
@@ -49,6 +55,7 @@ interface ProxyConfiguration {
   cacheKey: string;
   uri: string;
   token?: string;
+  environmentName: string;
 }
 
 class ProxyConfigurationError extends Error {
@@ -56,21 +63,61 @@ class ProxyConfigurationError extends Error {
   readonly retryable = false;
   readonly suggestion =
     'Use an http:// or https:// proxy URL in the documented proxy setting';
+  readonly environmentName: string;
 
   constructor(environmentName: string) {
     super(`Invalid proxy configuration in ${environmentName}`);
     this.name = 'ProxyConfigurationError';
+    this.environmentName = environmentName;
   }
 }
 
-function resolveProxy(engine: ProxyAwareEngine): ProxyConfiguration | null {
+export function inspectEngineProxyConfiguration(
+  engine: ProxyAwareEngine,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): EngineProxyInspection {
+  try {
+    const configuration = resolveProxy(engine, environment);
+    return configuration
+      ? {
+          status: 'present',
+          provenance: [`environment:${configuration.environmentName}`],
+        }
+      : {
+          status: 'missing',
+          provenance: ['built-in:direct'],
+        };
+  } catch (error) {
+    const environmentName = error instanceof ProxyConfigurationError
+      ? error.environmentName
+      : ENGINE_PROXY_ENV[engine];
+    return {
+      status: 'invalid',
+      provenance: [`environment:${environmentName}`],
+    };
+  }
+}
+
+function resolveProxy(
+  engine: ProxyAwareEngine,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): ProxyConfiguration | null {
   const engineEnvironment = ENGINE_PROXY_ENV[engine];
-  const engineProxy = process.env[engineEnvironment]?.trim();
+  const engineProxy = environment[engineEnvironment]?.trim();
   if (engineProxy) return parseProxy(engineProxy, engineEnvironment);
 
-  if (process.env.USE_PROXY !== 'true') return null;
-  const globalProxy = process.env.PROXY_URL?.trim() || DEFAULT_PROXY_URL;
-  return parseProxy(globalProxy, 'PROXY_URL');
+  if (
+    environment.USE_PROXY !== undefined
+    && !['true', 'false'].includes(environment.USE_PROXY)
+  ) {
+    throw new ProxyConfigurationError('USE_PROXY');
+  }
+  if (environment.USE_PROXY !== 'true') return null;
+  const configuredGlobalProxy = environment.PROXY_URL?.trim();
+  return parseProxy(
+    configuredGlobalProxy || DEFAULT_PROXY_URL,
+    configuredGlobalProxy ? 'PROXY_URL' : 'USE_PROXY',
+  );
 }
 
 function parseProxy(
@@ -99,6 +146,7 @@ function parseProxy(
       cacheKey: `${uri}\0${token ?? ''}`,
       uri,
       token,
+      environmentName,
     };
   } catch {
     throw new ProxyConfigurationError(environmentName);

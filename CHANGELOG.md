@@ -13,6 +13,11 @@ tags:
 
 ### Features
 
+- Added a local-only, read-only `fasm doctor` command with a versioned JSON
+  report. It diagnoses Node/platform support, zero-key and optional-provider
+  configuration, engine policy, explicit proxies, and the optional semantic
+  bridge while exposing only `present`/`missing`/`invalid` states and
+  configuration provenance—not credential values.
 - Replaced the optional Python/ddgs subprocess path with the project-owned
   DuckDuckGo Web → HTML → Lite chain. DDG and Sogou now share an explicit,
   request-local Undici proxy transport with per-engine overrides, credential
@@ -103,6 +108,9 @@ tags:
   against the CLI module, corrected compiled version detection so update checks
   use the root package version, and bounded waterfall query expansion to one
   generation instead of recursively re-expanding generated queries.
+- Explicitly requested optional API adapters with missing or blank credentials
+  now return a structured `permission_denied` failure instead of silently
+  producing an empty result set.
 - Preserved Sogou cookies across trusted HTTPS redirects, rejected protocol
   downgrade, classified `/antispider/` as `bot_challenge`, corrected the DDG
   rate-limiter key, and added a descriptive Wikipedia API User-Agent.

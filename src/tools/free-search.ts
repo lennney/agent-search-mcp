@@ -13,6 +13,10 @@ import { searchWikipedia } from '../engines/wikipedia.js';
 import { searchStartpage } from '../engines/startpage.js';
 import { searchYandex } from '../engines/yandex.js';
 import { searchMojeek } from '../engines/mojeek.js';
+import {
+  hasEngineCredential,
+  optionalEngineCredentialEnvironment,
+} from '../engines/index.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 import type { SearchResult, SearchProvider, EngineError } from '../types.js';
 import {
@@ -272,18 +276,27 @@ function classifyEngineError(engine: string, err: Error): EngineError {
   return { engine, type: 'unknown', message: err.message, suggestion: 'Try a different engine or check the query' };
 }
 function hasApiKey(engine: SearchProvider): boolean {
-  switch (engine) {
-    case 'brave':
-      return !!process.env.BRAVE_API_KEY;
-    case 'tavily':
-      return !!process.env.TAVILY_API_KEY;
-    case 'exa':
-      return !!process.env.EXA_API_KEY;
-    case 'youcom':
-      return !!process.env.YDC_API_KEY;
-    default:
-      return true; // zero-key engines are always eligible
-  }
+  return hasEngineCredential(engine);
+}
+
+function getMissingCredentialFailures(
+  requestedEngines: SearchProvider[] | undefined,
+): EngineError[] {
+  if (!requestedEngines) return [];
+  return [...new Set(requestedEngines)]
+    .filter(engine => PAID_ENGINES.includes(engine) && !hasApiKey(engine))
+    .map(engine => {
+      const credentialEnvironment =
+        optionalEngineCredentialEnvironment[engine];
+      return {
+        engine,
+        type: 'permission_denied' as const,
+        message: `${engine} credential is not configured`,
+        suggestion: credentialEnvironment
+          ? `Set ${credentialEnvironment} or choose a zero-key engine`
+          : 'Configure the provider credential or choose a zero-key engine',
+      };
+    });
 }
 
 // ─── Shared options & response types ────────────────────────────────────
@@ -549,7 +562,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
   const BATCH_SIZE = calculateAdaptiveConcurrency(phase1Engines, count);
   const allResults: SearchResult[] = [];
-  const failures: EngineError[] = [];
+  const failures: EngineError[] = getMissingCredentialFailures(userEngines);
   const searchedEngines: string[] = [];
   let parallelEvaluation: SearchEvidenceEvaluation | undefined;
   let parallelGate: ConfidenceBasketResult | undefined;
@@ -894,7 +907,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   }
 
   const allResults: SearchResult[] = [];
-  const allFailures: EngineError[] = [];
+  const allFailures: EngineError[] = depth === 0
+    ? getMissingCredentialFailures(options.engines)
+    : [];
   const searchedEngines: string[] = [];
   const phasesCompleted: string[] = [];
   const requestedEngines = options.engines === undefined

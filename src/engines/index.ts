@@ -38,3 +38,22 @@ export const freeEngines: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'ba
 
 /** Paid engines that require API keys */
 export const paidEngines: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
+
+/** Environment-variable provenance for optional API adapters. */
+export const optionalEngineCredentialEnvironment: Readonly<
+  Partial<Record<SearchProvider, string>>
+> = {
+  brave: 'BRAVE_API_KEY',
+  tavily: 'TAVILY_API_KEY',
+  exa: 'EXA_API_KEY',
+  youcom: 'YDC_API_KEY',
+};
+
+export function hasEngineCredential(
+  engine: SearchProvider,
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): boolean {
+  const environmentName = optionalEngineCredentialEnvironment[engine];
+  if (!environmentName) return true;
+  return Boolean(environment[environmentName]?.trim());
+}

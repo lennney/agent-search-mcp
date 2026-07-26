@@ -459,6 +459,34 @@ describe('searchWithFallback — parallel', () => {
     }
   });
 
+  it('reports an explicitly requested optional provider with a blank credential', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = '   ';
+
+    try {
+      const result = await searchWithFallback({
+        query: 'parallel-missing-optional-credential',
+        engines: ['exa'],
+      });
+
+      expect(searchExa).not.toHaveBeenCalled();
+      expect(result.partialFailures).toEqual([
+        expect.objectContaining({
+          engine: 'exa',
+          type: 'permission_denied',
+          message: 'exa credential is not configured',
+          suggestion: expect.stringContaining('EXA_API_KEY'),
+        }),
+      ]);
+    } finally {
+      if (previousApiKey === undefined) {
+        delete process.env.EXA_API_KEY;
+      } else {
+        process.env.EXA_API_KEY = previousApiKey;
+      }
+    }
+  });
+
   it('uses the post-semantic basket for routing diagnostics', async () => {
     const previousApiKey = process.env.EXA_API_KEY;
     process.env.EXA_API_KEY = 'test-key';
@@ -724,6 +752,35 @@ describe('searchWithFallback — waterfall', () => {
     expect(result.meta.execution?.quality_gate?.sufficient).toBe(true);
     expect(result.meta.execution?.early_stop).toBe(false);
     expect(result.meta.execution?.stop_reason).toBe('phases_exhausted');
+  });
+
+  it('preserves a missing optional credential in waterfall failures', async () => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    delete process.env.EXA_API_KEY;
+
+    try {
+      const result = await searchWithFallback({
+        query: 'waterfall-missing-optional-credential',
+        engines: ['exa'],
+        waterfall: true,
+        expandQueries: false,
+      });
+
+      expect(searchExa).not.toHaveBeenCalled();
+      expect(result.partialFailures).toEqual([
+        expect.objectContaining({
+          engine: 'exa',
+          type: 'permission_denied',
+          suggestion: expect.stringContaining('EXA_API_KEY'),
+        }),
+      ]);
+    } finally {
+      if (previousApiKey === undefined) {
+        delete process.env.EXA_API_KEY;
+      } else {
+        process.env.EXA_API_KEY = previousApiKey;
+      }
+    }
   });
 
   it('marks a waterfall early stop when a quality gate skips selected later phases', async () => {

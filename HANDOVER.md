@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T15:55:00+08:00'
+timestamp: '2026-07-26T16:10:00+08:00'
 description: 当前状态、核心契约和下一步
 tags:
 - agent-search-mcp
@@ -45,17 +45,21 @@ tags:
   必须移除这些信号；只有 completed adjudication 能生成阈值校准报告。
 - `free_search` 与 `free_search_advanced` 共用带 `outputSchema` 的 Search
   Evidence Packet；`structuredContent` 保留完整机器合同，文本通道只提供紧凑视图。
+- `fasm doctor` 只检查本地配置，不联网探测搜索源、不写配置；稳定 JSON 合同为
+  `doctor-report-v1`，只暴露状态和配置来源，不暴露 key/token/proxy 值。
+- 显式请求可选 API 适配器但凭证缺失或空白时，必须返回
+  `permission_denied`，不得伪装成零结果。
 
 ## 当前验证
 
-- 稳定测试：633 passed / 59 files。
+- 稳定测试：643 passed / 60 files。
 - 实验 MCP 2026：21 passed / 7 files。
 - TypeScript/Windows build、冻结 Token benchmark 和 bootstrap quality
   benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors / 64 个既有 warnings。
-- Node 18.20.8 transport 冒烟、npm pack dry-run 与打包后 Windows `fasm.cmd`
-  真实 DDG 搜索：通过；发布包不再包含 `scripts/**`。audit 无 high/critical，
-  仍有 MCP SDK/Hono 链上的 2 个 moderate。
+- Node 18.20.8 transport 冒烟、npm pack dry-run，以及打包后 Windows
+  `fasm.cmd` 真实 DDG 搜索和 `doctor-report-v1`：通过；发布包不再包含
+  `scripts/**`。audit 无 high/critical，仍有 MCP SDK/Hono 链上的 2 个 moderate。
 
 ## 下一步
 
@@ -65,6 +69,8 @@ tags:
    fixture；当前出口的 `/antispider/` 只作为结构化失败证据。
 3. 完成两模型 pointwise review 和第三模型分歧裁决，再运行
    `npm run benchmark:calibrate-relevance`；校准报告就绪前保持 `0.35` 不变。
+4. 继续 P1.2：定义跨引擎调用数、耗时、结果数和证据字符数的统一请求预算；
+   超限必须返回机器可读的观察值与上限。
 
 ## 文档权威
 

@@ -342,9 +342,17 @@ fasm search "query" --count 5 --engines bing,baidu,youcom --json
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
 
+# Diagnose local search configuration without network probes or writes
+fasm doctor
+fasm doctor --json
+
 # HTTP server (Bearer auth is required for MCP HTTP mode)
 HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
+
+`doctor-report-v1` reports local configuration readiness as
+`present`/`missing`/`invalid`, including provenance such as the relevant
+environment-variable name. It never prints credential or proxy values.
 
 ---
 

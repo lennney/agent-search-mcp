@@ -763,7 +763,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 - [x] Surface the existing `search://health`, `mcp://health/metrics`,
       `search://capabilities`, and HTTP `/health` control plane instead of
       adding a duplicate default-visible MCP `status` tool.
-- [ ] Add a read-only `fasm doctor` design and implementation:
+- [x] Add a read-only `fasm doctor` design and implementation:
   - report provider/optional-dependency readiness and config provenance;
   - print only `present` / `missing` / `invalid`, never key or token values;
   - provide `--json` with a stable schema and no implicit config writes;

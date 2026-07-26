@@ -71,6 +71,14 @@ describe('parseArgs', () => {
     const args = parseArgs(['node', 'cli.ts', '--version']);
     expect(args.version).toBe(true);
   });
+
+  it('parses doctor with stable JSON output', () => {
+    const args = parseArgs(['node', 'cli.ts', 'doctor', '--json']);
+    expect(args).toMatchObject({
+      command: 'doctor',
+      json: true,
+    });
+  });
 });
 
 describe('CLI entrypoint', () => {
