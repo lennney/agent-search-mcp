@@ -2,23 +2,28 @@
 
 ## Candidate identity
 
-- Git commit: `04a44ba5f5b5bf51e71d12428e4d2b2a25333963`
-- Artifact: `agent-search-mcp-3.1.3.tgz`
-- SHA-256: `B5BB3F8F2F3421535BF2E689E3C70F3DD8037FD60FB2C9B3F66C7150A2375784`
-- npm pack: 72 files, 105.7 kB packed, 374.2 kB unpacked
+- Git commit: `73c34969bbb92d5f9c70ab7ffedf02c5be5d2f2f`
+- Artifact: `agent-search-mcp-3.2.0.tgz`
+- SHA-256: `6206B15AD3D30BA45A7E74F4F8689EA88EF5AE6A2E05B355C7E8CD27326FCC26`
+- npm pack: 72 files, 106.0 kB packed, 375.3 kB unpacked
 
-The earlier `ff5dea0` artifact is rejected: its Pino 10 dependency selected
-`thread-stream` 4, whose package metadata requires Node 20 and produced an
-`EBADENGINE` warning on Node 18.
+Rejected candidates are retained only as failure evidence:
+
+- `ff5dea0` selected Pino 10 / `thread-stream` 4, whose package metadata
+  requires Node 20 and produced an `EBADENGINE` warning on Node 18.
+- `9ba379d3` packaged version 3.2.0 but MCP initialize, HTTP health, and the
+  capabilities resource still reported 3.1.3. The final candidate reads the
+  package version through one shared implementation and has regression tests
+  for initialize and health metadata.
 
 ## Matrix
 
 Each cell installed the exact tarball into an empty prefix, ran
 `fasm doctor --json`, completed MCP `initialize` and `tools/list` over stdio,
-verified `free_search` and `free_extract` discovery, and terminated the server.
-No search or extraction tool was called.
+verified `free_search` and `free_extract` discovery, required server version
+`3.2.0`, and terminated the server. No search or extraction tool was called.
 The generated Windows `node_modules/.bin/fasm.cmd` was also executed under
-Node 18.20.8 and returned a valid `doctor-report-v1`.
+Node 18.20.8 and returned a valid doctor report.
 
 | Platform | Node | Install | Doctor | stdio | Tools |
 |---|---:|---|---|---|---:|
@@ -32,6 +37,15 @@ Node 18.20.8 and returned a valid `doctor-report-v1`.
 Linux coverage used official Node Linux x64 distributions inside WSL2 Ubuntu.
 It verifies Linux binaries and filesystem/process behavior, but is not an
 independent hosted CI runner.
+
+## Live E2E decision
+
+Live E2E was skipped. The only retained `ready` qualification report was
+captured at `2026-07-26T06:46:19.954Z`; a later same-day qualification on the
+current outlet observed DDG HTTP 202 challenges and superseded that result.
+No newer qualified alternate runner was available, so the current outlet was
+not probed again. Release notes therefore make no search accuracy or provider
+availability claim.
 
 ## Known audit exception
 
