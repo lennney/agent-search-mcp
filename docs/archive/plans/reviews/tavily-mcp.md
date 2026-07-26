@@ -176,7 +176,7 @@ AIMultiple 基准测试 45% 整体成功率是主要扣分点。Tavily 宣称针
 
 ## 评测原始数据
 
-- [评测 JSON](reviews/tavily-mcp.json)
+- 原始评测 JSON 未纳入仓库；本文件仅保留当时的文字快照。
 - 测试日期: 2026-07-22
 - 服务器版本: latest
 

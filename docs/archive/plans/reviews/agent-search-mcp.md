@@ -205,7 +205,7 @@ mcp-bench 中文基准测试：
 
 ## 评测原始数据
 
-- [评测 JSON](reviews/agent-search-mcp.json)
+- 原始评测 JSON 未纳入仓库；本文件仅保留当时的文字快照。
 - [Benchmark 脚本](https://github.com/lennney/agent-search-mcp/tree/main/scripts/search-bench)
 - 测试日期: 2026-07-22
 - 服务器版本: v3.1.2

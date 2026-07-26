@@ -192,7 +192,7 @@ Firecrawl 的 README 是所有评测服务器中最全面的：
 
 ## 评测原始数据
 
-- [评测 JSON](reviews/firecrawl-mcp.json)
+- 原始评测 JSON 未纳入仓库；本文件仅保留当时的文字快照。
 - 测试日期: 2026-07-22
 - 服务器版本: v2
 

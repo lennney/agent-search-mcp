@@ -1,39 +1,58 @@
-# Documentation Index
+# Documentation
 
-文档按“用户入口、当前权威、历史证据”分层。新增文件前先判断能否更新现有
-README、路线图、ADR 或 evidence；避免为一次会话新增长期维护入口。
+This directory separates current product documentation from historical work.
+A document in `archive/` may explain how a decision was reached, but it does
+not define current behavior.
 
-## 用户入口
+## Start here
 
-- [README.md](../README.md)：英文安装、能力、配置和产品定位。
-- [README_zh.md](../README_zh.md)：中文用户入口。
-- [CHANGELOG.md](../CHANGELOG.md)：面向用户的功能与修复记录。
-- [HTTP deployment](http-deployment.md)：HTTP 安全和反向代理部署。
+- [README](../README.md) — product overview and installation
+- [中文 README](../README_zh.md) — Chinese product overview
+- [Architecture](architecture.md) — current modules, data flow, and boundaries
+- [HTTP deployment](http-deployment.md) — authentication, origins, and proxies
+- [Benchmarks](../benchmarks/README.md) — reproducible evaluation methods
+- [Changelog](../CHANGELOG.md) — user-visible changes
 
-## 当前工程权威
+## Current authority
 
-- [AGENTS.md](../AGENTS.md)：Agent 约束和仓库地图。
-- [HANDOVER.md](../HANDOVER.md)：仅记录当前状态、风险和下一步。
-- [Conventions](conventions.md)：编码和文档规范。
-- [Architecture](architecture.md)：稳定架构与核心数据流。
-- [Iteration roadmap](superpowers/plans/2026-07-22-iteration-roadmap.md)：
-  当前唯一主路线图。
-- [Benchmark README](../benchmarks/README.md)：评测入口、口径和限制。
-- [Agent Search architecture research](research/2026-07-26-agent-search-product-architecture.md)：
-  固定 commit 的竞品/架构依据。
-- [Slim Guard evidence contract](contracts/slim-guard-evidence-handoff-v1.md)：
-  可选下游交接格式。
+| Subject | Source |
+|---|---|
+| Package version and dependencies | [`package.json`](../package.json) |
+| Product behavior | Source code and tests |
+| Current priorities | [`HANDOVER.md`](../HANDOVER.md) |
+| Main roadmap | [Iteration roadmap](superpowers/plans/2026-07-22-iteration-roadmap.md) |
+| MCP ecosystem and 2026 experiment | [Ecosystem plan](plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md) |
+| Search evaluation | [Benchmark documentation](../benchmarks/README.md) |
+| Release verification | [Release candidate evidence](evidence/2026-07-26-release-candidate-smoke.md) |
+| Competitor architecture research | [Research snapshot](research/2026-07-26-agent-search-product-architecture.md) |
 
-## 历史与证据
+## Evidence policy
 
-- `docs/plans/`、`docs/reviews/`：历史计划和评审，不表示当前状态。
-- `docs/evidence/`：可复现证据和环境限制。
-- `docs/decisions/`：仍有效的架构决策。
-- `docs/geo/`：分发素材，不参与运行时契约。
+Numbers shown in public documentation must point to one of these evidence
+classes:
 
-## 维护规则
+1. **Reproducible fixture** — checked into the repository with a replay command.
+2. **Release verification** — bound to an exact commit, artifact hash, runtime,
+   operating system, and test procedure.
+3. **Dated live observation** — includes its query set and environment and is
+   not presented as a general accuracy or availability guarantee.
 
-- HANDOVER 保持在 80 行以内，不追加会话流水账。
-- 一个事实只保留一个权威来源；其他文档用链接，不复制状态和测试数量。
-- 已被当前架构、研究或路线图完全覆盖的旧分析直接删除，Git 历史负责追溯。
-- 只有重大不可逆架构决定新增 ADR；普通实现决策更新路线图或 CHANGELOG。
+The current release evidence records 720 passing offline tests, packed install
+and stdio smoke on Windows and Linux with Node 18/20/22, and one bounded
+non-empty DDG search smoke. The frozen formatting fixture reproducibly measures
+28.4% compact and 30.4% compact-aggressive token reduction for that fixture.
+These facts support compatibility and formatting claims, not universal search
+quality claims.
+
+## Historical material
+
+- [`archive/plans/`](archive/plans/) — completed or superseded implementation plans
+- [`archive/reviews/`](archive/reviews/) — historical code and release reviews
+- [`archive/superpowers/`](archive/superpowers/) — completed planning-session artifacts
+- [`evidence/`](evidence/) — retained reproducible evidence; not archived merely
+  because it is old
+- [`decisions/`](decisions/) — architecture decisions that remain relevant
+
+Before adding a document, prefer updating the current authority for that
+subject. Git history preserves obsolete detail; the active documentation tree
+should remain small.
