@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Added a dependency-free bilingual query-classifier experiment and a
+  docs/news/code/general routing benchmark. The candidate changes proposed
+  routes, but remains outside production because no completed quality evidence
+  proves an improvement.
 - Added an opt-in, restart-safe exact-result cache behind a replaceable store
   interface. Versioned hashed keys bind search policy and freshness; atomic
   local files fail open and never reuse stale, malformed, empty, or

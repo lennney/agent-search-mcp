@@ -785,10 +785,12 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
     reuse, and eviction on Node 18/20/22 plus Windows/Linux;
   - keep native/vector dependencies out of the default package until all gates
     pass.
-- [ ] Benchmark deterministic routing against a lightweight intent classifier
+- [x] Benchmark deterministic routing against a lightweight intent classifier
       on bilingual docs/news/code/general slices. A classifier is eligible only
       if it changes routing and improves quality without violating latency,
       memory, cancellation, or zero-key startup gates.
+  - Outcome: the candidate changes routes but has no completed quality evidence,
+    so it remains benchmark-only and is not production-eligible.
 - [ ] Collect issue/usage evidence before adding GitHub/GitLab search tools.
       Direct code-hosting APIs do not automatically inherit the Web Search
       cache, budget, failure, or evidence contract.

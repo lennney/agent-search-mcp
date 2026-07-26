@@ -71,6 +71,7 @@
     "benchmark:capture": "npm run build && node benchmarks/run.mjs --capture benchmarks/fixtures/live-latest.json",
     "benchmark:verify": "npm run build && node benchmarks/run.mjs --fixture benchmarks/fixtures/format-regression.json --check",
     "benchmark:exact-cache": "npm run build && node benchmarks/exact-cache.mjs --check",
+    "benchmark:intent-routing": "npm run build && node benchmarks/intent-routing.mjs --check",
     "benchmark:quality": "node benchmarks/quality.mjs --fixture benchmarks/fixtures/quality-bootstrap.json",
     "benchmark:quality:verify": "node benchmarks/quality.mjs --fixture benchmarks/fixtures/quality-bootstrap.json --check",
     "benchmark:pool": "node benchmarks/pool.mjs",

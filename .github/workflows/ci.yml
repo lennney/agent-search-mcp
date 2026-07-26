@@ -36,6 +36,9 @@ jobs:
       - name: Verify persistent exact-cache prototype
         run: node benchmarks/exact-cache.mjs --check
 
+      - name: Verify advisory query classifier
+        run: node benchmarks/intent-routing.mjs --check
+
   quality:
     runs-on: ubuntu-latest
 
@@ -90,6 +93,9 @@ jobs:
 
       - name: Verify persistent exact-cache prototype
         run: node benchmarks/exact-cache.mjs --check
+
+      - name: Verify advisory query classifier
+        run: node benchmarks/intent-routing.mjs --check
 
       - name: Verify doctor on Windows
         shell: pwsh

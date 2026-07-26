@@ -27,5 +27,11 @@ export { enrichResults } from './enricher.js';
 export type { EnrichOptions, EnrichResult } from './enricher.js';
 export { detectLanguage } from './language-detector.js';
 export type { DetectedLanguage } from './language-detector.js';
+export { classifyQuery, QUERY_CLASSIFIER_VERSION } from './query-classifier.js';
+export type {
+  QueryClassification,
+  QueryFreshness,
+  QueryIntent,
+} from './query-classifier.js';
 export { semanticDedup, semanticRerank, isSemanticAvailable } from './semantic.js';
 export type { SemanticOptions } from './semantic.js';

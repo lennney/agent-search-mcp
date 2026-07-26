@@ -276,6 +276,14 @@ The 2026-07-26 real-network pilot returned zero results for both queries. It is
 retained as failure-transparency evidence rather than excluded to improve the
 headline number.
 
+## Intent-routing experiment
+
+`npm run benchmark:intent-routing` checks a dependency-free classifier against
+32 bilingual docs/news/code/general contract cases and records candidate route
+changes, latency, and RSS. This synthetic fixture is not search-quality
+evidence; the candidate stays outside MCP/CLI routing until completed pooled
+results prove a quality gain.
+
 ## Contents
 
 | File | Description |
@@ -286,6 +294,7 @@ headline number.
 | [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and same-mode adjudication gate |
 | [`ai-review.mjs`](./ai-review.mjs) | OpenAI Responses executor for two-model review and third-model adjudication |
 | [`calibrate-relevance.mjs`](./calibrate-relevance.mjs) | Completed-qrels calibration for the internal routing relevance floor |
+| [`intent-routing.mjs`](./intent-routing.mjs) | Advisory classifier and candidate-route regression gate |
 | [`lib/ai-review.mjs`](./lib/ai-review.mjs) | Provider-neutral pointwise judge contract and evidence hashing |
 | [`lib/pooling.mjs`](./lib/pooling.mjs) | Pool URL normalization, trace preservation, and completed-review validation |
 | [`lib/relevance-calibration.mjs`](./lib/relevance-calibration.mjs) | Deterministic threshold curve, readiness gate, and recommendation policy |
@@ -297,6 +306,7 @@ headline number.
 | [`fixtures/live-reviewer-pilot.json`](./fixtures/live-reviewer-pilot.json) | Real non-empty single-engine reviewer-pipeline qualification capture |
 | [`queries/reviewer-pilot.json`](./queries/reviewer-pilot.json) | Bilingual reviewer-pilot questions and reference answers |
 | [`queries/routing-calibration.json`](./queries/routing-calibration.json) | Ten bilingual evergreen queries for internal routing calibration |
+| [`queries/intent-routing.json`](./queries/intent-routing.json) | Synthetic bilingual intent-routing contract cases |
 | [`reviews/`](./reviews) | Blinded, pending reviewer packets |
 | [`schemas/labeled-search-quality-v1.schema.json`](./schemas/labeled-search-quality-v1.schema.json) | Label/trace schema |
 | [`schemas/pooled-search-comparison-v1.schema.json`](./schemas/pooled-search-comparison-v1.schema.json) | Completed pooled comparison report schema |

@@ -113,3 +113,15 @@ tags:
   18/20/22. No native/vector dependency was added.
 - Next roadmap item: add a deterministic routing classifier as advisory evidence
   before it can influence engine selection.
+
+## 2026-07-26 intent-routing benchmark checkpoint
+
+- `query-classifier-v1` is a pure, dependency-free experiment exercised on 32
+  EN/ZH docs/news/code/general contract cases. It is not called by MCP/CLI
+  search and does not alter cancellation, startup, cache, or engine selection.
+- The candidate changed 75% of baseline route plans with 100% deterministic
+  fixture conformance, but has no completed search-quality evidence. Therefore
+  `production_eligible=false`; do not integrate it until pooled live results
+  prove a quality gain within latency and memory gates.
+- Next roadmap item: collect issue/usage evidence before considering dedicated
+  GitHub/GitLab search tools.
