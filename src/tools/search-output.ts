@@ -59,6 +59,7 @@ const engineErrorSchema = z.object({
     'upstream_4xx',
     'upstream_5xx',
     'rate_limited',
+    'bot_challenge',
     'permission_denied',
     'unknown',
   ]),

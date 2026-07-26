@@ -8,6 +8,7 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import { searchYouCom } from '../engines/youcom.js';
+import { isEngineAdapterError } from '../engines/engine-error.js';
 import { searchWikipedia } from '../engines/wikipedia.js';
 import { searchStartpage } from '../engines/startpage.js';
 import { searchYandex } from '../engines/yandex.js';
@@ -181,7 +182,11 @@ async function searchEngine(
       }
 
       // Non-retryable or max retries exceeded
-      healthTracker.recordFailure(engine);
+      if (isEngineAdapterError(lastError) && lastError.cooldownMs) {
+        healthTracker.suspend(engine, lastError.cooldownMs);
+      } else {
+        healthTracker.recordFailure(engine);
+      }
       logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
       return { engine, status: 'failed', results: [], error: lastError };
     }
@@ -236,6 +241,14 @@ function isRetryableError(err: Error): boolean {
  * Classify a raw error into a structured EngineError for agent-friendly recovery.
  */
 function classifyEngineError(engine: string, err: Error): EngineError {
+  if (isEngineAdapterError(err)) {
+    return {
+      engine,
+      type: err.failureType,
+      message: err.message,
+      suggestion: err.suggestion,
+    };
+  }
   const msg = err.message.toLowerCase();
 
   if (msg.includes('timeout') || msg.includes('abort') || msg.includes('etimedout')) {

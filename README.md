@@ -12,6 +12,8 @@
 
 [中文文档](README_zh.md) · [Benchmarks](./benchmarks/) · [CHANGELOG](./CHANGELOG.md)
 
+If Agent Search MCP earns a place in your stack, [star the repository](https://github.com/lennney/agent-search-mcp) so more agents can find a genuinely zero-key search path.
+
 ---
 
 ## Why Agent Search MCP
@@ -20,21 +22,48 @@ The immediate value is simple: **search without paying for an API, and return fe
 
 The route is deliberate: **zero-key start → Chinese-native routing → inspectable multi-source evidence → token-aware progressive search → optional commercial escalation**. The 12 adapters serve this route; adapter count is not the product story by itself.
 
-| | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
-|---|:---:|:---:|:---:|:---:|
-| **Start without a user API key** | **Yes — self-run adapters** | Limited — keyless Search/Extract | Limited — hosted free MCP | No |
-| **Zero-key path** | **Local router, no single vendor gateway** | Tavily service | Exa hosted service | — |
-| **Search backends** | **8 zero-key + 4 optional APIs** | Tavily API | Exa index | Brave index |
-| **Cross-engine aggregation** | **Yes** | Single upstream | Single upstream | Single upstream |
-| **Dedicated Chinese engines** | **Sogou + Baidu** | No | No | No |
-| **Local MCP server** | Yes | Yes | Yes | Yes |
-| **Best fit** | Zero-key, multilingual verification | Hosted search/extract/map/crawl | Semantic, code, and company research | Independent index + vertical search |
+| | Agent Search MCP | [MCP Web Hound](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11) | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Start without a user API key** | **Yes — self-run adapters** | Yes — four scraped adapters | Limited — keyless Search/Extract | Limited — hosted free MCP | No |
+| **Zero-key path** | **Local policy router** | Local scraper router | Tavily service | Exa hosted service | — |
+| **Search backends** | **8 zero-key + 4 optional APIs** | 4 zero-key + 4 optional APIs | Tavily API | Exa index | Brave index |
+| **Cross-engine aggregation** | **Provider-family-aware** | URL merge; two parallel slots by default | Single upstream | Single upstream | Single upstream |
+| **Dedicated Chinese engines** | **Sogou + Baidu** | No | No | No | No |
+| **Persistent semantic query cache** | No — short-lived exact cache; optional result rerank | Yes — SQLite + sqlite-vec | Service-managed | Service-managed | Service-managed |
+| **Search failure evidence** | **Per-engine `partialFailures`** | Whole-tool error only when every provider fails | Single-upstream error | Single-upstream error | Single-upstream error |
+| **Local transport** | **stdio + Streamable HTTP** | stdio | stdio | stdio | stdio |
+| **Best fit** | Zero-key multilingual evidence with bounded context | Local semantic cache and simple diagnostics | Hosted search/extract/map/crawl | Semantic, code, and company research | Independent index + vertical search |
 
-Comparison last checked 2026-07-26 against the linked official repositories. Tavily's current local MCP exposes limited keyless Search/Extract; Exa's hosted MCP has a limited free no-key path while its local npm server uses `EXA_API_KEY`. Those are useful on-ramps, but both still route through one vendor service. Pricing and limits change, so this table intentionally avoids monthly-price claims.
+Comparison last checked 2026-07-26 against the linked official repositories and fixed source snapshots. MCP Web Hound has a real persistent semantic cache, NLI reranking, and a concise status/configuration experience; its GitHub/GitLab tools are separate direct-API tools rather than part of the web-search pipeline. Tavily's current local MCP exposes limited keyless Search/Extract; Exa's hosted MCP has a limited free no-key path while its local npm server uses `EXA_API_KEY`. Pricing, limits, stars, and downloads change quickly, so this table compares implementation boundaries instead. See the [source-level deep dive](./docs/research/2026-07-26-agent-search-product-architecture.md#mcp-web-hound).
+
+### How the search policy works
+
+```mermaid
+flowchart LR
+    A["Agent"] --> T["MCP search tools"]
+    T --> P["Policy router"]
+    P --> C["Cache, cancellation, health, rate limits"]
+    P --> Z["Zero-key stages<br/>Chinese-native + multilingual"]
+    P --> O["Optional commercial APIs"]
+    Z --> E["Evidence pipeline<br/>dedup, relevance, provider families"]
+    O --> E
+    E --> B["Query-aware passages<br/>shared evidence budget"]
+    B --> R["Compact content + structuredContent"]
+```
+
+The router spends providers and context progressively. It stops only when the
+observable evidence gate passes, and it keeps failure, provenance, and budget
+metadata available to the calling Agent. The full module map is in
+[System Architecture](./docs/architecture.md).
 
 ### Zero-key by default
 
 Eight adapters need no credentials — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, and Mojeek. Brave, Tavily, Exa, and You.com remain optional when you want their APIs.
+
+DuckDuckGo uses its page-issued Web preload before the legacy HTML/Lite
+representations. Upstream CAPTCHA or anti-spider responses are returned as
+`bot_challenge` failures and put that provider into a bounded cooldown instead
+of being misreported as a missing API key or silently retried.
 
 ### Progressive multi-source search
 
@@ -194,6 +223,13 @@ Enrichment only replaces a weak snippet with extracted page content. It does
 not increase `confidence` or `source_count`, because extraction is not an
 independent source. Parallel and waterfall modes use the same cache contract,
 including cache reads in waterfall mode.
+
+Operational visibility does not consume another default tool slot:
+`search://health` reports provider/circuit state,
+`mcp://health/metrics` reports latency and cache metrics, and
+`search://capabilities` describes the active surface. HTTP deployments also
+expose an unauthenticated probe-only `GET /health`; it never returns API keys or
+search results.
 
 ---
 

@@ -93,6 +93,8 @@ export interface ProviderHealth {
   circuitState: 'closed' | 'open' | 'half-open';
   circuitOpenedAt: number | null;
   circuitCooldownMs: number;
+  /** Explicit upstream suspension, e.g. after a CAPTCHA challenge. */
+  suspendedUntil: number | null;
   // DDG-specific: whether the ddgs Python library is available
   ddgs_available?: boolean;
 }
@@ -111,6 +113,7 @@ export class HealthTracker {
     h.lastSuccess = Date.now();
     h.errorCount = Math.max(0, h.errorCount - 1);
     h.avgLatency = (h.avgLatency + latency) / 2;
+    h.suspendedUntil = null;
     
     // Close circuit on success (recovery)
     // Allow immediate recovery when error count drops below threshold
@@ -150,13 +153,39 @@ export class HealthTracker {
     h.isHealthy = this.calculateHealth(h);
   }
 
+  /**
+   * Suspend a provider immediately after an upstream-declared challenge.
+   * This is separate from the generic failure-count circuit breaker so a
+   * single CAPTCHA does not need four more requests before traffic stops.
+   */
+  suspend(provider: string, cooldownMs: number): void {
+    if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) {
+      throw new Error('Provider suspension cooldown must be positive');
+    }
+    const h = this.getOrCreate(provider);
+    const now = Date.now();
+    h.lastError = now;
+    h.suspendedUntil = Math.max(h.suspendedUntil ?? 0, now + cooldownMs);
+    h.isHealthy = false;
+    logger.warn(
+      { provider, cooldownMs },
+      'Provider suspended after upstream challenge',
+    );
+  }
+
   getHealth(): ProviderHealth[] {
+    for (const h of this.health.values()) {
+      this.refreshSuspension(h);
+    }
     return Array.from(this.health.values());
   }
 
   isHealthy(provider: string): boolean {
     const h = this.health.get(provider);
     if (!h) return true; // Unknown providers are assumed healthy
+
+    this.refreshSuspension(h);
+    if (h.suspendedUntil !== null) return false;
     
     // Check if circuit should transition to half-open
     if (h.circuitState === 'open' && h.circuitOpenedAt) {
@@ -170,6 +199,13 @@ export class HealthTracker {
     }
     
     return h.isHealthy;
+  }
+
+  private refreshSuspension(h: ProviderHealth): void {
+    if (h.suspendedUntil === null || Date.now() < h.suspendedUntil) return;
+    h.suspendedUntil = null;
+    h.isHealthy = this.calculateHealth(h);
+    logger.info({ provider: h.provider }, 'Provider suspension expired');
   }
 
   private calculateHealth(h: ProviderHealth): boolean {
@@ -193,6 +229,7 @@ export class HealthTracker {
         circuitState: 'closed',
         circuitOpenedAt: null,
         circuitCooldownMs: HealthTracker.INITIAL_COOLDOWN_MS,
+        suspendedUntil: null,
       });
     }
     return this.health.get(provider)!;

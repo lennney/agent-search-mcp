@@ -4,7 +4,10 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { encode } from 'gpt-tokenizer';
 
-import { parseEngineSelection } from './lib/capture-options.mjs';
+import {
+  parseEngineSelection,
+  selectBenchmarkQueries,
+} from './lib/capture-options.mjs';
 import { countProviderFamilies } from './lib/evidence-handoff.mjs';
 import { buildCaptureTrace } from './lib/quality-metrics.mjs';
 
@@ -73,15 +76,10 @@ async function capture(fixturePath) {
     readJson(querySetPath),
   ]);
   const requestedEngines = parseEngineSelection(option('--engines'), ALL_ENGINES);
-  const allQueries = Array.isArray(querySet) ? querySet : querySet.queries;
-  const requestedLimit = Number.parseInt(option('--limit') || String(allQueries?.length || 0), 10);
-  const english = allQueries?.filter(item => (item.language || item.lang) !== 'zh') || [];
-  const chinese = allQueries?.filter(item => (item.language || item.lang) === 'zh') || [];
-  const englishLimit = Math.ceil(requestedLimit / 2);
-  const queries = requestedLimit < (allQueries?.length || 0)
-    ? [...english.slice(0, englishLimit), ...chinese.slice(0, requestedLimit - englishLimit)]
-    : allQueries;
-  if (!Array.isArray(queries)) throw new Error('benchmarks/queries.json must contain an array');
+  const requestedLimit = option('--limit') === undefined
+    ? undefined
+    : Number.parseInt(option('--limit'), 10);
+  const queries = selectBenchmarkQueries(querySet, requestedLimit);
 
   const samples = [];
   const fixture = {

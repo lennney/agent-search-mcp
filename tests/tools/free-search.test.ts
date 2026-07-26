@@ -140,6 +140,7 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
       isHealthy: vi.fn(() => true),
       recordSuccess: vi.fn(),
       recordFailure: vi.fn(),
+      suspend: vi.fn(),
     })),
     EnginePolicy: vi.fn(() => ({
       isAllowed: vi.fn(() => true),
@@ -159,6 +160,7 @@ import { searchStartpage } from '../../src/engines/startpage.js';
 import { searchYandex } from '../../src/engines/yandex.js';
 import { searchMojeek } from '../../src/engines/mojeek.js';
 import { searchExa } from '../../src/engines/exa.js';
+import { EngineAdapterError } from '../../src/engines/engine-error.js';
 import {
   checkConfidenceBasket,
   detectLanguage,
@@ -279,6 +281,32 @@ describe('searchWithFallback — parallel', () => {
     expect(result.results.length).toBeGreaterThan(0);
     expect(result.partialFailures).toEqual(expect.arrayContaining([
       expect.objectContaining({ engine: 'baidu', type: 'permission_denied' }),
+    ]));
+  });
+
+  it('preserves a zero-key anti-bot challenge as its own failure type', async () => {
+    (searchSogou as any).mockRejectedValue(new EngineAdapterError(
+      'bot_challenge',
+      'Sogou returned an anti-bot challenge',
+      {
+        retryable: false,
+        cooldownMs: 3_600_000,
+        suggestion: 'Use another network runner',
+      },
+    ));
+
+    const result = await searchWithFallback({
+      query: 'sogou challenge',
+      count: 3,
+      engines: ['sogou', 'wikipedia'],
+    });
+
+    expect(result.partialFailures).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        engine: 'sogou',
+        type: 'bot_challenge',
+        suggestion: 'Use another network runner',
+      }),
     ]));
   });
 

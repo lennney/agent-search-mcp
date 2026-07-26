@@ -154,7 +154,9 @@ Slim Guard
 - 聚合器按 URL 去重，保留更长摘要，并把同一 URL 在多个 provider 中重复出现的次数用于排序。
 - 它在唯一结果数达到目标后停止；这个条件节省调用，但没有证明结果与查询相关。
 - `SimpleFilterRanker` 使用标题/正文中的查询词做分桶，而不是训练出的统一概率。
-- 当前 DuckDuckGo 实现只使用 HTML 端点，并把其 provider 标成 `bing`，防止把 DDG 和 Bing 当成两个独立印证来源。
+- 当前 DuckDuckGo 实现只使用 HTML 端点，并把其 provider 标成 `bing`，防止把 DDG 和 Bing 当成两个独立印证来源。它还使用随机 User-Agent 和专用
+  `HttpClient2`；本项目保留 provider-family 判断，但不复制身份/指纹轮换行为。见
+  [`ddgs/engines/duckduckgo.py`](https://github.com/deedy5/ddgs/blob/a12929a72429a39a0841c3d7caacb20ee17acd4d/ddgs/engines/duckduckgo.py)。
 
 对 Agent Search 的直接含义：
 
@@ -167,18 +169,96 @@ Slim Guard
 源码快照：[`0909dbc`](https://github.com/searxng/searxng/tree/0909dbc9efb2c6e93e2ad51e60e66417ab291710)，AGPL-3.0-or-later。这里只借鉴架构思想，不复制其实现。
 
 - 它把引擎适配、网络配置、结果类型、错误分类和调度分开，并可对 CAPTCHA、429、403 等错误采用不同暂停时间。标准搜索是所有未暂停引擎并发并共享一个墙钟 deadline，不是质量瀑布。
-- 可靠性重点是跨请求暂停而非请求内重试；网络重试默认是 0。DDG CAPTCHA 分支又把暂停时间显式设为 0，因此不能把它当成已经成熟的 DDG 熔断模板。
-- 当前 DuckDuckGo 实现说明 HTML 与 Lite 都受同一类 IP 级 bot blocker 影响，并使用固定 User-Agent、浏览器 `Sec-Fetch-*` 头、地区 cookie 和 CAPTCHA 检测。见
-  [`searx/engines/duckduckgo.py`](https://github.com/searxng/searxng/blob/0909dbc9efb2c6e93e2ad51e60e66417ab291710/searx/engines/duckduckgo.py#L1-L44)。
-- 注释列出了 HTML/Lite，但实际 URL 固定为 HTML；当前没有 HTML → Lite fallback，也没有 202 专门分支。
-- 这与“HTML 202 后切 Lite 就能绕过限流”的路线图假设冲突。本 runner 的一次受控探测也显示 HTML 和 Lite 都返回 HTTP 202 challenge。该探测只能说明当前网络出口，不能推广成所有环境的可用率结论；边界记录见 [`DDG HTML/Lite network observation`](../evidence/2026-07-26-ddg-html-lite-network-observation.md)。
+- 可靠性重点是跨请求暂停而非请求内重试；网络重试默认是 0。
+- 当前通用 DuckDuckGo Web 引擎先从搜索页提取服务端生成的
+  `links.duckduckgo.com/d.js` URL，再请求 JSON；查询、服务端 token 与
+  User-Agent 绑定，所以同一会话保持静态 UA，并带浏览器 `Sec-Fetch-*` 头。见
+  [`duckduckgo_web.py`](https://github.com/searxng/searxng/blob/0909dbc9efb2c6e93e2ad51e60e66417ab291710/searx/engines/duckduckgo_web.py)。
+- Sogou 引擎禁用自动 redirect，把指向 `/antispider/` 的 302 明确转换为
+  CAPTCHA，而不是继续抓 challenge 页面。见
+  [`sogou.py`](https://github.com/searxng/searxng/blob/0909dbc9efb2c6e93e2ad51e60e66417ab291710/searx/engines/sogou.py)。
+- 本 runner 的受控探测显示 DDG HTML/Lite 都返回 HTTP 202 challenge，但
+  页面签发的 Web preload 非空；Sogou 即使延续 cookie 仍进入 `/antispider/`。
+  这些事实只代表当前出口，边界记录见
+  [`DDG HTML/Lite network observation`](../evidence/2026-07-26-ddg-html-lite-network-observation.md)。
 
 对 C2 的修正：
 
 - Lite 可以作为**机会性兼容路径**，不能宣传为更宽松或可靠的 rate-limit 回退；
-- CAPTCHA/202 应进入明确的 `rate_limited`/challenge 失败证据和 provider 冷却；
+- CAPTCHA/202 应进入明确的 `bot_challenge` 失败证据和 provider 冷却；
 - 不应通过轮换身份或反复切端点来规避上游限制；
 - 若没有跨网络 runner 的成功 fixture，不把 C2 标记成“DDG 可用率提升”。
+
+### MCP Web Hound
+
+源码快照：
+[`f468da9`](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11)，
+MIT；npm `1.10.16`。以下结论来自该固定快照和 npm/GitHub 在
+2026-07-26 的一次性指标，不把短期 Star 或下载量当成质量证明。
+
+#### 基础数据校正
+
+| 指标 | agent-search-mcp | mcp-web-hound | 说明 |
+|---|---:|---:|---|
+| 首个 Git commit | 2026-06-22 | 2026-06-26 | 后者不是 6 月 25 日发布；其 npm 包更晚 |
+| npm 首次发布 | 2026-06-23 | 2026-06-29 | `npm view <pkg> time` |
+| 当前 npm 版本 | `3.1.3`（7 月 23 日） | `1.10.16`（7 月 4 日） | 版本号不能横向代表成熟度 |
+| 已发布 npm 版本数 | 10 | 25 | Web Hound 在约 6 天内连续发布 25 个版本 |
+| GitHub Star / Fork | 15 / 1 | 19 / 2 | 极小、易波动样本，只能看分发触达 |
+| npm 下载（7 月 18–24 日） | 900 | 159 | 5.66 倍下载，不等于 5.66 倍独立用户 |
+| Node / License | >=18 / Apache-2.0 | >=20 / MIT | Web Hound 使用原生 SQLite/vector 依赖 |
+
+下载窗口可由 npm 的
+[`agent-search-mcp`](https://api.npmjs.org/downloads/point/last-week/agent-search-mcp)
+和
+[`mcp-web-hound`](https://api.npmjs.org/downloads/point/last-week/mcp-web-hound)
+端点复核。Star/Fork 是 2026-07-26 快照，不进入长期 README 结论。
+
+因此，“晚 3 天却多 4 个 Star”最多是一个分发线索，不能推出命名、捐赠地址或
+文档中的任何一个因素是原因。钱包地址也不能证明长期维护承诺。更可靠的判断是：
+Web Hound 用短名称、单参数 `web_search`、配置 CLI、状态工具和多篇专题文档，
+让新访客更快形成“工程完整”的心智模型；Agent Search 的 npm 下载明显更高，
+说明包被拉取更多，但下载包含 CI、重复安装和自动化流量，不能直接称为用户数。
+
+#### 真实运行时，不是 README 印象
+
+| 公开印象 | 固定源码事实 | 对 Agent Search 的含义 |
+|---|---|---|
+| “8 provider 并行路由” | 默认 `MAX_PARALLEL_PROVIDERS=2`；每个槽位遇到第一个非空 provider 就退出，最多聚合两个成功 provider。见 [`provider-router.ts#L70-L167`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/search/provider-router.ts#L70-L167) | 不用 adapter 总数描述单次搜索；继续公开实际阶段、调用数和停止原因 |
+| “Intent-aware routing” | NLI 分类器真实存在，但 router 不依据 `intent` 选 provider；intent 当前主要进入 cache key/TTL，freshness 进入重排。见 [`intent-classifier.ts#L55-L123`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/search/intent-classifier.ts#L55-L123) 与 [`orchestrator.ts#L65-L86`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/search/orchestrator.ts#L65-L86) | “分类器存在”不等于“分类改善路由”；必须用 routing slice benchmark 验证 |
+| “Semantic cache + reranker” | SQLite exact cache、sqlite-vec 相似查询缓存和本地 NLI 重排都是真实现；默认需要约 240MB 模型和原生/可选依赖。生产依赖和可选依赖大量使用 `latest`。见 [`package.json#L47-L70`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/package.json#L47-L70) | 持久缓存值得实验，但不能牺牲 Node 18、可复现安装或零额外依赖的默认路径 |
+| “Budget Manager” | 当前是单进程固定窗口的 search/fetch 计数，不是 task/session budget；没有 fetch 工具消费 fetch 预算。预算拒绝在 orchestrator 中返回无错误说明的空结果。见 [`budget-manager.ts#L12-L104`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/limits/budget-manager.ts#L12-L104) 与 [`orchestrator.ts#L74-L89`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/search/orchestrator.ts#L74-L89) | 吸收“预算是一等公民”，不复制把拒绝伪装成零结果或把进程窗口称为 task 的语义 |
+| “Incremental backoff” | 分 provider 的分钟/日/月计数会持久化；连续失败的 1 分钟到 24 小时级别在内存累计。未知错误默认归为 `access_denied`，成功会清空 suspension。 | 若持久化冷却，必须区分 CAPTCHA、429、403、timeout、parse drift，并把 skip/failure 返回给 Agent |
+| “Status 工具” | 状态、缓存和预算可见性很好；但 `config_help` 把所有配置原值写进响应，包含描述过的 API Key/Token。见 [`status.ts#L24-L39`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/tools/status.ts#L24-L39) 和 [`types.ts#L243-L261`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/utils/types.ts#L243-L261) | 保留 Agent Search 的 resource/HTTP health；未来 CLI doctor 只显示 present/missing/来源，永不回显 secret |
+| “GitHub/GitLab 完整周边” | 它们是独立直连 API 工具，不共享 web pipeline 的 cache、budget、rerank 或 fallback；GitLab 仅有 token 时注册。运行时还始终注册 README 未列出的 `report_search_usage`。见 [`index.ts#L146-L159`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/index.ts#L146-L159) | 这是工具广度，不是 web-search 深度；先用需求证据判断是否增加默认工具面 |
+| “生产 timeout” | orchestrator 用 `Promise.race` 返回 timeout，但没有把该 signal 传入 router/provider，底层请求可继续运行。见 [`orchestrator.ts#L169-L183`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/search/orchestrator.ts#L169-L183) | 保留 Agent Search 已完成的端到端 AbortSignal 传播 |
+
+还有一个与本项目定位直接相关的边界：其 query normalizer 使用不带 Unicode
+属性的 `\w` 白名单，中文字符会被删除；纯中文查询可归一化为空字符串。
+见
+[`query-normalizer.ts#L8-L15`](https://github.com/ilgizar-valiullin/mcp-web-hound/blob/f468da9943952fddc1ed71ca977b18b60f40ca11/src/search/query-normalizer.ts#L8-L15)。
+因此它当前不能作为 Agent Search 中文路由的实现参考。
+
+#### 真正值得吸收
+
+1. **把控制面命名并展示出来**：cache、budget、provider cooldown、status、
+   configure/doctor 各自有清楚入口；
+2. **持久精确缓存 + 可选语义查询复用**：适合重复技术查询，但必须先解决
+   cache key、freshness、provider 配置、tenant/session 隔离和安装体积；
+3. **配置 CLI**：比要求用户手写大量环境变量更友好，但输出必须脱敏，写操作必须
+   显式且可预览；
+4. **专题文档和 Mermaid**：把 pipeline、fallback、cache 和 budget 单独解释，
+   但能力表应从真实注册表/配置 schema 生成，避免文档领先于代码；
+5. **Agent 使用反馈关联**：`search_id` / `doc_id` / used-doc signal 值得进入离线
+   评测候选，但上报是写操作，不能默认要求 Agent 自动执行，更不能冒充相关性真值。
+
+#### 不吸收
+
+- 不用进程级“15 次/30 分钟”替代请求级 calls/time/evidence budget；
+- 不用本地 NLI/embedding 的存在感代替盲评和 pooled qrels；
+- 不把 GitHub/GitLab 直连工具塞进默认搜索面来制造“功能完整”观感；
+- 不用 `latest` 生产依赖、未取消的 Promise timeout 或丢失 per-provider failure；
+- 不增加捐赠钱包来暗示可信度；长期承诺用活跃维护、可复现发布和安全响应证明。
 
 ### 另外两个近期 MCP 样本
 
@@ -359,6 +439,29 @@ Slim Guard 应消费后者。压缩可以改变展示长度，但不能删除 pr
 
 预算耗尽、所有 provider 失败或没有可引用 passage 时，返回缺口和失败原因。不能为了“总要给用户一个答案”而生成带伪引用的报告。
 
+### 8. 状态优先使用 Resource/CLI，不增加默认工具 Token
+
+Agent Search 已有 `search://health`、`mcp://health/metrics`、
+`search://capabilities` 和 HTTP `/health`。先把这些入口在 README 中讲清楚；
+若新增 `fasm doctor`，只显示 provider/依赖/config 是否就绪和配置来源，不回显
+API Key、Bearer token 或其他 secret。除非客户端兼容性数据证明 Resource
+不可发现，否则不再注册一个功能重复的 `status` 工具。
+
+### 9. 持久缓存先做隔离实验，不直接引入默认原生依赖
+
+持久 exact/semantic cache 的 cache key 至少绑定 normalized query、语言、策略、
+过滤器、provider 配置版本、输出/证据 schema 和 freshness policy；带 request
+signal 的请求不能共享全局 pending promise。实验必须比较 Node 18/20/22 和
+Windows/Linux 的安装成功率、冷启动、RSS、p95 延迟、命中率、错误复用率和陈旧率。
+通过前继续使用轻量进程内 cache；语义能力保持 opt-in。
+
+### 10. Intent classifier 只有在改变并改善策略时才进入核心
+
+先定义 `docs`、`news`、`code/repository`、中文和普通 web 的盲测 slice，
+比较确定性规则、轻量分类器和无分类基线。分类结果必须实际改变 provider/TTL/
+freshness 策略，并通过质量、失败率、延迟和内存门；仅生成一个 `intent` 标签不算
+产品能力。
+
 ## 建议实施顺序
 
 ### P0：本轮
@@ -374,6 +477,8 @@ Slim Guard 应消费后者。压缩可以改变展示长度，但不能删除 pr
 2. 将 adapter 与独立 upstream/provider 分开建模；
 3. 给执行元数据增加 `stop_reason` 和每项门槛的观测值；
 4. 用真实 pooled qrels 校准相关性门，AI 评测只跑小规模分歧样本。
+5. 在 README 展示现有 health/capabilities Resource 和真实搜索流水线；
+6. 设计脱敏 `fasm doctor`，但不增加重复的 MCP `status` 工具。
 
 ### P2：Agent 层
 
@@ -381,6 +486,13 @@ Slim Guard 应消费后者。压缩可以改变展示长度，但不能删除 pr
 2. 实现有界的 plan → parallel search → dedup → gap check → synthesize；
 3. 把每轮总查询数、提取字符数、时间和模型 Token 设成硬预算；
 4. 通过 Slim Guard 接收结构化 evidence 并执行安全/压缩策略。
+
+### P3：有门槛的本地智能与持久化实验
+
+1. 先做持久 exact cache 的可替换 backend，不把 native/vector 依赖放进默认安装；
+2. 在真实重复查询集上量化 semantic cache 的命中、错误复用和 freshness 风险；
+3. 在 EN/ZH 与 docs/news/code slice 上比较 intent classifier 和确定性路由；
+4. 只有同时通过 Node 18、Windows、取消、隔离、内存和质量门，才讨论生产启用。
 
 ## 本轮验收标准
 

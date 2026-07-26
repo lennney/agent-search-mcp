@@ -12,6 +12,8 @@
 
 [English](README.md) · [Benchmarks](./benchmarks/) · [CHANGELOG](./CHANGELOG.md)
 
+如果 Agent Search MCP 已经进入你的工具栈，欢迎[给仓库一个 Star](https://github.com/lennney/agent-search-mcp)，让更多 Agent 找到真正零密钥的搜索路径。
+
 ---
 
 ## 为什么选择 Agent Search MCP
@@ -20,21 +22,45 @@
 
 这条路线是：**零密钥起步 → 中文原生路由 → 多源证据可检查 → 按 token 预算渐进搜索 → 必要时升级商业 API**。12 个适配器是这条路线的实现，适配器数量本身不是产品故事。
 
-| | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
-|---|:---:|:---:|:---:|:---:|
-| **无需用户 API Key 起步** | **是——自行运行适配器** | 受限——keyless Search/Extract | 受限——托管免费 MCP | 否 |
-| **零密钥调用路径** | **本地路由，无单一厂商网关** | Tavily 服务 | Exa 托管服务 | — |
-| **搜索后端** | **8 个零密钥 + 4 个可选 API** | Tavily API | Exa 索引 | Brave 索引 |
-| **跨引擎聚合** | **支持** | 单一上游 | 单一上游 | 单一上游 |
-| **专用中文引擎** | **搜狗 + 百度** | 无 | 无 | 无 |
-| **本地 MCP Server** | 支持 | 支持 | 支持 | 支持 |
-| **最适合** | 零密钥、多语种互补搜索 | 托管搜索/提取/Map/Crawl | 语义、代码、企业研究 | 独立索引 + 垂直搜索 |
+| | Agent Search MCP | [MCP Web Hound](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11) | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **无需用户 API Key 起步** | **是——自行运行适配器** | 是——4 个抓取适配器 | 受限——keyless Search/Extract | 受限——托管免费 MCP | 否 |
+| **零密钥调用路径** | **本地策略路由** | 本地抓取路由 | Tavily 服务 | Exa 托管服务 | — |
+| **搜索后端** | **8 个零密钥 + 4 个可选 API** | 4 个零密钥 + 4 个可选 API | Tavily API | Exa 索引 | Brave 索引 |
+| **跨引擎聚合** | **按 provider family 建模** | URL 合并；默认 2 个并行槽位 | 单一上游 | 单一上游 | 单一上游 |
+| **专用中文引擎** | **搜狗 + 百度** | 无 | 无 | 无 | 无 |
+| **持久语义查询缓存** | 无——短期精确缓存；可选结果重排 | 有——SQLite + sqlite-vec | 服务端管理 | 服务端管理 | 服务端管理 |
+| **搜索失败证据** | **逐引擎 `partialFailures`** | 仅全部 provider 失败时返回工具错误 | 单上游错误 | 单上游错误 | 单上游错误 |
+| **本地传输** | **stdio + Streamable HTTP** | stdio | stdio | stdio | stdio |
+| **最适合** | 零密钥、多语种、上下文有预算的证据检索 | 本地语义缓存与简洁诊断 | 托管搜索/提取/Map/Crawl | 语义、代码、企业研究 | 独立索引 + 垂直搜索 |
 
-对比信息于 2026-07-26 按上述官方仓库核对。Tavily 当前本地 MCP 提供受限的 keyless Search/Extract；Exa 托管 MCP 有受限的免费零密钥入口，但本地 npm Server 使用 `EXA_API_KEY`。这些入口仍经过单一厂商服务。价格和限额变化快，因此这里不再使用容易过期的月费数字。
+对比信息于 2026-07-26 按官方仓库与固定源码快照核对。MCP Web Hound 的持久语义缓存、NLI 重排以及简洁的状态/配置体验是真实差异；它的 GitHub/GitLab 工具是独立直连 API，并不共享网页搜索流水线。Tavily 当前本地 MCP 提供受限的 keyless Search/Extract；Exa 托管 MCP 有受限的免费零密钥入口，但本地 npm Server 使用 `EXA_API_KEY`。价格、限额、Star 和下载量变化快，因此表格只比较实现边界。完整源码解剖见[产品架构调查](./docs/research/2026-07-26-agent-search-product-architecture.md#mcp-web-hound)。
+
+### 搜索策略如何工作
+
+```mermaid
+flowchart LR
+    A["Agent"] --> T["MCP 搜索工具"]
+    T --> P["策略路由"]
+    P --> C["缓存、取消、健康、限流"]
+    P --> Z["零密钥阶段<br/>中文原生 + 多语种"]
+    P --> O["可选商业 API"]
+    Z --> E["证据流水线<br/>去重、相关性、provider family"]
+    O --> E
+    E --> B["按查询选择 passage<br/>共享证据预算"]
+    B --> R["紧凑 content + structuredContent"]
+```
+
+路由会渐进地花费 provider 调用和上下文。只有可观察的证据门达标才停止，
+同时保留失败、来源和预算元数据。完整模块图见[系统架构](./docs/architecture.md)。
 
 ### 默认零密钥
 
 8 个适配器无需凭证：DuckDuckGo、搜狗、Bing、百度、Wikipedia、Startpage、Yandex、Mojeek。需要商业 API 时，可选启用 Brave、Tavily、Exa 和 You.com。
+
+DuckDuckGo 会先使用搜索页签发的 Web preload，再退到旧的 HTML/Lite 表示。
+上游 CAPTCHA/反爬响应会以 `bot_challenge` 返回，并让该 provider 进入有界冷却；
+不会再误报成缺少 API Key，也不会在同一出口持续重试。
 
 ### 渐进式多源搜索
 
@@ -162,6 +188,10 @@ mcp_servers:
 `free_search_advanced.time_range` 仍保留在兼容 schema 中，但已弃用：传入后会在
 调用任何引擎前返回 `UNSUPPORTED_FILTER`，因为通用搜索适配器没有统一且可验证的
 时间过滤合同。
+
+运行状态不需要再占一个默认工具槽位：`search://health` 返回 provider/熔断状态，
+`mcp://health/metrics` 返回延迟与缓存指标，`search://capabilities` 描述当前能力面。
+HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 API Key 或搜索结果。
 
 ---
 

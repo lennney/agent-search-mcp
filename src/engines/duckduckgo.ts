@@ -5,6 +5,8 @@ import { existsSync } from 'fs';
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { logger } from '../infrastructure/logger.js';
 import { searchDuckDuckGoHtml, searchDuckDuckGoNewsHtml } from './duckduckgo-html.js';
+import { searchDuckDuckGoWeb } from './duckduckgo-web.js';
+import { isEngineAdapterError } from './engine-error.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const SCRIPT_PATH = resolve(__dirname, '../../scripts/ddg-search.py');
@@ -18,6 +20,7 @@ const PYTHON_CANDIDATES = (() => {
   return [
     ...(pipxPython ? [pipxPython] : []),
     'python3',
+    'python',
     '/usr/bin/python3',
     '/usr/local/bin/python3',
     '/opt/homebrew/bin/python3',
@@ -68,7 +71,7 @@ function getPythonBin(): string | null {
   _ddgsChecked = true;
   _pythonBin = detectPythonBin();
   if (!_pythonBin) {
-    logger.warn('DDG: Python/ddgs not available — DuckDuckGo engine will return empty results');
+    logger.info('DDG: Python/ddgs not available — using native Node representations');
   }
   return _pythonBin;
 }
@@ -91,18 +94,15 @@ function getPythonBinOrNull(): string | null {
 // ─── Search functions ────────────────────────────────────────────────────
 
 /**
- * Search DuckDuckGo using ddgs Python library (bypasses anti-bot).
- * Falls back to Node.js HTML engine if Python/ddgs not available.
+ * Search DuckDuckGo using the optional Python library, then native Node
+ * representations. The Web preload API is preferred over no-JS HTML/Lite
+ * because DDG issues it for the current query and request identity.
  */
 export async function searchDuckDuckGo(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   options?.signal?.throwIfAborted();
   const pythonBin = getPythonBinOrNull();
   if (!pythonBin) {
-    // Python/ddgs not available — use Node.js HTML fallback
-    logger.info('DDG: Falling back to Node.js HTML engine');
-    return options
-      ? searchDuckDuckGoHtml(query, limit, options)
-      : searchDuckDuckGoHtml(query, limit);
+    return searchNativeRepresentations(query, limit, options);
   }
   try {
     const output = execFileSync(
@@ -116,6 +116,10 @@ export async function searchDuckDuckGo(query: string, limit: number = 10, option
     );
 
     const results = JSON.parse(output.trim());
+    if (!Array.isArray(results) || results.length === 0) {
+      logger.warn('DDG Python search returned no results; trying native Node representations');
+      return searchNativeRepresentations(query, limit, options);
+    }
     options?.signal?.throwIfAborted();
     return results.map((r: any) => ({
       title: r.title || '',
@@ -128,17 +132,43 @@ export async function searchDuckDuckGo(query: string, limit: number = 10, option
     options?.signal?.throwIfAborted();
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('ENOENT')) {
-      logger.warn({ python: pythonBin, script: SCRIPT_PATH }, 'DDG: Python binary not found, falling back to HTML engine');
+      logger.warn({ python: pythonBin, script: SCRIPT_PATH }, 'DDG: Python binary not found, trying native representations');
     } else if (msg.includes('timeout')) {
-      logger.warn('DDG: Python search timed out, falling back to HTML engine');
+      logger.warn('DDG: Python search timed out, trying native representations');
     } else {
-      logger.warn({ err: msg.slice(0, 200) }, 'DDG Python search failed, falling back to HTML engine');
+      logger.warn({ err: msg.slice(0, 200) }, 'DDG Python search failed, trying native representations');
     }
-    // Fall back to HTML engine on Python errors
-    return options
-      ? searchDuckDuckGoHtml(query, limit, options)
-      : searchDuckDuckGoHtml(query, limit);
+    return searchNativeRepresentations(query, limit, options);
   }
+}
+
+async function searchNativeRepresentations(
+  query: string,
+  limit: number,
+  options?: EngineSearchOptions,
+): Promise<SearchResult[]> {
+  options?.signal?.throwIfAborted();
+  try {
+    const results = await searchDuckDuckGoWeb(query, limit, {
+      ...(options ?? {}),
+      throwOnError: true,
+    });
+    if (results.length > 0) return results;
+    logger.info('DDG Web representation returned no results; trying HTML/Lite');
+  } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (isEngineAdapterError(error) && error.failureType === 'bot_challenge') {
+      throw error;
+    }
+    logger.warn(
+      { err: error instanceof Error ? error.message : String(error) },
+      'DDG Web representation failed; trying HTML/Lite',
+    );
+  }
+
+  return options
+    ? searchDuckDuckGoHtml(query, limit, options)
+    : searchDuckDuckGoHtml(query, limit);
 }
 
 /**

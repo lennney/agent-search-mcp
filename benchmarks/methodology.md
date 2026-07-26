@@ -79,6 +79,18 @@ overall floor with the existing 30-query benchmark. They do not prove adequate
 statistical power, query-population representativeness, or practical
 significance; those still require benchmark-specific review.
 
+## Runner qualification
+
+Runner qualification is a pre-capture operations gate, not a search-quality
+metric. It requires at least two non-empty system configurations, two
+provider families across their union, and distinct candidate/ranking hashes
+for every qualified query. The default two-query mode is only a quick
+diagnostic; the checked-in readiness artifact requires ten distinct query IDs.
+
+Qualification reports deliberately omit query and result content. Passing
+authorizes the next capture/review step only. It does not establish relevance,
+independence between adapters in one product, or superiority over a competitor.
+
 ## Paired uncertainty
 
 Comparisons resample queries as paired observations because every system is

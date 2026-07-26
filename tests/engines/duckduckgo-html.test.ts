@@ -430,6 +430,8 @@ describe('DuckDuckGo HTML engine', () => {
           name: 'DuckDuckGoFallbackError',
           message: 'DuckDuckGo fallback failed: HTML HTTP 202 rate limit; Lite: DuckDuckGo Lite HTTP 503',
           retryable: false,
+          failureType: 'bot_challenge',
+          cooldownMs: 3_600_000,
         } satisfies Partial<DuckDuckGoFallbackError>);
       expect(fetchCalls).toEqual([
         'https://html.duckduckgo.com/html/',

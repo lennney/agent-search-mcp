@@ -60,6 +60,28 @@ node benchmarks/run.mjs \
   --engines wikipedia
 ```
 
+## Runner qualification
+
+Before paying for AI review, qualify the network exit with a small, private
+adapter-level probe. A query qualifies only when two named configurations are
+both non-empty, their union covers at least two provider families, and their
+candidate/ranking shapes differ:
+
+```bash
+npm run benchmark:qualify-runner -- \
+  --system duckduckgo-web=duckduckgo \
+  --system wikipedia=wikipedia \
+  --limit 10 \
+  --minimum-queries 10 \
+  --output benchmarks/reports/runner-qualification-2026-07-26-local.json
+```
+
+The checked-in local observation was `ready` for 10/10 bilingual calibration
+queries. The report stores query IDs, hashes, provider families, failure types,
+counts, and durations; it omits query text, titles, URLs, snippets, and bodies.
+This gate proves only that a runner can create a non-empty, diverse pool. It is
+not a product comparison, a relevance judgment, or a public quality claim.
+
 ## Review-gated search quality
 
 Live capture now preserves a response SHA-256, per-engine outcomes, latency,

@@ -70,8 +70,9 @@ fasm extract "https://..."
 - API key 只能从环境变量读取，禁止写入源码、配置、fixture、日志或命令历史。
 - HTTP/both 默认要求 `HTTP_AUTH_TOKEN`；无认证必须显式开启。浏览器 Origin 必须
   命中 `ALLOWED_ORIGINS`。
-- `ddgs` 为可选 Python 依赖；不可用时回退到 HTML。`cheerio` 固定为 `1.0.0`
-  以保持 Node 18 兼容。
+- `ddgs` 为可选 Python 依赖；不可用时依次尝试页面签发的 DDG Web preload、
+  HTML 和 Lite。Web preload 只接受精确 HTTPS host/path，同一查询保持稳定
+  User-Agent；`cheerio` 固定为 `1.0.0` 以保持 Node 18 兼容。
 - 取消信号必须传入限速、重试、HTTP 和丰富化；带信号请求不得共享全局 pending
   promise。parallel/waterfall 必须使用同一搜索选项缓存键。
 - 正文提取只能改善 snippet，不得增加 `confidence` 或 `source_count`；
@@ -87,10 +88,16 @@ fasm extract "https://..."
   basket；`meta.execution.quality_gate_stage` 必须反映实际判断阶段。
 - DDG Lite 只在 HTML HTTP 202 后、同一总 deadline 内机会性尝试一次；它不是
   限流绕过。调用方取消或其他 provider/IP 级限制不得触发重复请求。
+- DDG Web 已返回 `bot_challenge` 时不得继续切 HTML/Lite；只有非 challenge
+  的表示失败或空结果才进入下一表示。
+- Sogou `/antispider/` 和 DDG challenge 是 `bot_challenge`，不是缺 API Key；
+  provider 必须立即进入有界冷却，并通过 `partialFailures` 保留原因。
 - `free_search_advanced.time_range` 是已弃用的兼容保留字段。传入时必须在
   搜索前返回 `UNSUPPORTED_FILTER`，不得静默忽略或宣传为通用时间过滤。
 - 冻结 fixture 只证明格式和指标代码可复现，不代表搜索质量。公开质量数字必须来自
   非空多系统 capture、完整裁决和明确口径；零结果不得被静默删除。
+- runner qualification 只证明当前出口可生成多配置、多 family 的非空候选池；
+  adapter 配置级通过不能写成 Agent Search 产品质量或竞品胜负。
 - 第三方摘要不自动继承 Apache-2.0。提交 capture 前核对再分发许可与署名。
 
 ## 完成标准

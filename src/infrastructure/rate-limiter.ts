@@ -27,7 +27,7 @@ export class RateLimiter {
   // Sensible defaults for 12 engines on a lightweight VPS
   static readonly DEFAULT_ENGINE_RATES: Record<string, number> = {
     // Free engines — respectful intervals to avoid rate-limiting
-    ddg: 1_200,
+    duckduckgo: 1_200,
     sogou: 1_200,
     bing: 1_200,
     baidu: 1_500,

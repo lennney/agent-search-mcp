@@ -15,3 +15,33 @@ export function parseEngineSelection(value, availableEngines) {
   }
   return selected;
 }
+
+export function selectBenchmarkQueries(querySet, requestedLimit) {
+  const allQueries = Array.isArray(querySet) ? querySet : querySet?.queries;
+  if (!Array.isArray(allQueries) || allQueries.length === 0) {
+    throw new Error('query set must contain a non-empty array');
+  }
+  const limit = requestedLimit ?? allQueries.length;
+  if (!Number.isInteger(limit) || limit < 1 || limit > allQueries.length) {
+    throw new Error(`query limit must be an integer from 1 to ${allQueries.length}`);
+  }
+  if (limit === allQueries.length) return [...allQueries];
+
+  const english = allQueries.filter(item =>
+    (typeof item === 'string' ? 'unknown' : item.language || item.lang) !== 'zh');
+  const chinese = allQueries.filter(item =>
+    (typeof item === 'string' ? 'unknown' : item.language || item.lang) === 'zh');
+  const englishLimit = Math.min(english.length, Math.ceil(limit / 2));
+  const chineseLimit = Math.min(chinese.length, limit - englishLimit);
+  const selected = [
+    ...english.slice(0, englishLimit),
+    ...chinese.slice(0, chineseLimit),
+  ];
+  if (selected.length < limit) {
+    const selectedSet = new Set(selected);
+    selected.push(...allQueries
+      .filter(item => !selectedSet.has(item))
+      .slice(0, limit - selected.length));
+  }
+  return selected;
+}

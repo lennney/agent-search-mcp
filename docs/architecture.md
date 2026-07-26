@@ -1,7 +1,7 @@
 ---
 type: ArchitectureDoc
 title: agent-search-mcp — 系统架构
-timestamp: '2026-07-22T12:30:00+08:00'
+timestamp: '2026-07-26T16:30:00+08:00'
 description: 项目架构总览：分层、数据流、关键模式
 tags:
   - agent-search-mcp
@@ -43,11 +43,11 @@ tags:
 │  免费: DDG  Sogou  Bing  Baidu  Wikipedia        │
 │        Startpage  Yandex  Mojeek                 │
 │  可选 API: Brave  Tavily  Exa  You.com           │
-│  回退: Python ddgs → DDG HTML；HTML 202 → Lite   │
+│  回退: Python ddgs → DDG Web → HTML → Lite       │
 ├─────────────────────────────────────────────────┤
 │           基础设施层 (infrastructure/)              │
 │                                                   │
-│  Cache(RateLimiter)  Config  Security  Health     │
+│  Cache  RateLimiter  Config  Security  Health     │
 │  ToolPolicy  VersionCheck  Logger  HTTP Server    │
 └─────────────────────────────────────────────────┘
 ```
@@ -140,7 +140,7 @@ semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
 | 内容丰富化 | Jina Reader 超时 → 使用原始摘要 |
 | 查询扩展 | 扩展失败 → 使用原始查询 |
 | 语言检测 | 检测失败 → 默认英文 |
-| DDG 搜索 | Python ddgs → cheerio HTML → 同源 Lite 机会性尝试 → 显式失败/空数组 |
+| DDG 搜索 | Python ddgs → 页面签发 Web preload → cheerio HTML → 同源 Lite 机会性尝试 → 显式失败/空数组 |
 | 付费引擎 | 无 API key → 自动跳过（不报错） |
 
 ### 4. 惰性初始化 (Lazy Initialization)
@@ -149,11 +149,61 @@ semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
 
 - **Python ddgs 检测**: 首次调用 `searchDuckDuckGo` 时缓存
 - **引擎健康状态**: 首次失败后缓存降级结果
-
-DDG HTML/Lite 是同一故障域。Lite 只在 HTML 202 后、同一总 deadline
-内尝试一次；组合失败标记为不可重试，避免外层再次运行整条 Lite
-链。它不增加 `source_count`，也不被描述为限流绕过。
 - **Rate limiter**: 首次调用时创建，后续复用
+
+DDG Web、HTML 与 Lite 是同一 provider family。Web 表示只接受
+`links.duckduckgo.com/d.js` 的精确 HTTPS 路径，并在同一查询会话中保持
+一致 User-Agent。Lite 只在 HTML 202 后、同一总 deadline 内尝试一次；
+组合失败标记为不可重试，避免外层再次运行整条 Lite 链。任何表示都不增加
+`source_count`，也不被描述为限流绕过。
+
+DDG/Sogou 的 CAPTCHA、202 challenge 和 `/antispider/` 会转换为结构化
+`bot_challenge`。健康控制面立即暂停该 provider 一小时；到期后才允许新探测，
+避免在已知受限的网络出口上继续消耗延迟和上游配额。
+
+### 5. 运行控制面不占默认工具槽位
+
+运行状态通过 MCP Resource 和 HTTP probe 暴露，而不是再注册一个默认可见的
+`status` 工具：
+
+| 入口 | 内容 | Secret 规则 |
+|---|---|---|
+| `search://health` | provider、熔断、冷却和 DDGS 可用状态 | 不返回 API Key |
+| `mcp://health/metrics` | 延迟、错误和进程内 cache 指标 | 不返回查询/结果正文 |
+| `search://capabilities` | 当前工具、引擎和能力说明 | 从运行时注册事实维护 |
+| HTTP `GET /health` | 进程/负载均衡探针与协议状态 | 不返回 MCP 工具结果或认证 token |
+
+这样既能让 Agent/运维检查状态，又不增加每次工具选择需要阅读的 schema Token。
+未来若增加 `fasm doctor`，只显示配置项是否存在、来源和修复建议，所有 key/token
+都必须脱敏。
+
+### 6. 预算分层
+
+当前稳定核心已经有三类不同预算，不能合并成一个含义模糊的“Budget Manager”：
+
+1. **执行预算**：单请求 deadline、取消、阶段和有界并发；
+2. **证据预算**：`EVIDENCE_BUDGET_CHARS` 限制整个响应的 passage 字符数；
+3. **结果预算**：count、Compact、`MAX_FULL_RESULTS` 和 semantic top-K。
+
+如果以后增加跨请求/持久 session budget，必须给出明确 owner、窗口、reset 时间和
+机器可读的 `BUDGET_EXCEEDED`；不能把拒绝伪装成零结果，也不能用进程级计数冒充
+per-task 限额。
+
+### 7. MCP Web Hound 对照后的边界
+
+对
+[`mcp-web-hound@f468da9`](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11)
+的固定源码检查确认了三个值得保留的边界：
+
+- 持久 exact/semantic query cache 是**候选 backend**，不是默认依赖。进入稳定面前
+  必须通过 Node 18、Windows、安装体积、冷启动、RSS、freshness、隔离和错误复用门；
+- intent classifier 只有在实际改变并改善 routing policy 时才有价值。当前继续以
+  确定性语言/工具/策略路由为基线，语义 dedup/rerank 保持 opt-in；
+- GitHub/GitLab 搜索属于专用代码托管能力，不因为“功能完整”就塞进默认 Web Search
+  surface。现有 `fetch_github_readme` 保持窄接口；新增工具需有真实需求证据。
+
+详细源码证据、数据校正和不应照搬的实现见
+[Agent Search 产品架构调查](research/2026-07-26-agent-search-product-architecture.md#mcp-web-hound)。
 
 ## 目录职责
 

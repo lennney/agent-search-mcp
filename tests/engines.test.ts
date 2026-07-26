@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // ─── DuckDuckGo HTML Parser Test ─────────────────────────────────────────
 
@@ -353,5 +353,46 @@ describe('HealthTracker', () => {
     expect(report).toHaveLength(2);
     expect(report.find(h => h.provider === 'ddg')?.avgLatency).toBe(100);
     expect(report.find(h => h.provider === 'sogou')?.errorCount).toBe(1);
+  });
+
+  it('suspends a challenged provider immediately and releases it after cooldown', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-26T00:00:00Z'));
+    try {
+      const { HealthTracker } = await import('../src/infrastructure/health.js');
+      const ht = new HealthTracker();
+
+      ht.suspend('sogou', 3_600_000);
+
+      expect(ht.isHealthy('sogou')).toBe(false);
+      expect(ht.getHealth()[0].suspendedUntil).toBe(
+        Date.parse('2026-07-26T01:00:00Z'),
+      );
+
+      vi.advanceTimersByTime(3_600_000);
+      expect(ht.getHealth()[0].suspendedUntil).toBeNull();
+      expect(ht.getHealth()[0].isHealthy).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not shorten an existing provider suspension', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-26T00:00:00Z'));
+    try {
+      const { HealthTracker } = await import('../src/infrastructure/health.js');
+      const ht = new HealthTracker();
+
+      ht.suspend('sogou', 3_600_000);
+      vi.advanceTimersByTime(1_000);
+      ht.suspend('sogou', 60_000);
+
+      expect(ht.getHealth()[0].suspendedUntil).toBe(
+        Date.parse('2026-07-26T01:00:00Z'),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

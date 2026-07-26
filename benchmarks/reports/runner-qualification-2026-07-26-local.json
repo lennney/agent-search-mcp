@@ -1,0 +1,549 @@
+{
+  "schema_version": 1,
+  "kind": "search-runner-qualification",
+  "query_set_sha256": "1f1ac04353b2c63546344e6f56b8c3b11cd1c4e4a0fba12afdf706b785e2a572",
+  "systems": [
+    {
+      "system_id": "duckduckgo-web",
+      "engines": [
+        "duckduckgo"
+      ]
+    },
+    {
+      "system_id": "wikipedia",
+      "engines": [
+        "wikipedia"
+      ]
+    }
+  ],
+  "readiness": {
+    "status": "ready",
+    "minimum_queries": 10,
+    "minimum_provider_families": 2,
+    "observed_queries": 10,
+    "qualified_queries": 10,
+    "reasons": []
+  },
+  "system_summary": {
+    "duckduckgo-web": {
+      "non_empty_queries": 10,
+      "empty_queries": 0,
+      "failed_queries": 0
+    },
+    "wikipedia": {
+      "non_empty_queries": 10,
+      "empty_queries": 0,
+      "failed_queries": 0
+    }
+  },
+  "samples": [
+    {
+      "id": "routing-en-mcp",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 3464,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "ff0334a85c20d5f2a18552236a1bd3cb720b3e5f73df2fdeaa49dc07127d3499",
+          "ranking_sha256": "3c578418e2e34bc73ef7450b8ecc39ab510479ae5de618604f6b57ec85a938d9"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 2709,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "caab122fc7a18a8b68c7939b1f7da93864b1b277f1b179c18e20a15e3bf0875c",
+          "ranking_sha256": "2aee27089fc860a4fab70f8a084ddc060f335385840189f8d3ee4454e90b7d97"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-en-http-429",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 1845,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "522f86de9b2857e0d9e21f2c72cca856499f3c20c280166ce0f3512a5751da29",
+          "ranking_sha256": "9d7af86a9b34cf3ee7dd14b7148791d9379d874d8b341eeb21d9eae8cf3a1131"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 6643,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "7b9f135382d0d627cd0868d8f944193b704bf76450c293661e0606fc3221a89a",
+          "ranking_sha256": "6c82dae336fdf5f587b0c661aa5133748f39278487fe8f21393ce304b9e3e14a"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-en-typescript-structural",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 2376,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "0e541146603f34c00290091b7619de8dae107fa73bffeb9da88b52330e0be289",
+          "ranking_sha256": "4d6c3a31c5217e7d7cbeb4fc78e2fa256c7de808ad893c6bf03a5c000ede6112"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 1386,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "3f9d40ecd66e1c360452819376be4bb7ccaa7580c9774ad2f8e67595f9cef760",
+          "ranking_sha256": "17caae4fff9c47afa490426195712b1e6dd902285c4019e3c9ddc7a77b5150df"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-en-transformer-attention",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 1486,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "5dc52f0e00ca29d035d0fd5eb805d8da9d9b51347af0ba82eecbd5d5db1d2e76",
+          "ranking_sha256": "941d769aa6a9bb08ba4715e6ba9bf0689090216f9e6c8a47b81cc1c0bb8edf1e"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 7395,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "05f33324f90007ba50f1aca03d905725d258f861422c1218e4c00c9e50a25a4d",
+          "ranking_sha256": "3df905ec724331c9fc5ec0752c520df76664752a323e4ea9269d25a8e66af45b"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-en-postgresql-mvcc",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 2382,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "e395d2bdcf1744d09d11933d7738edba6886ba4be3ac3bcb4edd1999ef6f5334",
+          "ranking_sha256": "1d5c0afd27caf2d57d9ef206cc4d6f128358246454640882e461b6b3be3aa74c"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 1010,
+          "result_count": 2,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "b1a9ed316de2613d389325bf925b2a2cc7fdbb6672f9c08ded78dc3f0961741e",
+          "ranking_sha256": "b1a9ed316de2613d389325bf925b2a2cc7fdbb6672f9c08ded78dc3f0961741e"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 12,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-zh-rag",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 1448,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "320a6cfd081fea7918f3a4b3827c3e2387f0eed2a54e34f74aa94c9b469b55b2",
+          "ranking_sha256": "2244314ff7990d117dfd54a6d8fb4e7fe9fa9df5af35b2e64175e3491852f70d"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 2291,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "d6916f5f38a3116960c9c501f3cef35fbb1fce90f5bb7c0f278add0903e76127",
+          "ranking_sha256": "68820d0c77737066861cb4e9919e05b1723c90c60d72da213a3edc18db7da99c"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-zh-database-acid",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 1811,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "dc5e6f1634cfaac2be6438037bc0f09fb867de8324e8ce0ba5e1f3e6e8aa28f0",
+          "ranking_sha256": "2caa66de9c2cd27871fdf242b5022b7316bc0e3be265bd7fa7b5dd4751d67b1b"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 1143,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "42d2c340f30cedcb6323df2d2bb36cf5c1a52a3376ad8d37ff401798f74b5188",
+          "ranking_sha256": "29959d1f87407634f580b68444a7aeec961d52e2c99c56877741005426694bb4"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-zh-python-asyncio",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 2252,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "fdca9baa37df1ee458f09e5bbc8829cbe1d425c2fb6c43f5841064a57c46b054",
+          "ranking_sha256": "7696871695ae65adc61bdfe2213a5ae7f7fd7a2414c1d28d8d7ac4b3ef10dbc9"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 1170,
+          "result_count": 4,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "0de7f13e7603a11995ef07aefb06a1bc7ce3a019a8750af7f3f7b90927488bb1",
+          "ranking_sha256": "98c6346e754f1ce1128a97b7957de01272b13dbd389a31d9b54af1fd322bcafc"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 14,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-zh-docker-image-container",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 1852,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "9d120abe8d47c22dde3a42db25160951a048bdae2e332b88eaa4c7b4d72a5e78",
+          "ranking_sha256": "a420c82b3a40dea013f8731a16a3e0b4fa076fd9e007199a8a91e90f43f449d2"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 1495,
+          "result_count": 1,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "a1e93d87a00a45ec454c89c56ab08a2d4330f4c71e062938a8ce5c9e44860084",
+          "ranking_sha256": "a1e93d87a00a45ec454c89c56ab08a2d4330f4c71e062938a8ce5c9e44860084"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 11,
+        "distinct_rankings": 2
+      }
+    },
+    {
+      "id": "routing-zh-zero-trust",
+      "systems": [
+        {
+          "system_id": "duckduckgo-web",
+          "status": "non-empty",
+          "duration_ms": 2888,
+          "result_count": 10,
+          "provider_families": [
+            "bing"
+          ],
+          "searched_engines": [
+            "duckduckgo"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "35a89d342ba4892c7ffae28c9849065d3bec7a11515c469dd50237dac64effb5",
+          "ranking_sha256": "c7cf4d021e1c8e40888ef16788bf4b969018c754f9d0bed40c55180936d6ce19"
+        },
+        {
+          "system_id": "wikipedia",
+          "status": "non-empty",
+          "duration_ms": 1993,
+          "result_count": 10,
+          "provider_families": [
+            "wikipedia"
+          ],
+          "searched_engines": [
+            "wikipedia"
+          ],
+          "partial_failures": [],
+          "candidate_set_sha256": "ce3576e72da7718e2729bbcebcf11bd866f8fcf919e8d8d0c8806f4b2b5d176b",
+          "ranking_sha256": "47d85effa0ec82f477e08f0b08c84315ca3bb640851e5bd66738695fc6a2815d"
+        }
+      ],
+      "pool_probe": {
+        "qualified": true,
+        "reasons": [],
+        "non_empty_systems": [
+          "duckduckgo-web",
+          "wikipedia"
+        ],
+        "provider_families": [
+          "bing",
+          "wikipedia"
+        ],
+        "union_candidate_count": 20,
+        "distinct_rankings": 2
+      }
+    }
+  ],
+  "observed_at": "2026-07-26T06:46:19.954Z",
+  "query_set": "benchmarks/queries/routing-calibration.json",
+  "privacy": {
+    "retained": [
+      "query IDs",
+      "candidate-set and ranking hashes",
+      "provider families",
+      "engine/failure types",
+      "counts and durations"
+    ],
+    "omitted": [
+      "query text",
+      "titles",
+      "URLs",
+      "snippets",
+      "response bodies"
+    ]
+  }
+}

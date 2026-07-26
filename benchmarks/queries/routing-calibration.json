@@ -54,13 +54,13 @@
     "reference_answer": "在生成回答前检索外部知识，并把检索到的证据作为模型上下文的技术。"
   },
   {
-    "id": "routing-zh-redis-penetration",
-    "q": "Redis 缓存穿透 原理",
-    "question": "什么是缓存穿透？",
+    "id": "routing-zh-database-acid",
+    "q": "数据库事务 ACID 特性",
+    "question": "数据库事务的 ACID 特性是什么？",
     "type": "technical",
     "lang": "zh",
     "freshness": "evergreen",
-    "reference_answer": "查询不存在的数据时缓存无法命中，请求持续落到后端数据源的现象。"
+    "reference_answer": "原子性、一致性、隔离性和持久性，它们共同描述可靠数据库事务的基本性质。"
   },
   {
     "id": "routing-zh-python-asyncio",

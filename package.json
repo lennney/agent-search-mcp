@@ -76,6 +76,7 @@
     "benchmark:pool": "node benchmarks/pool.mjs",
     "benchmark:ai-review": "node benchmarks/ai-review.mjs",
     "benchmark:calibrate-relevance": "node benchmarks/calibrate-relevance.mjs",
+    "benchmark:qualify-runner": "npm run build && node benchmarks/qualify-runner.mjs",
     "benchmark:reviewer-pilot:capture": "npm run build && node benchmarks/run.mjs --capture benchmarks/fixtures/live-reviewer-pilot.json --query-set benchmarks/queries/reviewer-pilot.json --engines wikipedia",
     "benchmark:reviewer-pilot:prepare": "node benchmarks/quality.mjs --prepare-capture benchmarks/fixtures/live-reviewer-pilot.json --output benchmarks/fixtures/live-reviewer-pilot-labels.pending.json && node benchmarks/quality.mjs --prepare-reviewer-packet benchmarks/fixtures/live-reviewer-pilot-labels.pending.json --reviewer-slot reviewer-a --output benchmarks/reviews/live-reviewer-pilot.reviewer-a.pending.json && node benchmarks/quality.mjs --prepare-reviewer-packet benchmarks/fixtures/live-reviewer-pilot-labels.pending.json --reviewer-slot reviewer-b --output benchmarks/reviews/live-reviewer-pilot.reviewer-b.pending.json",
     "benchmark:reviewer-pilot:verify": "node benchmarks/verify-reviewer-pilot.mjs",

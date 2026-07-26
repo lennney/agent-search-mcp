@@ -32,7 +32,7 @@ export interface SearchProviderInfo {
  */
 export interface EngineError {
   engine: string;
-  type: 'validation_error' | 'timeout' | 'upstream_4xx' | 'upstream_5xx' | 'rate_limited' | 'permission_denied' | 'unknown';
+  type: 'validation_error' | 'timeout' | 'upstream_4xx' | 'upstream_5xx' | 'rate_limited' | 'bot_challenge' | 'permission_denied' | 'unknown';
   message: string;
   suggestion: string;
 }

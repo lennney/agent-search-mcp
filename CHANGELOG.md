@@ -13,6 +13,12 @@ tags:
 
 ### Features
 
+- Added a native DuckDuckGo Web representation using the page-issued,
+  exact-allowlisted preload URL before HTML/Lite fallback. Added structured
+  adapter errors and immediate provider cooldown for DDG/Sogou bot challenges.
+- Added a privacy-preserving runner-qualification gate that verifies two
+  non-empty configurations, provider-family diversity, and distinct ranking
+  shapes before live capture or AI review.
 - Made the primary `free_search` and `free_search_advanced` result a shared,
   schema-declared Search Evidence Packet. MCP clients receive canonical
   `structuredContent`; the text channel is a compact view rather than a
@@ -87,6 +93,10 @@ tags:
 - Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
 
 ### Fixes
+
+- Preserved Sogou cookies across trusted HTTPS redirects, rejected protocol
+  downgrade, classified `/antispider/` as `bot_challenge`, corrected the DDG
+  rate-limiter key, and added a descriptive Wikipedia API User-Agent.
 
 - Deprecated the non-functional `free_search_advanced.time_range`
   compatibility field without removing its schema. Requests that provide it

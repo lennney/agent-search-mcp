@@ -326,7 +326,7 @@ HTML/Lite 算成两个来源。
 | `src/aggregation/dedup.ts` | 修改 | HTML/Lite 保持同一 provider family，不增加 `source_count` |
 | `tests/engines/duckduckgo-html.test.ts` | 扩展 | DOM 邻近配对、双失败、软失败和取消 |
 
-**回退链**: Python ddgs → cheerio HTML → Lite HTML → 空数组
+**回退链**: Python ddgs → 页面签发 Web preload → cheerio HTML → Lite HTML → 空数组
 
 **测试**: vitest — mock Lite HTML 响应 + 202 触发回退验证
 
@@ -750,11 +750,80 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
       search with a machine-readable `UNSUPPORTED_FILTER` instead of silently
       returning unfiltered results.
 
+### P1.2 - mcp-web-hound research assimilation
+
+- [x] Audit
+      [`mcp-web-hound@f468da9`](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11)
+      at source level instead of copying its README feature matrix.
+- [x] Correct the transient comparison snapshot: first Git/npm dates, npm
+      release count, Node/license boundary, Star/Fork, and the 2026-07-18 to
+      2026-07-24 npm download window. Downloads remain package pulls, not users.
+- [x] Add the real search-policy diagram, a restrained Star CTA, and a
+      capability-based MCP Web Hound comparison to both READMEs.
+- [x] Surface the existing `search://health`, `mcp://health/metrics`,
+      `search://capabilities`, and HTTP `/health` control plane instead of
+      adding a duplicate default-visible MCP `status` tool.
+- [ ] Add a read-only `fasm doctor` design and implementation:
+  - report provider/optional-dependency readiness and config provenance;
+  - print only `present` / `missing` / `invalid`, never key or token values;
+  - provide `--json` with a stable schema and no implicit config writes;
+  - cover secret redaction, Node 18, Windows, and zero-key startup in tests.
+- [ ] Define one explicit request budget envelope across calls, elapsed time,
+      result count, and evidence characters. Exhaustion must return a
+      machine-readable reason and observed/limit values, never an empty success.
+- [ ] Evaluate durable provider cooldown as a replaceable store:
+  - classify CAPTCHA, 429, 403, timeout, parse drift, and cancellation
+    separately;
+  - preserve every skip/failure in `partialFailures`;
+  - bind persisted state to provider/failure type with expiry and bounded
+    recovery; never persist credentials or query text.
+- [ ] Prototype persistent exact cache behind an opt-in interface before any
+      semantic vector cache:
+  - cache keys bind language, strategy, filters, provider-policy version,
+    evidence schema, and freshness policy;
+  - benchmark install success, cold start, RSS, p95, hit rate, stale/error
+    reuse, and eviction on Node 18/20/22 plus Windows/Linux;
+  - keep native/vector dependencies out of the default package until all gates
+    pass.
+- [ ] Benchmark deterministic routing against a lightweight intent classifier
+      on bilingual docs/news/code/general slices. A classifier is eligible only
+      if it changes routing and improves quality without violating latency,
+      memory, cancellation, or zero-key startup gates.
+- [ ] Collect issue/usage evidence before adding GitHub/GitLab search tools.
+      Direct code-hosting APIs do not automatically inherit the Web Search
+      cache, budget, failure, or evidence contract.
+- [ ] Generate the public capability matrix from the engine/tool registry and
+      config schema so documentation cannot advertise unregistered tools or
+      unused budgets.
+
 Research:
 [`docs/research/2026-07-26-agent-search-product-architecture.md`](../../research/2026-07-26-agent-search-product-architecture.md)
 
+### P1.3 - zero-key runner reliability
+
+- [x] Add the page-issued DuckDuckGo Web preload as the first native Node
+      representation, with exact HTTPS host/path validation and a stable
+      request identity across bootstrap and result fetch.
+- [x] Preserve Python ddgs as optional first choice, then use Web → HTML → Lite
+      as same-provider representations without increasing `source_count`.
+- [x] Classify DDG/Sogou anti-bot responses as `bot_challenge`; suspend the
+      provider immediately for a bounded cooldown and retain the failure in
+      `partialFailures`.
+- [x] Continue Sogou cookies only across trusted HTTPS redirects and reject
+      protocol downgrade. The current runner still reaches `/antispider/`;
+      do not present this as a parser or API-key failure.
+- [x] Add a privacy-preserving runner qualification gate. The 2026-07-26 local
+      DDG/Wikipedia adapter probe is ready on 10/10 bilingual queries.
+- [ ] Add an explicit, Node 18-compatible proxy transport only after dependency
+      review; then capture a non-empty Sogou fixture from a legitimate alternate
+      exit. Do not add fingerprint rotation or challenge-evasion behavior.
+- [ ] Capture actual Agent Search and comparison-system results on the qualified
+      runner, then run the small blinded AI review. Adapter readiness is not a
+      product-quality claim.
+
 Evidence:
 
+- [`docs/evidence/2026-07-26-ddg-html-lite-network-observation.md`](../../evidence/2026-07-26-ddg-html-lite-network-observation.md)
 - [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../../evidence/2026-07-26-p2-quality-pilot.md)
 - [`docs/evidence/2026-07-26-search-pooling-contract.md`](../../evidence/2026-07-26-search-pooling-contract.md)
 - [`docs/research/2026-07-26-search-quality-evaluation.md`](../../research/2026-07-26-search-quality-evaluation.md)

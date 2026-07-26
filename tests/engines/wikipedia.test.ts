@@ -42,9 +42,11 @@ describe('Wikipedia engine', () => {
   it('uses Chinese Wikipedia for a Chinese query', async () => {
     const originalFetch = global.fetch;
     let requestedUrl = '';
+    let requestHeaders = new Headers();
     try {
-      global.fetch = async (input) => {
+      global.fetch = async (input, init) => {
         requestedUrl = String(input);
+        requestHeaders = new Headers(init?.headers);
         return {
           ok: true,
           json: async () => ({ query: { pages: [] } }),
@@ -54,6 +56,27 @@ describe('Wikipedia engine', () => {
       await searchWikipedia('人工智能', 5);
 
       expect(requestedUrl).toMatch(/^https:\/\/zh\.wikipedia\.org\//);
+      expect(requestHeaders.get('user-agent')).toContain('agent-search-mcp');
+      expect(requestHeaders.get('api-user-agent')).toContain(
+        'github.com/lennney/agent-search-mcp',
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('preserves HTTP 429 as a rate-limit suspension in strict mode', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response('', { status: 429 });
+
+      await expect(searchWikipedia('test', 5, {
+        throwOnError: true,
+      })).rejects.toMatchObject({
+        failureType: 'rate_limited',
+        retryable: false,
+        cooldownMs: 60_000,
+      });
     } finally {
       global.fetch = originalFetch;
     }
