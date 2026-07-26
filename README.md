@@ -107,7 +107,7 @@ Sogou + Baidu search the Chinese web directly — WeChat content, Baidu Baike, C
 npx agent-search-mcp
 ```
 
-Requires Node.js >= 18.
+Requires Node.js >= 18.17.
 
 ### Client Configuration
 
@@ -255,12 +255,24 @@ search results.
 | `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
 | `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
 | `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
+| `USE_PROXY` | `false` | Route DuckDuckGo and Sogou through the explicit project proxy |
+| `PROXY_URL` | `http://127.0.0.1:7890` | Shared HTTP(S) proxy when `USE_PROXY=true` |
+| `DUCKDUCKGO_PROXY_URL` | — | DuckDuckGo-only proxy override; enables proxying for DDG |
+| `SOGOU_PROXY_URL` | — | Sogou-only proxy override; enables proxying for Sogou |
 | `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
 | `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
 | `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |
 | `RERANK_TOP_K` | `5` | Results to keep after semantic rerank |
 
 **Zero config works** — the 8 free engines need no API keys.
+
+DuckDuckGo is implemented entirely in Node.js (Web preload → HTML → Lite);
+Python and `ddgs` are not used. Proxy URLs may contain standard URL credentials,
+but credentials are stripped from dispatcher errors. System
+`HTTP_PROXY`/`HTTPS_PROXY` variables are intentionally ignored so MCP server
+traffic cannot be rerouted implicitly. The CLI shortcut
+`fasm search "query" --proxy http://127.0.0.1:7890` sets the explicit project
+proxy for DDG and Sogou.
 
 ### Tool Visibility
 

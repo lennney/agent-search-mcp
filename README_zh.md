@@ -88,7 +88,7 @@ DuckDuckGo 会先使用搜索页签发的 Web preload，再退到旧的 HTML/Lit
 npx agent-search-mcp
 ```
 
-需要 Node.js >= 18。
+需要 Node.js >= 18.17。
 
 ### 客户端配置
 
@@ -217,12 +217,23 @@ HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 
 | `HTTP_AUTH_TOKEN` | — | HTTP 模式必需的 Bearer Token |
 | `HTTP_ALLOW_UNAUTHENTICATED` | `false` | 显式关闭 HTTP 认证（仅限受信任本地网络） |
 | `ALLOWED_ORIGINS` | — | 允许访问 HTTP 端点的浏览器 Origin，逗号分隔 |
+| `USE_PROXY` | `false` | 让 DuckDuckGo 和 Sogou 使用项目显式代理 |
+| `PROXY_URL` | `http://127.0.0.1:7890` | `USE_PROXY=true` 时使用的共享 HTTP(S) 代理 |
+| `DUCKDUCKGO_PROXY_URL` | — | 仅覆盖 DuckDuckGo，并直接启用该引擎代理 |
+| `SOGOU_PROXY_URL` | — | 仅覆盖 Sogou，并直接启用该引擎代理 |
 | `SEMANTIC_DEDUP` | `false` | 语义去重（需 `pip install model2vec`） |
 | `DEDUP_THRESHOLD` | `0.85` | 语义去重的余弦相似度阈值 |
 | `SEMANTIC_RERANK` | `false` | 语义重排（需 `pip install model2vec`） |
 | `RERANK_TOP_K` | `5` | 语义重排保留的结果数 |
 
 **零配置即可使用** — 8 个免费引擎无需任何 API Key。
+
+DuckDuckGo 现为纯 Node.js 实现（Web preload → HTML → Lite），不再探测或
+调用 Python/ddgs。代理 URL 可包含标准 URL 凭证，但凭证不会进入 dispatcher
+错误。项目有意忽略系统 `HTTP_PROXY` / `HTTPS_PROXY`，避免 MCP 服务流量被
+隐式改道。CLI 可用
+`fasm search "query" --proxy http://127.0.0.1:7890` 为 DDG 和 Sogou
+设置显式代理。
 
 ### 工具可见性
 

@@ -13,6 +13,11 @@ tags:
 
 ### Features
 
+- Replaced the optional Python/ddgs subprocess path with the project-owned
+  DuckDuckGo Web → HTML → Lite chain. DDG and Sogou now share an explicit,
+  request-local Undici proxy transport with per-engine overrides, credential
+  redaction, cancellation propagation, and no ambient proxy-variable pickup.
+  Development-only scripts are no longer shipped in the npm artifact.
 - Added a native DuckDuckGo Web representation using the page-issued,
   exact-allowlisted preload URL before HTML/Lite fallback. Added structured
   adapter errors and immediate provider cooldown for DDG/Sogou bot challenges.

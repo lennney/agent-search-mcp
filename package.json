@@ -11,13 +11,12 @@
   },
   "files": [
     "dist/**",
-    "scripts/**",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=18.17"
   },
   "repository": {
     "type": "git",
@@ -100,6 +99,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "cheerio": "1.0.0",
     "pino": "^10.3.1",
+    "undici": "^6.28.0",
     "yaml": "^2.7.1",
     "zod": "^4.4.3"
   },

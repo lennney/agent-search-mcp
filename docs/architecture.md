@@ -43,7 +43,7 @@ tags:
 │  免费: DDG  Sogou  Bing  Baidu  Wikipedia        │
 │        Startpage  Yandex  Mojeek                 │
 │  可选 API: Brave  Tavily  Exa  You.com           │
-│  回退: Python ddgs → DDG Web → HTML → Lite       │
+│  DDG 回退: Web preload → HTML → Lite             │
 ├─────────────────────────────────────────────────┤
 │           基础设施层 (infrastructure/)              │
 │                                                   │
@@ -140,18 +140,19 @@ semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
 | 内容丰富化 | Jina Reader 超时 → 使用原始摘要 |
 | 查询扩展 | 扩展失败 → 使用原始查询 |
 | 语言检测 | 检测失败 → 默认英文 |
-| DDG 搜索 | Python ddgs → 页面签发 Web preload → cheerio HTML → 同源 Lite 机会性尝试 → 显式失败/空数组 |
+| DDG 搜索 | 页面签发 Web preload → cheerio HTML → 同源 Lite 机会性尝试 → 显式失败/空数组 |
 | 付费引擎 | 无 API key → 自动跳过（不报错） |
 
 ### 4. 惰性初始化 (Lazy Initialization)
 
-检测只在首次需要时执行，结果缓存到进程生命周期:
+运行状态只在首次需要时创建，并缓存到进程生命周期:
 
-- **Python ddgs 检测**: 首次调用 `searchDuckDuckGo` 时缓存
+- **代理连接池**: DDG/Sogou 首次代理请求时按脱敏配置创建
 - **引擎健康状态**: 首次失败后缓存降级结果
 - **Rate limiter**: 首次调用时创建，后续复用
 
-DDG Web、HTML 与 Lite 是同一 provider family。Web 表示只接受
+DDG 不再探测 Python 或启动子进程；Web、HTML 与 Lite 是同一 provider
+family。Web 表示只接受
 `links.duckduckgo.com/d.js` 的精确 HTTPS 路径，并在同一查询会话中保持
 一致 User-Agent。Lite 只在 HTML 202 后、同一总 deadline 内尝试一次；
 组合失败标记为不可重试，避免外层再次运行整条 Lite 链。任何表示都不增加
@@ -168,7 +169,7 @@ DDG/Sogou 的 CAPTCHA、202 challenge 和 `/antispider/` 会转换为结构化
 
 | 入口 | 内容 | Secret 规则 |
 |---|---|---|
-| `search://health` | provider、熔断、冷却和 DDGS 可用状态 | 不返回 API Key |
+| `search://health` | provider、熔断和冷却状态 | 不返回 API Key |
 | `mcp://health/metrics` | 延迟、错误和进程内 cache 指标 | 不返回查询/结果正文 |
 | `search://capabilities` | 当前工具、引擎和能力说明 | 从运行时注册事实维护 |
 | HTTP `GET /health` | 进程/负载均衡探针与协议状态 | 不返回 MCP 工具结果或认证 token |

@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { logger } from '../infrastructure/logger.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { EngineAdapterError } from './engine-error.js';
 
 export const duckduckgoHtmlProvider = {
@@ -78,7 +79,7 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
     });
     const signal = withTimeout(options?.signal, 10000);
 
-    const res = await fetch('https://html.duckduckgo.com/html/', {
+    const res = await fetchForEngine('duckduckgo', 'https://html.duckduckgo.com/html/', {
       method: 'POST',
       headers: {
         'User-Agent': USER_AGENT,
@@ -153,7 +154,7 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
       l: 'us-en',
     });
 
-    const res = await fetch('https://lite.duckduckgo.com/lite/', {
+    const res = await fetchForEngine('duckduckgo', 'https://lite.duckduckgo.com/lite/', {
       method: 'POST',
       headers: {
         'User-Agent': USER_AGENT,
@@ -194,12 +195,12 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
 }
 
 /**
- * Search DuckDuckGo News using HTML parsing (no Python dependency).
+ * Search DuckDuckGo News using the native HTML representation.
  * Uses the same HTML endpoint as web search — DDG News has no dedicated
  * HTML endpoint, so we delegate to the web HTML parser and relabel results.
  *
- * This is the fallback for searchDuckduckgoNews() when Python/ddgs is
- * unavailable, preventing silent empty results.
+ * This keeps news on the same transport, timeout, and zero-key runtime as the
+ * regular DuckDuckGo adapter.
  */
 export async function searchDuckDuckGoNewsHtml(query: string, limit: number = 10): Promise<SearchResult[]> {
   const results = await searchDuckDuckGoHtml(query, limit);

@@ -20,7 +20,7 @@ Hermes 仅可作为带 commit/path 的同步投影。
 
 ## 当前边界
 
-- 稳定实现使用 Node.js >=18、TypeScript ESM 和 MCP SDK v1，支持 stdio/HTTP。
+- 稳定实现使用 Node.js >=18.17、TypeScript ESM 和 MCP SDK v1，支持 stdio/HTTP。
 - `2026-07-28` 适配仅位于 `experiments/mcp-2026/`；通过正式一致性验证前，
   不宣称生产兼容。
 - Slim Guard 是独立产品和仓库；没有明确任务时，不在本项目中修改它。
@@ -70,9 +70,13 @@ fasm extract "https://..."
 - API key 只能从环境变量读取，禁止写入源码、配置、fixture、日志或命令历史。
 - HTTP/both 默认要求 `HTTP_AUTH_TOKEN`；无认证必须显式开启。浏览器 Origin 必须
   命中 `ALLOWED_ORIGINS`。
-- `ddgs` 为可选 Python 依赖；不可用时依次尝试页面签发的 DDG Web preload、
-  HTML 和 Lite。Web preload 只接受精确 HTTPS host/path，同一查询保持稳定
-  User-Agent；`cheerio` 固定为 `1.0.0` 以保持 Node 18 兼容。
+- DDG 是纯 Node 实现，不探测或调用 Python/ddgs。主链依次尝试页面签发的
+  Web preload、HTML 和 Lite；Web preload 只接受精确 HTTPS host/path，
+  同一查询保持稳定 User-Agent。`cheerio` 固定为 `1.0.0`，代理 transport
+  固定使用 Node 18.17+ 兼容的 Undici 6。
+- DDG/Sogou 出站代理只读取 `DUCKDUCKGO_PROXY_URL` / `SOGOU_PROXY_URL`
+  或显式的 `USE_PROXY=true` + `PROXY_URL`；不要静默读取系统
+  `HTTP_PROXY` / `HTTPS_PROXY`。代理凭证不得进入错误、日志或 fixture。
 - 取消信号必须传入限速、重试、HTTP 和丰富化；带信号请求不得共享全局 pending
   promise。parallel/waterfall 必须使用同一搜索选项缓存键。
 - 正文提取只能改善 snippet，不得增加 `confidence` 或 `source_count`；

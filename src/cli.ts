@@ -104,7 +104,6 @@ Search Options:
 
 Extract Options:
   --json               Output as JSON
-  --proxy <url>        HTTP proxy URL
 
 Serve Options:
   --port <n>           HTTP port (default: 3000)
@@ -134,10 +133,10 @@ async function main(): Promise<void> {
   // Check for updates in background (non-blocking, cached)
   checkForUpdates();
 
-  // Set proxy if provided
-  if (args.proxy) {
-    process.env.HTTP_PROXY = args.proxy;
-    process.env.HTTPS_PROXY = args.proxy;
+  // Search proxy is intentionally scoped to the core engine transport.
+  if (args.command === 'search' && args.proxy) {
+    process.env.USE_PROXY = 'true';
+    process.env.PROXY_URL = args.proxy;
   }
 
   if (args.command === 'search') {

@@ -13,7 +13,7 @@ tags:
 ## 当前状态
 
 - `package.json` 当前版本为 `3.1.3`；检查点以当前 Git HEAD 为准。
-- 稳定产品面是 Node.js >=18、TypeScript ESM、MCP stdio/HTTP 和 `fasm` CLI。
+- 稳定产品面是 Node.js >=18.17、TypeScript ESM、MCP stdio/HTTP 和 `fasm` CLI。
 - 12 个适配器均进入统一路由：8 个零密钥，4 个可选 API。
 - Slim Guard 是独立产品；本仓库只维护可选证据交接合同。
 - `2026-07-28` 仅在 `experiments/mcp-2026/` 验证，尚不宣称生产兼容。
@@ -34,8 +34,11 @@ tags:
 - `free_search_advanced.time_range` 保留输入兼容但已弃用；传入时在引擎调用前
   返回机器可读的 `UNSUPPORTED_FILTER`，不再静默返回未过滤结果。
 - DDG Lite 只在 HTML HTTP 202 后、同一 deadline 内尝试一次，不能增加增信。
-- DDG 主链为可选 Python ddgs → 页面签发 Web preload → HTML → Lite；所有表示
-  属于同一 provider family。DDG/Sogou 反爬挑战统一返回 `bot_challenge` 并冷却。
+- DDG 主链已收敛为纯 Node 的页面签发 Web preload → HTML → Lite；不再探测
+  Python/ddgs 或启动子进程。所有表示属于同一 provider family。
+- DDG/Sogou 共享 request-local Undici 代理 transport；支持引擎级覆盖和
+  `USE_PROXY=true` + `PROXY_URL`，不读取 ambient proxy 变量，凭证不进入错误。
+  DDG/Sogou 反爬挑战统一返回 `bot_challenge` 并冷却。
 - 冻结 benchmark 只验证格式、Token 和指标代码，不代表搜索质量。
 - pooled capture 保留每个系统的内部路由信号，但 blinded reviewer packet
   必须移除这些信号；只有 completed adjudication 能生成阈值校准报告。
@@ -44,18 +47,20 @@ tags:
 
 ## 当前验证
 
-- 稳定测试：631 passed / 57 files。
+- 稳定测试：630 passed / 58 files。
 - 实验 MCP 2026：21 passed / 7 files。
 - TypeScript/Windows build、冻结 Token benchmark 和 bootstrap quality
   benchmark：通过；bootstrap 仍不具备质量声明资格。
-- Lint：0 errors / 66 个既有 warnings。
+- Lint：0 errors / 64 个既有 warnings。
+- Node 18.20.8 transport 冒烟与 npm pack dry-run：通过；发布包不再包含
+  `scripts/**`。audit 无 high/critical，仍有 MCP SDK/Hono 链上的 2 个 moderate。
 
 ## 下一步
 
 1. 当前 runner qualification 已用 DDG/Wikipedia 配置通过 10/10 查询；下一步
    捕获真正的 Agent Search 与比较系统 pooled result，不能把配置级探测写成产品对比。
-2. 为 Sogou 提供合法的备用网络出口或显式代理 transport，再捕获非空中文 fixture；
-   当前出口的 `/antispider/` 只作为结构化失败证据。
+2. 使用已实现的显式代理 transport 和合法备用网络出口捕获非空 Sogou 中文
+   fixture；当前出口的 `/antispider/` 只作为结构化失败证据。
 3. 完成两模型 pointwise review 和第三模型分歧裁决，再运行
    `npm run benchmark:calibrate-relevance`；校准报告就绪前保持 `0.35` 不变。
 

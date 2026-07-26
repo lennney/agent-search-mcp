@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 
 import { withTimeout } from '../infrastructure/abort.js';
+import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
@@ -48,7 +49,7 @@ export async function searchDuckDuckGoWeb(
     homeUrl.searchParams.set('t', 'h_');
     homeUrl.searchParams.set('ia', 'web');
 
-    const homeResponse = await fetch(homeUrl, {
+    const homeResponse = await fetchForEngine('duckduckgo', homeUrl, {
       method: 'GET',
       headers: navigationHeaders(),
       redirect: 'error',
@@ -60,12 +61,16 @@ export async function searchDuckDuckGoWeb(
     options?.signal?.throwIfAborted();
 
     const preloadUrl = extractPreloadUrl(homeHtml);
-    const apiResponse = await fetch(buildJsonApiUrl(preloadUrl), {
+    const apiResponse = await fetchForEngine(
+      'duckduckgo',
+      buildJsonApiUrl(preloadUrl),
+      {
       method: 'GET',
       headers: scriptHeaders(),
       redirect: 'error',
       signal,
-    });
+      },
+    );
     const apiBody = await readBoundedText(apiResponse);
     ensureUsableResponse('Web API', apiResponse, apiBody);
 

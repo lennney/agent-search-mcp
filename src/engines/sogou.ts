@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 
 import { withTimeout } from '../infrastructure/abort.js';
+import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
@@ -104,7 +105,7 @@ async function fetchSogouHtml(
 
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
     signal.throwIfAborted();
-    const response = await fetch(currentUrl, {
+    const response = await fetchForEngine('sogou', currentUrl, {
       method: 'GET',
       headers: {
         'User-Agent': USER_AGENT,

@@ -125,8 +125,8 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
 import { searchDuckDuckGo } from '../../src/engines/duckduckgo.js';
 import { searchWithFallback } from '../../src/tools/free-search.js';
 
-describe('DDG without Python ddgs', () => {
-  it('lets the DDG adapter use its HTML fallback', async () => {
+describe('native Node DDG adapter', () => {
+  it('returns DDG results without an external runtime', async () => {
     const response = await searchWithFallback({
       query: 'test query',
       count: 5,

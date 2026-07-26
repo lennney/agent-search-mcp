@@ -13,11 +13,16 @@ tags:
 
 ## 踩坑记录
 
+## 2026-07-26: DDG 运行时收敛为纯 Node
+- **问题**: 可选 Python/ddgs 路径形成第二套传输、超时和代理语义，显式代理可能被子进程旁路
+- **解决**: 删除 Python 探测与脚本，统一使用 Web preload → HTML → Lite，并接入同一 HTTP transport
+- **规则**: 同一 provider 的表示回退必须共享代理、取消、失败分类和 deadline；不再为 DDG 引入外部运行时
+
 ## 2026-07-22: DDG HTML 引擎限流 (HTTP 202)
 - **问题**: html.duckduckgo.com POST 请求频繁时返回 HTTP 202 (rate-limited)，搜索返回空
 - **原因**: DDG 对无 JS 签名的请求有严格限流，普通 HTTP 库无法绕过
-- **解决**: rotating User-Agent (4 个) + HTTP 202 检测 + 空数组降级。Python ddgs 路径不受此限制（使用内部 API）
-- **规则**: DDG HTML 路径仅作为回退，主力仍是 Python ddgs
+- **解决**: HTTP 202 检测 + Web preload 优先 + 同一 deadline 内一次 Lite 回退
+- **规则**: challenge 触发 provider 冷却，不做指纹轮换或重复请求
 
 ## 2026-07-22: cheerio 相比 regex 的解析可靠性
 - **问题**: DDG HTML 结构复杂（redirect URL、嵌套 div、协议相对地址），regex 无法可靠解析
@@ -50,8 +55,8 @@ tags:
 ## 2026-06-27: DDG 反爬导致搜索失败
 - **问题**: 直接 HTTP 请求 DuckDuckGo 返回空结果或验证页面
 - **原因**: DDG 检测到非浏览器 User-Agent 触发反爬
-- **解决**: 切换到 Python `ddgs` 库作为后端（子进程调用），绕过反爬检测
-- **规则**: 免费搜索引擎优先用官方库/API，直接 HTTP 抓取作为最后手段
+- **历史解决**: 当时切换到 Python `ddgs`；该路径已在 2026-07-26 删除
+- **当前规则**: 使用受约束的 Node 多表示链，challenge 结构化失败并切换 provider
 
 ## 2026-06-22: stdout 污染 JSON-RPC
 - **问题**: console.log 输出混入 MCP JSON-RPC 流，导致客户端解析失败

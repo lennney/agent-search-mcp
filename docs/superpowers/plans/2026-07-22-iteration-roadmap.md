@@ -326,7 +326,7 @@ HTML/Lite 算成两个来源。
 | `src/aggregation/dedup.ts` | 修改 | HTML/Lite 保持同一 provider family，不增加 `source_count` |
 | `tests/engines/duckduckgo-html.test.ts` | 扩展 | DOM 邻近配对、双失败、软失败和取消 |
 
-**回退链**: Python ddgs → 页面签发 Web preload → cheerio HTML → Lite HTML → 空数组
+**回退链**: 页面签发 Web preload → cheerio HTML → Lite HTML → 空数组
 
 **测试**: vitest — mock Lite HTML 响应 + 202 触发回退验证
 
@@ -804,8 +804,9 @@ Research:
 - [x] Add the page-issued DuckDuckGo Web preload as the first native Node
       representation, with exact HTTPS host/path validation and a stable
       request identity across bootstrap and result fetch.
-- [x] Preserve Python ddgs as optional first choice, then use Web → HTML → Lite
-      as same-provider representations without increasing `source_count`.
+- [x] Remove the Python/ddgs subprocess path. Use the project-owned
+      Web → HTML → Lite chain as same-provider representations without
+      increasing `source_count`.
 - [x] Classify DDG/Sogou anti-bot responses as `bot_challenge`; suspend the
       provider immediately for a bounded cooldown and retain the failure in
       `partialFailures`.
@@ -814,9 +815,11 @@ Research:
       do not present this as a parser or API-key failure.
 - [x] Add a privacy-preserving runner qualification gate. The 2026-07-26 local
       DDG/Wikipedia adapter probe is ready on 10/10 bilingual queries.
-- [ ] Add an explicit, Node 18-compatible proxy transport only after dependency
-      review; then capture a non-empty Sogou fixture from a legitimate alternate
-      exit. Do not add fingerprint rotation or challenge-evasion behavior.
+- [x] Add an explicit Node 18.17-compatible Undici proxy transport for DDG and
+      Sogou after dependency review. Keep it request-local, redact credentials,
+      preserve cancellation, and do not consume ambient proxy variables.
+- [ ] Capture a non-empty Sogou fixture from a legitimate alternate exit. Do
+      not add fingerprint rotation or challenge-evasion behavior.
 - [ ] Capture actual Agent Search and comparison-system results on the qualified
       runner, then run the small blinded AI review. Adapter readiness is not a
       product-quality claim.

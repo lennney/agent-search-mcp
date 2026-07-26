@@ -95,8 +95,6 @@ export interface ProviderHealth {
   circuitCooldownMs: number;
   /** Explicit upstream suspension, e.g. after a CAPTCHA challenge. */
   suspendedUntil: number | null;
-  // DDG-specific: whether the ddgs Python library is available
-  ddgs_available?: boolean;
 }
 
 export class HealthTracker {
