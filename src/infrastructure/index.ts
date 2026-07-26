@@ -21,3 +21,9 @@ export { createHttpServer } from './http.js';
 export type { HttpServerOptions, HttpServer } from './http.js';
 export { decodeHTMLTags } from './html-utils.js';
 export { abortableDelay, withTimeout } from './abort.js';
+export { SearchRequestBudget } from './search-request-budget.js';
+export type {
+  SearchBudgetDimension,
+  SearchRequestBudgetLimits,
+  SearchRequestBudgetSnapshot,
+} from './search-request-budget.js';

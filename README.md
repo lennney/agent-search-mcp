@@ -250,6 +250,9 @@ search results.
 | `SNIPPET_LENGTH` | `200` | Max snippet characters (60–500) |
 | `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
 | `EVIDENCE_BUDGET_CHARS` | `1200` | Shared passage budget per response (200-20000 characters) |
+| `SEARCH_BUDGET_MAX_CALLS` | `16` | Maximum actual adapter attempts, including retries (1-100) |
+| `SEARCH_BUDGET_MAX_ELAPSED_MS` | `30000` | End-to-end request deadline in milliseconds (1000-120000) |
+| `SEARCH_BUDGET_MAX_RESULTS` | `100` | Maximum raw results admitted before scoring (1-500) |
 | `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
 | `MIN_SOURCE_COUNT` | `1` | Minimum upstream provider families; accepts 1–12 for compatibility, while the current adapter set exposes at most 11 |
 | `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |

@@ -13,6 +13,11 @@ tags:
 
 ### Features
 
+- Added one request-level search budget across actual adapter attempts,
+  end-to-end elapsed time, admitted raw results, and evidence characters.
+  Parallel, waterfall, retry, and query-expansion paths share the same ledger;
+  exhaustion returns observed/limit metadata plus `budget_exhausted` instead of
+  an ambiguous empty success. `fasm doctor` validates budget overrides.
 - Added a local-only, read-only `fasm doctor` command with a versioned JSON
   report. It diagnoses Node/platform support, zero-key and optional-provider
   configuration, engine policy, explicit proxies, and the optional semantic

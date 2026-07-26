@@ -18,6 +18,9 @@ export interface Config {
   snippetLength: number;
   maxFullResults: number;
   evidenceBudgetChars: number;
+  searchBudgetMaxCalls: number;
+  searchBudgetMaxElapsedMs: number;
+  searchBudgetMaxResults: number;
   minConfidence: number;
   minSourceCount: number;
   semanticDedup: boolean;
@@ -41,6 +44,10 @@ export function loadConfig(): Config {
     200,
     Math.min(20_000, Number.isFinite(rawEvidenceBudget) ? rawEvidenceBudget : 1200),
   );
+  const boundedInteger = (name: string, fallback: number, min: number, max: number): number => {
+    const parsed = parseInt(process.env[name] || String(fallback), 10);
+    return Math.max(min, Math.min(max, Number.isFinite(parsed) ? parsed : fallback));
+  };
   
   return {
     mode,
@@ -71,6 +78,9 @@ export function loadConfig(): Config {
     snippetLength: parseInt(process.env.SNIPPET_LENGTH || '200', 10) || 200,
     maxFullResults: parseInt(process.env.MAX_FULL_RESULTS || '3', 10) || 3,
     evidenceBudgetChars,
+    searchBudgetMaxCalls: boundedInteger('SEARCH_BUDGET_MAX_CALLS', 16, 1, 100),
+    searchBudgetMaxElapsedMs: boundedInteger('SEARCH_BUDGET_MAX_ELAPSED_MS', 30_000, 1_000, 120_000),
+    searchBudgetMaxResults: boundedInteger('SEARCH_BUDGET_MAX_RESULTS', 100, 1, 500),
     minConfidence: legacyMinConfidence <= 1 ? Math.max(legacyMinConfidence, 0) : 0,
     minSourceCount: Math.min(12, Number.isFinite(explicitMinSourceCount)
       ? Math.max(explicitMinSourceCount, 1)

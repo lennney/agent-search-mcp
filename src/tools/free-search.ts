@@ -40,7 +40,18 @@ import {
   createSearchToolResult,
   searchOutputSchema,
 } from './search-output.js';
-import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics, abortableDelay } from '../infrastructure/index.js';
+import {
+  SearchCache,
+  logger,
+  HealthTracker,
+  RateLimiter,
+  loadConfig,
+  EnginePolicy,
+  ServerMetrics,
+  abortableDelay,
+  SearchRequestBudget,
+  type SearchRequestBudgetSnapshot,
+} from '../infrastructure/index.js';
 
 const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
 const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
@@ -94,6 +105,8 @@ async function searchEngine(
   limit: number,
   maxRetries: number = 2,
   signal?: AbortSignal,
+  budget?: SearchRequestBudget,
+  callerSignal?: AbortSignal,
 ): Promise<EngineOutcome> {
   signal?.throwIfAborted();
   // Skip engines blocked by policy
@@ -114,6 +127,9 @@ async function searchEngine(
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (budget && !budget.claimEngineCall()) {
+      return { engine, status: 'skipped', results: [] };
+    }
     const startTime = Date.now();
     try {
       let results: SearchResult[];
@@ -170,6 +186,10 @@ async function searchEngine(
       logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
       return { engine, status: 'success', results };
     } catch (err) {
+      callerSignal?.throwIfAborted();
+      if (budget?.isBudgetAbort()) {
+        return { engine, status: 'skipped', results: [] };
+      }
       signal?.throwIfAborted();
       lastError = err instanceof Error ? err : new Error(String(err));
       const latency = Date.now() - startTime;
@@ -336,7 +356,9 @@ interface SearchResponse {
       early_stop: boolean;
       stop_reason:
         | 'quality_gate_satisfied'
-        | 'phases_exhausted';
+        | 'phases_exhausted'
+        | 'budget_exhausted';
+      budget?: SearchRequestBudgetSnapshot;
       quality_gate_stage?: 'pre_semantic' | 'post_semantic';
       quality_gate?: ConfidenceBasketResult;
     };
@@ -387,12 +409,29 @@ function makeSearchCacheKey(options: SearchWithFallbackOptions): string {
   return cache.makeKey(makeCollapseKey(options), count, engines);
 }
 
+function cloneCachedSearchResponse(cached: SearchResponse): SearchResponse {
+  return {
+    ...cached,
+    meta: {
+      ...cached.meta,
+      ...(cached.meta.execution
+        ? { execution: { ...cached.meta.execution } }
+        : {}),
+    },
+    ...(cached.partialFailures
+      ? { partialFailures: [...cached.partialFailures] }
+      : {}),
+    cache_hit: true,
+  };
+}
+
 function collectEngineOutcomes(
   settled: PromiseSettledResult<EngineOutcome>[],
   engines: SearchProvider[],
   allResults: SearchResult[],
   failures: EngineError[],
   signal?: AbortSignal,
+  budget?: SearchRequestBudget,
 ): void {
   signal?.throwIfAborted();
   settled.forEach((result, index) => {
@@ -401,7 +440,9 @@ function collectEngineOutcomes(
       failures.push(classifyEngineError(engines[index], error));
       return;
     }
-    allResults.push(...result.value.results);
+    allResults.push(...(budget
+      ? budget.admitResults(result.value.results)
+      : result.value.results));
     if (result.value.status === 'failed' && result.value.error) {
       failures.push(classifyEngineError(result.value.engine, result.value.error));
     }
@@ -452,10 +493,42 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
  * Execute the actual search logic (internal).
  */
 async function executeSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
-  if (options.waterfall) {
-    return executeWaterfallSearch(options);
+  const budget = new SearchRequestBudget({
+    engine_calls: config.searchBudgetMaxCalls,
+    elapsed_ms: config.searchBudgetMaxElapsedMs,
+    result_count: config.searchBudgetMaxResults,
+    evidence_chars: config.evidenceBudgetChars,
+  }, options.signal);
+  try {
+    const response = options.waterfall
+      ? await executeWaterfallSearch(options, 0, budget)
+      : await executeParallelSearch(options, budget);
+    const evidence = response.meta.evidence_budget;
+    budget.observeEvidence(
+      evidence?.used ?? 0,
+      (evidence?.truncated_results ?? 0) > 0,
+    );
+    const snapshot = budget.snapshot();
+    if (response.meta.execution) {
+      response.meta.execution.budget = snapshot;
+      if (snapshot.exhausted_reasons.some(reason => reason !== 'evidence_chars')) {
+        response.meta.execution.stop_reason = 'budget_exhausted';
+        response.meta.execution.early_stop = true;
+        response.partialFailures = [
+          ...(response.partialFailures ?? []),
+          {
+            engine: 'request_budget',
+            type: 'budget_exhausted',
+            message: `Search request budget exhausted: ${snapshot.exhausted_reasons.join(', ')}`,
+            suggestion: 'Narrow the query or raise the configured request budget',
+          },
+        ];
+      }
+    }
+    return response;
+  } finally {
+    budget.dispose();
   }
-  return executeParallelSearch(options);
 }
 
 /**
@@ -504,7 +577,10 @@ function getEffectiveResultThresholds(
   };
 }
 
-async function executeParallelSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+async function executeParallelSearch(
+  options: SearchWithFallbackOptions,
+  budget: SearchRequestBudget,
+): Promise<SearchResponse> {
   const semanticRoutingEnabled = isSemanticRoutingEnabled();
   const {
     query,
@@ -529,7 +605,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
-    return { ...(cached as SearchResponse), cache_hit: true } as SearchResponse;
+    return cloneCachedSearchResponse(cached as SearchResponse);
   }
 
   logger.info({ query, count, engines: userEngines }, 'Starting search');
@@ -596,7 +672,16 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
     const outcomes: EngineOutcome[] = [];
     for (const engine of chain) {
       searchedEngines.push(engine);
-      const outcome = await searchEngine(engine, query, limit, 2, options.signal);
+      if (!budget.canContinue()) break;
+      const outcome = await searchEngine(
+        engine,
+        query,
+        limit,
+        2,
+        budget.signal,
+        budget,
+        options.signal,
+      );
       outcomes.push(outcome);
       if (
         outcome.status === 'success'
@@ -625,7 +710,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
         return;
       }
       for (const outcome of result.value) {
-        allResults.push(...outcome.results);
+        allResults.push(...budget.admitResults(outcome.results));
         if (outcome.status === 'failed' && outcome.error) {
           failures.push(classifyEngineError(outcome.engine, outcome.error));
         }
@@ -653,6 +738,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   logger.info({ engines: phase1Engines }, 'Phase 1: free engines (batch)');
   
   for (let i = 0; i < phase1Engines.length; i += BATCH_SIZE) {
+    if (!budget.canContinue()) break;
     const batch = phase1Engines.slice(i, i + BATCH_SIZE);
     freePhaseAttempted = true;
     const batchResults = await Promise.allSettled(
@@ -699,7 +785,7 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
 
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
   const qualityGateFailed = !parallelGate?.sufficient;
-  if (allResults.length < count || qualityGateFailed) {
+  if (budget.canContinue() && (allResults.length < count || qualityGateFailed)) {
     if (paidToSearch.length > 0) {
       optionalPhaseAttempted = true;
       const remaining = qualityGateFailed
@@ -726,7 +812,9 @@ async function executeParallelSearch(options: SearchWithFallbackOptions): Promis
   const { formatted } = await finalizeSearchResults(
     semanticResults,
     query,
-    options.enrich, options.enrichMax, options.enrichMinConfidence,
+    options.enrich && budget.canContinue(),
+    options.enrichMax,
+    options.enrichMinConfidence,
     options.signal,
   );
 
@@ -866,7 +954,11 @@ function selectWaterfallPhase(
     : engines.filter(engine => requestedEngines.has(engine));
 }
 
-async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth: number = 0): Promise<SearchResponse> {
+async function executeWaterfallSearch(
+  options: SearchWithFallbackOptions,
+  depth: number = 0,
+  budget: SearchRequestBudget,
+): Promise<SearchResponse> {
   const semanticRoutingEnabled = isSemanticRoutingEnabled();
   // Guard against infinite recursion from query expansion
   if (depth > 2) {
@@ -903,7 +995,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: options.engines }, 'Waterfall cache hit');
-    return { ...(cached as SearchResponse), cache_hit: true };
+    return cloneCachedSearchResponse(cached as SearchResponse);
   }
 
   const allResults: SearchResult[] = [];
@@ -983,15 +1075,31 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     const batchSize = calculateAdaptiveConcurrency(engines, count);
 
     for (let i = 0; i < engines.length; i += batchSize) {
+      if (!budget.canContinue()) break;
       const batch = engines.slice(i, i + batchSize);
       const batchResults = await Promise.allSettled(
         batch.map(async (engine) => {
           searchedEngines.push(engine);
-          return searchEngine(engine, query, count, 2, options.signal);
+          return searchEngine(
+            engine,
+            query,
+            count,
+            2,
+            budget.signal,
+            budget,
+            options.signal,
+          );
         })
       );
 
-      collectEngineOutcomes(batchResults, batch, allResults, allFailures, options.signal);
+      collectEngineOutcomes(
+        batchResults,
+        batch,
+        allResults,
+        allFailures,
+        options.signal,
+        budget,
+      );
     }
 
     const evaluation = evaluateCurrentEvidence();
@@ -1017,6 +1125,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   for (let phaseIndex = 0; phaseIndex < freePhases.length; phaseIndex++) {
     const phase = freePhases[phaseIndex];
     if (phase.engines.length === 0) continue;
+    if (!budget.canContinue()) break;
     basketFull = await searchBatch(phase.engines, phase.label);
     if (basketFull) {
       stoppedEarly =
@@ -1033,7 +1142,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     }
   }
 
-  if (!basketFull) {
+  if (!basketFull && budget.canContinue()) {
     if (paidAvailable.length > 0) {
       logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");
       basketFull = await searchBatch(paidAvailable, '2');
@@ -1047,21 +1156,21 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
 
   // ── Phase 3: Query Expansion (if confidence still low) ──────────
   let expansionRan = false;
-  if (!basketFull && options.expandQueries !== false) {
+  if (!basketFull && budget.canContinue() && options.expandQueries !== false) {
     const { alternatives, source } = expansionPlan;
     if (alternatives.length > 0) {
       expansionRan = true;
       phasesCompleted.push('3');
       logger.info({ alternatives, source }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
-        options.signal?.throwIfAborted();
+        if (!budget.canContinue()) break;
         const altSearch = await executeWaterfallSearch({
           ...options,
           query: altQuery,
           waterfall: true,
           enrich: false,
           expandQueries: false,
-        }, depth + 1);
+        }, depth + 1, budget);
         const altExecution = altSearch.meta.execution;
         if (altExecution) {
           searchedEngines.push(...altExecution.searched_engines);
@@ -1101,7 +1210,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
   const { formatted } = await finalizeSearchResults(
     finalScored,
     query,
-    options.enrich, options.enrichMax, options.enrichMinConfidence,
+    options.enrich && budget.canContinue(),
+    options.enrichMax,
+    options.enrichMinConfidence,
     options.signal,
   );
 

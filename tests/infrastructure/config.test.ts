@@ -31,6 +31,19 @@ describe('loadConfig', () => {
     expect(config.defaultEngine).toBe('duckduckgo');
     expect(config.allowedEngines).toEqual([]);
     expect(config.evidenceBudgetChars).toBe(1200);
+    expect(config.searchBudgetMaxCalls).toBe(16);
+    expect(config.searchBudgetMaxElapsedMs).toBe(30_000);
+    expect(config.searchBudgetMaxResults).toBe(100);
+  });
+
+  it('clamps request budget environment values', () => {
+    process.env.SEARCH_BUDGET_MAX_CALLS = '0';
+    process.env.SEARCH_BUDGET_MAX_ELAPSED_MS = '999999';
+    process.env.SEARCH_BUDGET_MAX_RESULTS = 'bad';
+    const config = loadConfig();
+    expect(config.searchBudgetMaxCalls).toBe(1);
+    expect(config.searchBudgetMaxElapsedMs).toBe(120_000);
+    expect(config.searchBudgetMaxResults).toBe(100);
   });
 
   it('parses and clamps EVIDENCE_BUDGET_CHARS', () => {

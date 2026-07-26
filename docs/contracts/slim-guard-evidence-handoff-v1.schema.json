@@ -160,11 +160,44 @@
               "minimum": 0
             }
           }
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "budget": {
+              "type": "object",
+              "required": ["limits", "observed", "exhausted", "exhausted_reasons"],
+              "properties": {
+                "limits": { "$ref": "#/$defs/requestBudgetValues" },
+                "observed": { "$ref": "#/$defs/requestBudgetValues" },
+                "exhausted": { "type": "boolean" },
+                "exhausted_reasons": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["engine_calls", "elapsed_ms", "result_count", "evidence_chars"]
+                  },
+                  "uniqueItems": true
+                }
+              }
+            }
+          }
         }
       }
     },
     "partialFailures": {
       "type": "array"
+    }
+  },
+  "$defs": {
+    "requestBudgetValues": {
+      "type": "object",
+      "required": ["engine_calls", "elapsed_ms", "result_count", "evidence_chars"],
+      "properties": {
+        "engine_calls": { "type": "integer", "minimum": 0 },
+        "elapsed_ms": { "type": "integer", "minimum": 0 },
+        "result_count": { "type": "integer", "minimum": 0 },
+        "evidence_chars": { "type": "integer", "minimum": 0 }
+      }
     }
   }
 }

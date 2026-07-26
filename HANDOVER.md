@@ -80,3 +80,13 @@ tags:
 - 当前计划：`docs/superpowers/plans/2026-07-22-iteration-roadmap.md`。
 - 评测方法：`benchmarks/README.md`。
 - 历史 plan/review/evidence 只作追溯，不复制到 HANDOVER。
+
+## 2026-07-26 request-budget checkpoint
+
+- `SearchRequestBudget` owns adapter-attempt, elapsed-time, raw-result, and
+  evidence-character limits across parallel, waterfall, retry, and expansion.
+- Hard exhaustion returns observed/limit metadata and `budget_exhausted`;
+  caller cancellation still rejects. Adapters remain config-independent.
+- Live smoke: pure-Node DDG returned 10 results. Sogou produced a structured
+  `bot_challenge`; DDG+Sogou still returned DDG evidence with that failure.
+- Next P1.2 item: a replaceable durable provider-cooldown store.

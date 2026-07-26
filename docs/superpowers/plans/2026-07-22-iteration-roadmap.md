@@ -768,7 +768,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
   - print only `present` / `missing` / `invalid`, never key or token values;
   - provide `--json` with a stable schema and no implicit config writes;
   - cover secret redaction, Node 18, Windows, and zero-key startup in tests.
-- [ ] Define one explicit request budget envelope across calls, elapsed time,
+- [x] Define one explicit request budget envelope across calls, elapsed time,
       result count, and evidence characters. Exhaustion must return a
       machine-readable reason and observed/limit values, never an empty success.
 - [ ] Evaluate durable provider cooldown as a replaceable store:

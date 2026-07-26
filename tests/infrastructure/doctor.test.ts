@@ -188,4 +188,16 @@ describe('search configuration doctor', () => {
     expect(report.configuration.find(check => check.id === 'zero-key-search'))
       .toMatchObject({ status: 'missing', required: true });
   });
+  it('reports invalid request-budget overrides without exposing values', () => {
+    const report = createDoctorReport({
+      environment: { SEARCH_BUDGET_MAX_CALLS: '0' },
+      semanticProbe: () => true,
+    });
+    expect(report.configuration.find(check => check.id === 'request-budget'))
+      .toMatchObject({
+        status: 'invalid',
+        provenance: ['environment:SEARCH_BUDGET_MAX_CALLS'],
+      });
+    expect(JSON.stringify(report)).not.toContain('\"0\"');
+  });
 });

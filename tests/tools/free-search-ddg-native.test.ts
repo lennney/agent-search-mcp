@@ -117,7 +117,14 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
       recordFailure: vi.fn(),
     })),
     EnginePolicy: vi.fn(() => ({ isAllowed: vi.fn(() => true) })),
-    loadConfig: vi.fn(() => ({ ALLOWED_ENGINES: [], DENIED_ENGINES: [] })),
+    loadConfig: vi.fn(() => ({
+      ALLOWED_ENGINES: [],
+      DENIED_ENGINES: [],
+      searchBudgetMaxCalls: 16,
+      searchBudgetMaxElapsedMs: 30_000,
+      searchBudgetMaxResults: 100,
+      evidenceBudgetChars: 1200,
+    })),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   };
 });

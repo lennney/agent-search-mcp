@@ -24,6 +24,9 @@ runtime dependency or change an MCP tool signature.
   transformation.
 - `meta.evidence_budget` describes passage characters, not total JSON bytes or
   tokens.
+- `meta.execution.budget` preserves request-level limits, observed values, and
+  exhaustion reasons. Middleware may reduce content but must not rewrite the
+  producer's measurements.
 - Missing publication time remains `null`; middleware must not infer a date.
 
 Middleware may sanitize, redact, reorder under an explicit policy, shorten

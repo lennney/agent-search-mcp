@@ -48,7 +48,8 @@ export interface DoctorReport {
       | 'zero-key-search'
       | 'duckduckgo-proxy'
       | 'sogou-proxy'
-      | 'semantic-flags';
+      | 'semantic-flags'
+      | 'request-budget';
   }>;
 }
 
@@ -117,6 +118,11 @@ export function createDoctorReport(
       ...semanticFlags,
       required: true,
     },
+    {
+      id: 'request-budget',
+      ...inspectRequestBudget(environment),
+      required: true,
+    },
   ];
   const runtime: DoctorReport['runtime'] = {
     node: {
@@ -144,6 +150,29 @@ export function createDoctorReport(
   };
   report.status = summarizeStatus(report);
   return report;
+}
+
+function inspectRequestBudget(
+  environment: Readonly<Record<string, string | undefined>>,
+): DoctorCheck {
+  const bounds = [
+    ['SEARCH_BUDGET_MAX_CALLS', 1, 100],
+    ['SEARCH_BUDGET_MAX_ELAPSED_MS', 1_000, 120_000],
+    ['SEARCH_BUDGET_MAX_RESULTS', 1, 500],
+    ['EVIDENCE_BUDGET_CHARS', 200, 20_000],
+  ] as const;
+  const configured = bounds.filter(([name]) => environment[name] !== undefined);
+  const invalid = configured.some(([name, min, max]) => {
+    const value = Number(environment[name]);
+    return !Number.isInteger(value) || value < min || value > max;
+  });
+  return {
+    status: invalid ? 'invalid' : 'present',
+    required: true,
+    provenance: configured.length > 0
+      ? configured.map(([name]) => `environment:${name}`)
+      : ['built-in:request-budget-defaults'],
+  };
 }
 
 export function formatDoctorReport(report: DoctorReport): string {

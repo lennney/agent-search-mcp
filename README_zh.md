@@ -212,6 +212,9 @@ HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 
 | `SNIPPET_LENGTH` | `200` | 摘要最大字符数（60–500） |
 | `MAX_FULL_RESULTS` | `3` | compact 模式下的完整结果数 |
 | `EVIDENCE_BUDGET_CHARS` | `1200` | 每次响应共享的证据段落字符预算（200–20000） |
+| `SEARCH_BUDGET_MAX_CALLS` | `16` | 单次请求实际适配器尝试上限，包含重试（1–100） |
+| `SEARCH_BUDGET_MAX_ELAPSED_MS` | `30000` | 单次请求端到端耗时上限，毫秒（1000–120000） |
+| `SEARCH_BUDGET_MAX_RESULTS` | `100` | 评分前接纳的原始结果上限（1–500） |
 | `MIN_CONFIDENCE` | `0` | 置信度阈值（0.0–1.0）；历史值 2–3 自动映射为来源数 |
 | `MIN_SOURCE_COUNT` | `1` | 最少独立上游 provider family 数；兼容接受 1–12，当前适配器集合最多 11 |
 | `HTTP_AUTH_TOKEN` | — | HTTP 模式必需的 Bearer Token |

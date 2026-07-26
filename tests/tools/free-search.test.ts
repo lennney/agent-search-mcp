@@ -8,6 +8,9 @@ const infrastructureState = vi.hoisted(() => ({
     ALLOWED_ENGINES: [] as string[],
     DENIED_ENGINES: [] as string[],
     evidenceBudgetChars: 1200,
+    searchBudgetMaxCalls: 16,
+    searchBudgetMaxElapsedMs: 30_000,
+    searchBudgetMaxResults: 100,
     outputStyle: 'normal' as 'normal' | 'compact',
     minConfidence: 0,
     minSourceCount: 1,
@@ -223,6 +226,9 @@ describe('searchWithFallback — parallel', () => {
     infrastructureState.config.minSourceCount = 1;
     infrastructureState.config.semanticDedup = false;
     infrastructureState.config.semanticRerank = false;
+    infrastructureState.config.searchBudgetMaxCalls = 16;
+    infrastructureState.config.searchBudgetMaxElapsedMs = 30_000;
+    infrastructureState.config.searchBudgetMaxResults = 100;
     (searchDuckDuckGo as any).mockResolvedValue(makeResults(3, 'ddg'));
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
     (searchBing as any).mockResolvedValue(makeResults(3, 'bing'));
@@ -235,6 +241,32 @@ describe('searchWithFallback — parallel', () => {
     expect(res.meta.total).toBeGreaterThan(0);
     expect(searchDuckDuckGo).toHaveBeenCalled();
     expect(searchSogou).toHaveBeenCalled();
+  });
+
+  it('returns a machine-readable partial response when the call budget is exhausted', async () => {
+    infrastructureState.config.searchBudgetMaxCalls = 1;
+
+    const res = await searchWithFallback({
+      query: 'bounded search',
+      engines: ['duckduckgo', 'sogou'],
+    });
+
+    expect(res.meta.execution).toMatchObject({
+      stop_reason: 'budget_exhausted',
+      early_stop: true,
+      budget: {
+        limits: { engine_calls: 1 },
+        observed: { engine_calls: 1 },
+        exhausted: true,
+        exhausted_reasons: ['engine_calls'],
+      },
+    });
+    expect(res.partialFailures).toContainEqual(expect.objectContaining({
+      engine: 'request_budget',
+      type: 'budget_exhausted',
+    }));
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(1);
+    expect(searchSogou).not.toHaveBeenCalled();
   });
 
   it('passes the query and configured evidence budget into formatting', async () => {
@@ -670,11 +702,8 @@ describe('searchWithFallback — parallel', () => {
     controller.abort(new DOMException('cancelled', 'AbortError'));
 
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
-    expect(searchDuckDuckGo).toHaveBeenCalledWith(
-      'cancelled-search',
-      expect.any(Number),
-      expect.objectContaining({ signal: controller.signal }),
-    );
+    const engineOptions = vi.mocked(searchDuckDuckGo).mock.calls[0][2];
+    expect(engineOptions?.signal?.aborted).toBe(true);
   });
 
   it('detects language in search', async () => {
