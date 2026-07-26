@@ -121,5 +121,8 @@ describe('free_search_advanced schema', () => {
       results: [],
     }));
     expect(response?.content[0].text).toContain('Search evidence for: advanced query');
+    expect(searchWithFallback).toHaveBeenCalledWith(
+      expect.not.objectContaining({ engines: expect.anything() }),
+    );
   });
 });

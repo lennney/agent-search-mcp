@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T17:35:00+08:00'
+timestamp: '2026-07-26T21:49:07+08:00'
 description: 当前状态、稳定契约和下一步
 tags:
 - agent-search-mcp
@@ -14,7 +14,8 @@ tags:
 
 - `package.json` 当前版本为 `3.2.0`；精确变更历史以 Git 和 `CHANGELOG.md` 为准。
 - 稳定产品面是 Node.js >=18.17、TypeScript ESM、MCP stdio/HTTP 和 `fasm` CLI。
-- 12 个适配器均进入统一路由：8 个零密钥，4 个可选 API。
+- 16 个适配器均进入统一路由：9 个零密钥，7 个可选 API。Wiby 是零密钥
+  小型网页补充源；Tencent WSA、Bocha、Serper 需要用户自带凭证。
 - Slim Guard 是独立产品；本仓库只维护可选证据交接合同。
 - `2026-07-28` 能力仅在 `experiments/mcp-2026/` 验证，不宣称生产兼容。
 - 当前不 bump 版本、不 push、不发布 npm/GitHub Release。
@@ -49,6 +50,10 @@ tags:
   超限返回观察值、上限与 `budget_exhausted`，调用方取消仍直接 reject。
 - 瀑布查询扩展只执行一代，生成查询不得再次扩展。
 - 显式请求缺少凭证的可选 API 时返回 `permission_denied`，不得伪装成零结果。
+- Wiby 只在免费瀑布后段尝试，共享公共服务失败不自动重试，并在结果中保留
+  上游要求的链接署名。
+- Tencent WSA 与 Sogou、Serper 与 Startpage/Google 分别保守归为同一
+  provider family；同上游的多适配器不能虚增独立来源数。
 - 默认路由由 `SearchProviderMode` 统一解释：`free_first` 不会因为存在 API Key
   自动产生付费调用；只有显式 `quality_escalation` / `paid_first` 才使用已配置
   可选渠道，默认只选 `PAID_ENGINE_ORDER` 中首个有凭证的渠道；`free_only`
@@ -81,7 +86,7 @@ tags:
 
 ## 当前验证
 
-- 默认离线门禁：69 个测试文件，720 passed，2 个联网 E2E 按设计 skipped。
+- 默认离线门禁：73 个测试文件，737 passed，2 个联网 E2E 按设计 skipped。
 - TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
   quality benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors；既有 warnings 未在本轮扩散。
@@ -93,27 +98,33 @@ tags:
   `@hono/node-server` 的 2 个 moderate `serve-static` 路径穿越公告；本项目不注册
   静态文件服务，当前路径不可达。上游最新 SDK 仍依赖 Hono Node Server 1.x，
   不用强制 major override 掩盖风险，发布说明应保留该审计事实。
-- 精确候选 `3f170675837e6d98ed4dc80a9e745277efe30044` 的 tarball SHA-256 为
+- 先前精确候选 `3f170675837e6d98ed4dc80a9e745277efe30044` 的 tarball SHA-256 为
   `4F849C96CD405C62E8DF4EA957B40154C1A8E7024778672324CC108E8FC87C56`；
   产物保留在仓库外的
   `C:\Users\LIU\.codex\release-artifacts\agent-search-mcp\3f170675837e6d98ed4dc80a9e745277efe30044\agent-search-mcp-3.2.0.tgz`。
   Windows 与 WSL2 Ubuntu 上的 Node 18.20.8 / 20.20.2 / 22.23.1 安装、
   doctor、stdio initialize/tools/list 和退出全部通过，均发现 8 个工具；本轮未调用
   真实搜索，保留 `73c34969` 的一次有限 Live E2E 作为非降级观察。
+- 上述 tarball 早于本轮新增搜索适配器，只能作为历史证据，不得发布。必须在本轮
+  最终检查点后重新生成唯一 tarball，并对同一文件重跑 Windows/Linux
+  Node 18/20/22 门禁；新增适配器不构成重复探测 DDG/Sogou 的理由。
 
 ## 下一步
 
-1. 分别取得明确授权后，才可 push 当前 Agent Search 提交、发布已保留的精确
-   npm tarball、创建 GitHub tag/Release、更新 MCP Registry；不得重新打包。
-2. Agent Search 上线后，再单独部署产品主页、把 GitHub Homepage 改到
+1. 完成本轮离线门禁和本地检查点后，从该精确 commit 重新生成唯一 tarball，
+   记录 SHA-256、大小和文件数，并对同一文件重跑 Windows/Linux
+   Node 18/20/22 安装、doctor、stdio 和工具发现。
+2. 新候选通过后，仍需分别取得明确授权，才可 push、npm publish、创建 GitHub
+   tag/Release 或更新 MCP Registry。
+3. Agent Search 上线后，再单独部署产品主页、把 GitHub Homepage 改到
    `/en/agent-search-mcp`，随后刷新 Glama 等目录。
-3. 不为本次发布重复探测 DDG/Sogou；只有后续搜索主链发生变化，或进入单独的
+4. 不为本次发布重复探测 DDG/Sogou；只有后续搜索主链发生变化，或进入单独的
    低频质量采样任务时，才重新取得联网授权。
-4. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
+5. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
    离线 importer 进入 pooling，不能把配置级探针写成产品对比。
-5. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
+6. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
    `benchmark:calibrate-relevance`；完成前保持内部阈值 `0.35` 不变。
-6. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
+7. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
    搜索质量或 DDG 可用率数字。
 
 ## 文档权威

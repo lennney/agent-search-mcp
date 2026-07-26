@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { EnginePolicy, ToolPolicy } from '../../src/infrastructure/tool-policy.js';
-import type { SearchProvider } from '../../src/types.js';
+import { SEARCH_PROVIDERS, type SearchProvider } from '../../src/types.js';
 
-const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom'];
+const ALL_ENGINES: SearchProvider[] = [...SEARCH_PROVIDERS];
 
 describe('EnginePolicy', () => {
   describe('empty/null config', () => {
@@ -84,7 +84,7 @@ describe('EnginePolicy', () => {
     });
 
     it('returns empty array when nothing is allowed', () => {
-      const policy = new EnginePolicy('', 'duckduckgo,sogou,bing,baidu,brave,tavily,exa,youcom');
+      const policy = new EnginePolicy('', SEARCH_PROVIDERS.join(','));
       const result = policy.filterEngines(ALL_ENGINES);
       expect(result).toEqual([]);
     });

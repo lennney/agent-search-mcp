@@ -45,7 +45,15 @@ describe('loadConfig', () => {
     expect(config.searchCacheTtlMs).toBe(60_000);
     expect(config.searchCacheMaxEntries).toBe(1_000);
     expect(config.searchProviderMode).toBe('free_first');
-    expect(config.paidEngineOrder).toEqual(['brave', 'exa', 'tavily', 'youcom']);
+    expect(config.paidEngineOrder).toEqual([
+      'brave',
+      'exa',
+      'tavily',
+      'youcom',
+      'tencent_wsa',
+      'bocha',
+      'serper',
+    ]);
   });
 
   it('parses explicit provider routing configuration', () => {

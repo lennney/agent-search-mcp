@@ -17,7 +17,26 @@ export interface EngineSearchOptions {
   throwOnError?: boolean;
 }
 
-export type SearchProvider = 'duckduckgo' | 'sogou' | 'brave' | 'tavily' | 'bing' | 'baidu' | 'exa' | 'wikipedia' | 'startpage' | 'yandex' | 'mojeek' | 'youcom';
+export const SEARCH_PROVIDERS = [
+  'duckduckgo',
+  'sogou',
+  'bing',
+  'baidu',
+  'wikipedia',
+  'startpage',
+  'yandex',
+  'mojeek',
+  'wiby',
+  'brave',
+  'tavily',
+  'exa',
+  'youcom',
+  'tencent_wsa',
+  'bocha',
+  'serper',
+] as const;
+
+export type SearchProvider = typeof SEARCH_PROVIDERS[number];
 
 export interface SearchProviderInfo {
   id: SearchProvider;

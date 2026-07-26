@@ -68,10 +68,16 @@ vi.mock('../../src/engines/tavily.js', () => ({
 }));
 vi.mock('../../src/engines/exa.js', () => ({ searchExa: vi.fn() }));
 vi.mock('../../src/engines/youcom.js', () => ({ searchYouCom: vi.fn() }));
+vi.mock('../../src/engines/tencent-wsa.js', () => ({
+  searchTencentWsa: vi.fn(),
+}));
+vi.mock('../../src/engines/bocha.js', () => ({ searchBocha: vi.fn() }));
+vi.mock('../../src/engines/serper.js', () => ({ searchSerper: vi.fn() }));
 vi.mock('../../src/engines/wikipedia.js', () => ({ searchWikipedia: vi.fn(async () => []) }));
 vi.mock('../../src/engines/startpage.js', () => ({ searchStartpage: vi.fn(async () => []) }));
 vi.mock('../../src/engines/yandex.js', () => ({ searchYandex: vi.fn(async () => []) }));
 vi.mock('../../src/engines/mojeek.js', () => ({ searchMojeek: vi.fn(async () => []) }));
+vi.mock('../../src/engines/wiby.js', () => ({ searchWiby: vi.fn(async () => []) }));
 
 vi.mock('../../src/aggregation/index.js', () => ({
   dedupByProvider: vi.fn((r) => r),
@@ -179,6 +185,9 @@ import { searchStartpage } from '../../src/engines/startpage.js';
 import { searchYandex } from '../../src/engines/yandex.js';
 import { searchMojeek } from '../../src/engines/mojeek.js';
 import { searchExa } from '../../src/engines/exa.js';
+import { searchTencentWsa } from '../../src/engines/tencent-wsa.js';
+import { searchBocha } from '../../src/engines/bocha.js';
+import { searchSerper } from '../../src/engines/serper.js';
 import { EngineAdapterError } from '../../src/engines/engine-error.js';
 import {
   checkConfidenceBasket,
@@ -257,6 +266,9 @@ describe('searchWithFallback — parallel', () => {
     (searchSogou as any).mockResolvedValue(makeResults(3, 'sogou'));
     (searchBing as any).mockResolvedValue(makeResults(3, 'bing'));
     (searchBaidu as any).mockResolvedValue(makeResults(3, 'baidu'));
+    (searchTencentWsa as any).mockResolvedValue(makeResults(3, 'tencent_wsa'));
+    (searchBocha as any).mockResolvedValue(makeResults(3, 'bocha'));
+    (searchSerper as any).mockResolvedValue(makeResults(3, 'serper'));
   });
 
   it('returns results with default engines', async () => {
@@ -280,6 +292,30 @@ describe('searchWithFallback — parallel', () => {
     } finally {
       if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
       else process.env.EXA_API_KEY = previousApiKey;
+    }
+  });
+
+  it('dispatches each newly registered provider only when explicitly selected', async () => {
+    const credentials = [
+      ['TENCENT_WSA_API_KEY', 'tencent_wsa', searchTencentWsa],
+      ['BOCHA_API_KEY', 'bocha', searchBocha],
+      ['SERPER_API_KEY', 'serper', searchSerper],
+    ] as const;
+
+    try {
+      for (const [environment, engine, search] of credentials) {
+        process.env[environment] = 'test-key';
+        const result = await searchWithFallback({
+          query: `explicit-${engine}`,
+          engines: [engine],
+          count: 1,
+        });
+        expect(search).toHaveBeenCalled();
+        expect(result.meta.execution?.searched_engines).toContain(engine);
+        delete process.env[environment];
+      }
+    } finally {
+      for (const [environment] of credentials) delete process.env[environment];
     }
   });
 

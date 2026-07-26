@@ -11,6 +11,25 @@ tags:
 
 ## Unreleased
 
+### Added
+
+- Added Wiby as a zero-key, official JSON small-Web source. It is attempted
+  late in the free waterfall, uses a conservative per-provider interval, does
+  not retry shared-service failures, and retains the attribution required by
+  Wiby's API terms.
+- Added optional Tencent Web Search API, Bocha, and Serper adapters for users
+  who bring their own credentials. Default `free_first` routing never calls
+  them automatically.
+
+### Changed
+
+- Centralized the adapter ID list so MCP schemas, CLI validation, routing, and
+  tests cannot drift as providers are added.
+- Mapped Tencent WSA to the Sogou provider family and Serper to the Google
+  family so adapter overlap cannot inflate independent-source confidence.
+- Removed the implicit all-engine selection from `free_search_advanced`; it now
+  obeys `free_first` and cannot spend merely because an API key is present.
+
 ## v3.2.0 (2026-07-26)
 
 > **Headline: Free by default, paid quality escalation when explicitly enabled,

@@ -2,7 +2,10 @@
 import { readFileSync, realpathSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join, resolve } from 'path';
-import { SearchProvider } from './types.js';
+import {
+  SEARCH_PROVIDERS,
+  type SearchProvider,
+} from './types.js';
 import { searchWithFallback } from './tools/free-search.js';
 import { createHttpServer } from './infrastructure/http.js';
 import { loadConfig } from './infrastructure/config.js';
@@ -30,7 +33,7 @@ export interface CliArgs {
 }
 
 const VALID_COMMANDS = ['search', 'extract', 'serve', 'doctor'];
-const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom'];
+const VALID_ENGINES: readonly SearchProvider[] = SEARCH_PROVIDERS;
 
 export function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2); // skip node and script path
@@ -103,7 +106,7 @@ Usage:
 
 Search Options:
   --count <n>          Number of results (1-50, default: 10)
-  --engines <list>     Comma-separated engines (all 12 adapters supported)
+  --engines <list>     Comma-separated engines (all ${SEARCH_PROVIDERS.length} adapters supported)
   --json               Output as JSON
   --proxy <url>        HTTP proxy URL (e.g., http://127.0.0.1:7890)
 

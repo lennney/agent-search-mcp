@@ -8,6 +8,9 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import { searchYouCom } from '../engines/youcom.js';
+import { searchTencentWsa } from '../engines/tencent-wsa.js';
+import { searchBocha } from '../engines/bocha.js';
+import { searchSerper } from '../engines/serper.js';
 import {
   EngineAdapterError,
   isEngineAdapterError,
@@ -16,6 +19,7 @@ import { searchWikipedia } from '../engines/wikipedia.js';
 import { searchStartpage } from '../engines/startpage.js';
 import { searchYandex } from '../engines/yandex.js';
 import { searchMojeek } from '../engines/mojeek.js';
+import { searchWiby } from '../engines/wiby.js';
 import {
   hasEngineCredential,
   optionalEngineCredentialEnvironment,
@@ -23,7 +27,12 @@ import {
   paidEngines,
 } from '../engines/index.js';
 import { getSecurityNote } from '../infrastructure/security.js';
-import type { SearchResult, SearchProvider, EngineError } from '../types.js';
+import {
+  SEARCH_PROVIDERS,
+  type EngineError,
+  type SearchProvider,
+  type SearchResult,
+} from '../types.js';
 import {
   detectLanguage,
   enrichResults,
@@ -77,10 +86,14 @@ const ENGINE_WEIGHTS: Record<string, number> = {
   startpage: 0.86,
   yandex: 0.82,
   mojeek: 0.8,
+  wiby: 0.78,
   brave: 0.95,
   tavily: 0.9,
   exa: 0.92,
   youcom: 0.91,
+  tencent_wsa: 0.9,
+  bocha: 0.9,
+  serper: 0.9,
 };
 
 // Infrastructure singletons
@@ -229,6 +242,9 @@ async function searchEngine(
         case 'mojeek':
           results = await searchMojeek(query, limit, engineOptions);
           break;
+        case 'wiby':
+          results = await searchWiby(query, limit, engineOptions);
+          break;
         case 'brave':
           results = await new BraveProvider().search(query, limit, engineOptions);
           break;
@@ -246,6 +262,15 @@ async function searchEngine(
           break;
         case 'youcom':
           results = await searchYouCom(query, limit, engineOptions);
+          break;
+        case 'tencent_wsa':
+          results = await searchTencentWsa(query, limit, engineOptions);
+          break;
+        case 'bocha':
+          results = await searchBocha(query, limit, engineOptions);
+          break;
+        case 'serper':
+          results = await searchSerper(query, limit, engineOptions);
           break;
         default:
           return { engine, status: 'skipped', results: [] };
@@ -1124,8 +1149,7 @@ async function finalizeSearchResults(
 const WATERFALL_PHASES = {
   phase1a: ["duckduckgo", "sogou"],
   phase1b: ["bing", "baidu"],
-  phase1c: ["wikipedia", "startpage", "yandex", "mojeek"],
-  phase2: ["brave", "tavily", "exa", "youcom"],
+  phase1c: ["wikipedia", "startpage", "yandex", "mojeek", "wiby"],
 } as const;
 
 function selectWaterfallPhase(
@@ -1466,7 +1490,7 @@ export function setupFreeSearchTool(server: McpServer): void {
         query: z.string().min(1, 'Search query must not be empty')
           .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese coverage, include Sogou or Baidu in engines.'),
         limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
-        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom']))
+        engines: z.array(z.enum(SEARCH_PROVIDERS))
           .min(1)
           .default(['duckduckgo', 'sogou'])
           .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +

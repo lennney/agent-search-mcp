@@ -173,8 +173,11 @@ function spawnServer(): ChildProcess {
       MODE: 'stdio',
       // Prevent real API calls from using paid engines
       BRAVE_API_KEY: '',
+      BOCHA_API_KEY: '',
       TAVILY_API_KEY: '',
+      TENCENT_WSA_API_KEY: '',
       EXA_API_KEY: '',
+      SERPER_API_KEY: '',
       YDC_API_KEY: '',
       SEARCH_PROVIDER_MODE: 'free_only',
       // One adapter attempt per live request: no automatic network retry.

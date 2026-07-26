@@ -1,7 +1,6 @@
 ﻿# Agent Search MCP
 
-多引擎统一搜索 MCP Server：12 个搜索适配器（8 个零密钥、4 个可选 API），
-提供 stdio/HTTP MCP 接入和 `fasm` CLI。产品重点是
+多引擎统一搜索 MCP Server，提供 stdio/HTTP MCP 接入和 `fasm` CLI。产品重点是
 **免费 + 省 Token + 中文原生 + 多源聚合**。
 
 ## 权威信息源

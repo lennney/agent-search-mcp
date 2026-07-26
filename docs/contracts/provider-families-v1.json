@@ -10,9 +10,13 @@
     "wikipedia": "wikipedia",
     "yandex": "yandex",
     "mojeek": "mojeek",
+    "wiby": "wiby",
     "brave": "brave",
     "tavily": "tavily",
     "exa": "exa",
-    "youcom": "youcom"
+    "youcom": "youcom",
+    "tencent_wsa": "sogou",
+    "bocha": "bocha",
+    "serper": "google"
   }
 }

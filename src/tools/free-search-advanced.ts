@@ -16,7 +16,7 @@ export function registerFreeSearchAdvanced(server: McpServer) {
 Best for: Domain filtering, high-confidence only, Chinese content.
 Not recommended for: Simple queries — use free_search instead.
 
-@readOnly true @idempotent true — runs waterfall progressive search across free+paid engines. ` + 
+@readOnly true @idempotent true — runs waterfall progressive search across policy-allowed engines. ` +
         `Makes outbound HTTP requests to search engines and optionally to Jina Reader for content enrichment.`,
       inputSchema: {
         query: z.string().describe('Search query'),
@@ -25,7 +25,7 @@ Not recommended for: Simple queries — use free_search instead.
         min_confidence: z.number().min(0).max(3).optional().default(0)
           .describe('Minimum source-reliability confidence (0-1). Legacy values 2-3 are treated as min_source_count.'),
         min_source_count: z.number().int().min(1).max(12).optional().default(1)
-          .describe('Minimum independent upstream provider families; accepts 1-12 for compatibility, current adapters expose at most 11'),
+          .describe('Minimum independent upstream provider families; current adapters expose at most 12'),
         time_range: z.enum(['day', 'week', 'month', 'year']).optional()
           .describe('Deprecated compatibility field; returns UNSUPPORTED_FILTER because general-search recency is not enforced end to end'),
         language: z.enum(['auto', 'en', 'zh']).optional().default('auto')
@@ -74,7 +74,6 @@ Not recommended for: Simple queries — use free_search instead.
         const results = await searchWithFallback({
           query: input.query,
           count: input.count,
-          engines: ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom'],
           minConfidence: input.min_confidence <= 1 ? input.min_confidence : 0,
           minSourceCount: Math.max(input.min_source_count, legacySourceCount),
           language: input.language,

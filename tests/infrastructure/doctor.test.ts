@@ -178,7 +178,7 @@ describe('search configuration doctor', () => {
     const report = createDoctorReport({
       environment: {
         DENIED_ENGINES:
-          'duckduckgo,sogou,bing,baidu,wikipedia,startpage,yandex,mojeek',
+          'duckduckgo,sogou,bing,baidu,wikipedia,startpage,yandex,mojeek,wiby',
       },
       nodeVersion: '20.0.0',
       platform: 'linux',

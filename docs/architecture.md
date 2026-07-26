@@ -262,10 +262,17 @@ export function register{Name}(server: McpServer): void
 | `TAVILY_API_KEY` | — | Tavily Search API key |
 | `EXA_API_KEY` | — | Exa Search API key |
 | `YDC_API_KEY` | — | You.com Search API key |
+| `TENCENT_WSA_API_KEY` | — | 腾讯云联网搜索 API key |
+| `BOCHA_API_KEY` | — | 博查 Web Search API key |
+| `SERPER_API_KEY` | — | Serper Google Search API key |
 | `SEARCH_PROVIDER_MODE` | free_first | 免费默认、质量升级、付费优先或仅免费 |
-| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom | 按顺序选择首个已配置可选渠道 |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper | 按顺序选择首个已配置可选渠道 |
 | `MODE` | stdio | 运行模式: stdio / http / both |
 | `PORT` | 3000 | HTTP 模式端口 |
+
+Wiby 是零密钥的独立小型网页索引，只在免费瀑布后段作为补充来源。可选 API
+是否提供试用额度及其价格由上游决定；本项目只把它们视为需要用户凭证和显式费用
+策略的 BYOK 渠道。
 
 ## 相关文档
 

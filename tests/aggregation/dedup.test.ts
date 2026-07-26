@@ -65,6 +65,17 @@ describe('dedupByUrl', () => {
 
     expect(frequencies.get('a.com/1')).toBe(2);
   });
+
+  it('does not inflate confidence across the new same-family adapters', () => {
+    const { frequencies } = dedupByUrl([
+      r({ url: 'https://a.com/1', engines: ['sogou'] }),
+      r({ url: 'https://a.com/1', engines: ['tencent_wsa'] }),
+      r({ url: 'https://a.com/1', engines: ['startpage'] }),
+      r({ url: 'https://a.com/1', engines: ['serper'] }),
+    ]);
+
+    expect(frequencies.get('a.com/1')).toBe(2);
+  });
 });
 
 describe('provider-family contract', () => {

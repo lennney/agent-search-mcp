@@ -1,19 +1,7 @@
 import { z } from 'zod';
+import { SEARCH_PROVIDERS } from '../types.js';
 
-const providerSchema = z.enum([
-  'duckduckgo',
-  'sogou',
-  'bing',
-  'baidu',
-  'wikipedia',
-  'startpage',
-  'yandex',
-  'mojeek',
-  'brave',
-  'tavily',
-  'exa',
-  'youcom',
-]);
+const providerSchema = z.enum(SEARCH_PROVIDERS);
 
 const routingGateSchema = z.object({
   sufficient: z.boolean(),
