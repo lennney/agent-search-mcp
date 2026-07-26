@@ -1,6 +1,7 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const yandexProvider = {
   id: 'yandex' as const,
@@ -22,7 +23,7 @@ export async function searchYandex(query: string, limit: number = 10, options?: 
 
     if (!res.ok) {
       if (options?.throwOnError) throw new Error(`Yandex HTTP ${res.status}`);
-      console.error(`Yandex: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Yandex HTTP error');
       return [];
     }
 
@@ -33,9 +34,9 @@ export async function searchYandex(query: string, limit: number = 10, options?: 
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
-      console.error('Yandex: Search timed out');
+      logger.warn('Yandex search timed out');
     } else {
-      console.error('Yandex search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Yandex search failed');
     }
     return [];
   }

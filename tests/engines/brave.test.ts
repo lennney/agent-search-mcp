@@ -53,4 +53,28 @@ describe('BraveProvider', () => {
     const results = await provider.search('test', 5);
     expect(results).toEqual([]);
   });
+
+  it('ignores malformed or unsafe result entries', async () => {
+    process.env.BRAVE_API_KEY = 'test-key';
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        web: {
+          results: [
+            null,
+            { title: 'Unsafe', url: 'javascript:alert(1)' },
+            { title: 'Valid', url: 'https://example.com', description: 'Desc' },
+          ],
+        },
+      }),
+    });
+
+    await expect(provider.search('test', 5)).resolves.toEqual([{
+      title: 'Valid',
+      url: 'https://example.com',
+      snippet: 'Desc',
+      source: 'brave',
+      engines: ['brave'],
+    }]);
+  });
 });

@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { Readable } from 'node:stream';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { logger } from './logger.js';
 import { getProtocolReadiness } from './protocol.js';
 import { readCurrentVersion } from './version-check.js';
 
@@ -136,7 +137,10 @@ export function createHttpServer(
         await mcpServer.connect(transport);
         await handleWebStandardRequest(req, res, transport);
       } catch (err) {
-        console.error('Streamable HTTP transport error:', err instanceof Error ? err.message : String(err));
+        logger.error(
+          { err: err instanceof Error ? err.message : String(err) },
+          'Streamable HTTP transport error',
+        );
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Internal server error' }));
@@ -153,7 +157,7 @@ export function createHttpServer(
   });
 
   httpServer.on('error', (err) => {
-    console.error('HTTP server error:', err.message);
+    logger.error({ err: err.message }, 'HTTP server error');
   });
 
   let actualPort = port;
@@ -166,9 +170,12 @@ export function createHttpServer(
           if (addr && typeof addr === 'object') {
             actualPort = addr.port;
           }
-          console.error(hasMcpServer
-            ? `🔍 Streamable HTTP server running on port ${actualPort}`
-            : `🔍 HTTP server running on port ${actualPort}`
+          logger.info(
+            {
+              port: actualPort,
+              transport: hasMcpServer ? 'streamable-http' : 'http',
+            },
+            'HTTP server listening',
           );
           resolve();
         });

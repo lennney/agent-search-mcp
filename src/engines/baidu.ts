@@ -1,6 +1,7 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const baiduProvider = {
   id: 'baidu' as const,
@@ -23,7 +24,7 @@ export async function searchBaidu(query: string, limit: number = 10, options?: E
 
     if (!res.ok) {
       if (options?.throwOnError) throw new Error(`Baidu HTTP ${res.status}`);
-      console.error(`Baidu: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Baidu HTTP error');
       return [];
     }
 
@@ -34,9 +35,9 @@ export async function searchBaidu(query: string, limit: number = 10, options?: E
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('timeout')) {
-      console.error('Baidu: Search timed out');
+      logger.warn('Baidu search timed out');
     } else {
-      console.error('Baidu search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Baidu search failed');
     }
     return [];
   }

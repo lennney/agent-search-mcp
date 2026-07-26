@@ -1,6 +1,7 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const bingProvider = {
   id: 'bing' as const,
@@ -23,7 +24,7 @@ export async function searchBing(query: string, limit: number = 10, options?: En
 
     if (!res.ok) {
       if (options?.throwOnError) throw new Error(`Bing HTTP ${res.status}`);
-      console.error(`Bing: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Bing HTTP error');
       return [];
     }
 
@@ -34,9 +35,9 @@ export async function searchBing(query: string, limit: number = 10, options?: En
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('timeout')) {
-      console.error('Bing: Search timed out');
+      logger.warn('Bing search timed out');
     } else {
-      console.error('Bing search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Bing search failed');
     }
     return [];
   }
@@ -81,7 +82,7 @@ export async function searchBingNews(query: string, limit: number = 10): Promise
     });
 
     if (!res.ok) {
-      console.error(`Bing News: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Bing News HTTP error');
       return [];
     }
 
@@ -89,7 +90,7 @@ export async function searchBingNews(query: string, limit: number = 10): Promise
     return parseBingNewsXML(xml, limit);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    console.error('Bing News search failed:', msg.slice(0, 200));
+    logger.warn({ err: msg.slice(0, 200) }, 'Bing News search failed');
     return [];
   }
 }

@@ -1,5 +1,6 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const youcomProvider = {
   id: 'youcom' as const,
@@ -58,7 +59,7 @@ export async function searchYouCom(query: string, count: number = 10, options?: 
   if (!res.ok) {
     if (res.status >= 400 && res.status < 500) {
       if (options?.throwOnError) throw new Error(`You.com HTTP ${res.status}`);
-      console.warn(`You.com: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'You.com HTTP client error');
       return [];
     }
     throw new Error(`You.com HTTP ${res.status}`);

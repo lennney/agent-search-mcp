@@ -75,7 +75,7 @@
     "experimental:2026:test": "npm run build && npm --prefix experiments/mcp-2026 test",
     "experimental:2026:http": "npm run experimental:2026:build && npm --prefix experiments/mcp-2026 run start:http",
     "experimental:2026:stdio": "npm run experimental:2026:build && npm --prefix experiments/mcp-2026 run start:stdio",
-    "lint": "eslint src/",
+    "lint": "eslint src/ --max-warnings 0",
     "lint:fix": "eslint src/ --fix",
     "watch": "tsc --watch",
     "dev": "tsc && node dist/index.js",

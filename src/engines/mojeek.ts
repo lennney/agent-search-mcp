@@ -1,6 +1,7 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const mojeekProvider = {
   id: 'mojeek' as const,
@@ -21,7 +22,7 @@ export async function searchMojeek(query: string, limit: number = 10, options?: 
 
     if (!res.ok) {
       if (options?.throwOnError) throw new Error(`Mojeek HTTP ${res.status}`);
-      console.error(`Mojeek: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Mojeek HTTP error');
       return [];
     }
 
@@ -32,9 +33,9 @@ export async function searchMojeek(query: string, limit: number = 10, options?: 
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
-      console.error('Mojeek: Search timed out');
+      logger.warn('Mojeek search timed out');
     } else {
-      console.error('Mojeek search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Mojeek search failed');
     }
     return [];
   }

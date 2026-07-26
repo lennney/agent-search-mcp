@@ -1,5 +1,6 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 import { EngineAdapterError } from './engine-error.js';
 
 const WIKIMEDIA_USER_AGENT =
@@ -69,7 +70,7 @@ export async function searchWikipedia(query: string, limit: number = 10, options
         );
       }
       if (options?.throwOnError) throw new Error(`Wikipedia HTTP ${res.status}`);
-      console.error(`Wikipedia: HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Wikipedia HTTP error');
       return [];
     }
 
@@ -102,9 +103,9 @@ export async function searchWikipedia(query: string, limit: number = 10, options
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
-      console.error('Wikipedia: Search timed out');
+      logger.warn('Wikipedia search timed out');
     } else {
-      console.error('Wikipedia search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Wikipedia search failed');
     }
     return [];
   }

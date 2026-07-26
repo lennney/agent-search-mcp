@@ -23,6 +23,11 @@ tags:
 
 ### Changed
 
+- Made lint warning-free and enforced `--max-warnings 0`. Runtime and adapter
+  diagnostics now use the structured stderr logger, while human-facing CLI
+  output has a narrowly scoped lint exception.
+- Replaced permissive third-party JSON casts in Brave, Tavily, and the semantic
+  bridge with defensive `unknown` parsing and bounded result validation.
 - Centralized the adapter ID list so MCP schemas, CLI validation, routing, and
   tests cannot drift as providers are added.
 - Mapped Tencent WSA to the Sogou provider family and Serper to the Google

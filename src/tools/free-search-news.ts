@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { searchDuckduckgoNews } from '../engines/duckduckgo.js';
 import { searchBingNews } from '../engines/bing.js';
 import { logger } from '../infrastructure/logger.js';
+import type { SearchResult } from '../types.js';
 
 export function registerFreeSearchNews(server: McpServer) {
   server.registerTool(
@@ -22,7 +23,7 @@ export function registerFreeSearchNews(server: McpServer) {
     },
     async (input) => {
       try {
-        const results: any[] = [];
+        const results: SearchResult[] = [];
 
         try {
           const ddgResults = await searchDuckduckgoNews(input.query, input.count, input.time_range);

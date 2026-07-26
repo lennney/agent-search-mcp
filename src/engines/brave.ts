@@ -1,5 +1,26 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import {
+  asJsonObject,
+  isWebUrl,
+  readString,
+} from './json-search-api.js';
+
+function parseBraveResult(value: unknown): SearchResult | null {
+  const result = asJsonObject(value);
+  if (!result) return null;
+  const title = readString(result.title);
+  const url = readString(result.url);
+  if (!title || !isWebUrl(url)) return null;
+
+  return {
+    title,
+    url,
+    snippet: readString(result.description),
+    source: 'brave',
+    engines: ['brave'],
+  };
+}
 
 export class BraveProvider {
   id = 'brave';
@@ -26,14 +47,12 @@ export class BraveProvider {
 
     if (!res.ok) throw new Error(`Brave returned ${res.status}`);
 
-    const data = await res.json();
-    return (data.web?.results || []).map((r: any) => ({
-      title: r.title || '',
-      url: r.url || '',
-      snippet: r.description || '',
-      source: 'brave',
-      engines: ['brave'],
-    }));
+    const data = asJsonObject(await res.json());
+    const web = asJsonObject(data?.web);
+    const results = Array.isArray(web?.results) ? web.results : [];
+    return results
+      .map(parseBraveResult)
+      .filter((result): result is SearchResult => result !== null);
   }
 }
 

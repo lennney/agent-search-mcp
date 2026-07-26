@@ -212,7 +212,6 @@ async function main(): Promise<void> {
   } else if (args.command === 'doctor') {
     const report = createDoctorReport();
     // CLI stdout is the documented user-facing channel, not MCP stdio.
-    // eslint-disable-next-line no-console
     console.log(args.json
       ? JSON.stringify(report, null, 2)
       : formatDoctorReport(report));

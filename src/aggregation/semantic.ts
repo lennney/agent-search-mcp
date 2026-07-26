@@ -20,16 +20,69 @@ export interface SemanticOptions {
   model: string;
 }
 
+interface SemanticBridgeResponse {
+  id: number;
+  ok?: unknown;
+  error?: unknown;
+  keep_indices?: unknown;
+  removed_count?: unknown;
+  order?: unknown;
+}
+
+interface PendingBridgeCommand {
+  resolve: (value: SemanticBridgeResponse) => void;
+  reject: (error: Error) => void;
+  timer: NodeJS.Timeout;
+}
+
 // ── Bridge process singleton ────────────────────────────────────────────────
 
 let _process: ChildProcess | null = null;
-const _pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }>();
+const _pending = new Map<number, PendingBridgeCommand>();
 let _requestId = 0;
 let _availability: boolean | null = null; // null = unchecked
 let _spawnLock = false; // prevents concurrent spawn attempts
 
 const LOAD_TIMEOUT = 30_000; // 30s for first-load model download
 const CMD_TIMEOUT = 5_000;  // 5s for subsequent commands
+
+function parseBridgeResponse(line: string): SemanticBridgeResponse | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(line.trim()) as unknown;
+  } catch {
+    return null;
+  }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const response = value as Record<string, unknown>;
+  if (typeof response.id !== 'number' || !Number.isInteger(response.id)) {
+    return null;
+  }
+  return {
+    id: response.id,
+    ok: response.ok,
+    error: response.error,
+    keep_indices: response.keep_indices,
+    removed_count: response.removed_count,
+    order: response.order,
+  };
+}
+
+function readResultIndices(
+  value: unknown,
+  resultCount: number,
+): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const indices = value.filter((index): index is number =>
+    typeof index === 'number'
+    && Number.isInteger(index)
+    && index >= 0
+    && index < resultCount);
+  return indices.length === value.length ? indices : null;
+}
 
 /**
  * Spawn the Python bridge process (lazy init, singleton).
@@ -69,10 +122,8 @@ function spawnBridge(): void {
   if (child.stdout) {
     const rl = createInterface({ input: child.stdout });
     rl.on('line', (line: string) => {
-      let response: any;
-      try {
-        response = JSON.parse(line.trim());
-      } catch {
+      const response = parseBridgeResponse(line);
+      if (!response) {
         // Ignore non-JSON lines (e.g. model loading progress bars)
         return;
       }
@@ -142,7 +193,10 @@ function ensureBridge(): void {
  * Send a JSON-line command to the bridge and wait for the response.
  * Python protocol: {action, ...other fields} → {id?, ...result}
  */
-function sendCommand(payload: Record<string, unknown>, timeout: number = CMD_TIMEOUT): Promise<any> {
+function sendCommand(
+  payload: Record<string, unknown>,
+  timeout: number = CMD_TIMEOUT,
+): Promise<SemanticBridgeResponse> {
   return new Promise((resolve, reject) => {
     const proc = _process;
     if (!proc?.stdin?.writable) {
@@ -223,13 +277,22 @@ export async function semanticDedup(
       model: model || 'minishlab/M2V_base_output',
     });
 
-    if (resp.error) {
-      logger.warn({ err: resp.error }, 'Semantic dedup bridge error');
+    const bridgeError = typeof resp.error === 'string' ? resp.error : '';
+    if (bridgeError) {
+      logger.warn({ err: bridgeError }, 'Semantic dedup bridge error');
       return { results, removedCount: 0 };
     }
 
-    const keepIndices: number[] = resp.keep_indices || [];
-    const removedCount: number = resp.removed_count || 0;
+    const keepIndices = readResultIndices(resp.keep_indices, results.length);
+    if (!keepIndices || keepIndices.length === 0) {
+      logger.warn('Semantic dedup returned invalid result indices');
+      return { results, removedCount: 0 };
+    }
+    const removedCount = typeof resp.removed_count === 'number'
+      && Number.isInteger(resp.removed_count)
+      && resp.removed_count >= 0
+      ? resp.removed_count
+      : 0;
 
     if (keepIndices.length === results.length) {
       return { results, removedCount: 0 };
@@ -272,13 +335,14 @@ export async function semanticRerank(
       model: model || 'minishlab/M2V_base_output',
     });
 
-    if (resp.error) {
-      logger.warn({ err: resp.error }, 'Semantic rerank bridge error');
+    const bridgeError = typeof resp.error === 'string' ? resp.error : '';
+    if (bridgeError) {
+      logger.warn({ err: bridgeError }, 'Semantic rerank bridge error');
       return results;
     }
 
-    const order: number[] = resp.order || [];
-    if (order.length === 0) return results;
+    const order = readResultIndices(resp.order, results.length);
+    if (!order || order.length === 0) return results;
 
     // Reorder results by the returned indices
     const reranked = order.map(i => results[i]);

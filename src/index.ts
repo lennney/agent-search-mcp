@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { loadConfig } from './infrastructure/config.js';
 import { createHttpServer } from './infrastructure/http.js';
+import { logger } from './infrastructure/logger.js';
 import { createAgentSearchServer } from './server.js';
 
 async function main(): Promise<void> {
@@ -10,13 +11,13 @@ async function main(): Promise<void> {
 
   if (config.mode === 'stdio' || config.mode === 'both') {
     const server = createAgentSearchServer(config);
-    console.error('🔍 agent-search-mcp starting in STDIO mode...');
+    logger.info('agent-search-mcp starting in STDIO mode');
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('✅ agent-search-mcp ready (STDIO)');
-    console.error(
-      '⭐ Like agent-search-mcp? Star & watch for updates: '
-      + 'https://github.com/lennney/agent-search-mcp',
+    logger.info('agent-search-mcp ready in STDIO mode');
+    logger.info(
+      { repository: 'https://github.com/lennney/agent-search-mcp' },
+      'Agent Search MCP project repository',
     );
   }
 
@@ -38,16 +39,19 @@ async function main(): Promise<void> {
       },
     );
     await httpServer.listen();
-    console.error('✅ agent-search-mcp ready (HTTP)');
-    console.error(
-      '⭐ Like agent-search-mcp? Star & watch for updates: '
-      + 'https://github.com/lennney/agent-search-mcp',
+    logger.info('agent-search-mcp ready in HTTP mode');
+    logger.info(
+      { repository: 'https://github.com/lennney/agent-search-mcp' },
+      'Agent Search MCP project repository',
     );
   }
 }
 
 const serverPromise = main().catch((error: unknown) => {
-  console.error('Fatal error:', error);
+  logger.fatal(
+    { err: error instanceof Error ? error.message : String(error) },
+    'Fatal server error',
+  );
   process.exit(1);
 });
 
