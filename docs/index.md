@@ -1,8 +1,8 @@
 # Documentation
 
-This directory separates current product documentation from historical work.
-A document in `archive/` may explain how a decision was reached, but it does
-not define current behavior.
+This directory contains current product documentation and reproducible
+evidence. Completed plans and superseded reviews are retained in Git history
+instead of the published documentation tree.
 
 ## Start here
 
@@ -46,13 +46,10 @@ quality claims.
 
 ## Historical material
 
-- [`archive/plans/`](archive/plans/) — completed or superseded implementation plans
-- [`archive/reviews/`](archive/reviews/) — historical code and release reviews
-- [`archive/superpowers/`](archive/superpowers/) — completed planning-session artifacts
-- [`evidence/`](evidence/) — retained reproducible evidence; not archived merely
-  because it is old
-- [`decisions/`](decisions/) — architecture decisions that remain relevant
+- [`evidence/`](evidence/) retains reproducible evidence even when it describes
+  a dated run.
+- Completed plans, superseded reviews, distribution drafts, and internal
+  operations notes are available through Git history, not the active tree.
 
 Before adding a document, prefer updating the current authority for that
-subject. Git history preserves obsolete detail; the active documentation tree
-should remain small.
+subject. The active documentation tree should remain small.

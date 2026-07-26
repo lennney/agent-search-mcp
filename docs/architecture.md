@@ -272,7 +272,6 @@ export function register{Name}(server: McpServer): void
 | 文档 | 内容 |
 |------|------|
 | [research/2026-07-26-agent-search-product-architecture.md](research/2026-07-26-agent-search-product-architecture.md) | 当前竞品源码、Agent/MCP 分层和架构策略 |
-| [archive/plans/2026-07-22-maintainability-architecture.md](archive/plans/2026-07-22-maintainability-architecture.md) | 历史可维护性收敛计划：AppMetadata、EngineCatalog、SearchRuntime、提取与 transport |
 | [conventions.md](conventions.md) | 编码规范（命名/导入/签名） |
 | [AGENTS.md](../AGENTS.md) | 项目地图（Agent 第一站） |
 | [superpowers/plans/2026-07-22-iteration-roadmap.md](superpowers/plans/2026-07-22-iteration-roadmap.md) | 当前路线图 |
