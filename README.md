@@ -172,6 +172,9 @@ The package contains 12 engine adapters, all selectable through `free_search`, `
 | `fetch_juejin_article` | Fetch content from Juejin | Chinese developer articles |
 
 All tools are read-only and idempotent with MCP 2025 annotations.
+`free_search_advanced.time_range` remains in the compatibility schema but is
+deprecated: providing it returns `UNSUPPORTED_FILTER` before any engine call,
+because general-search adapters do not share one enforceable recency contract.
 
 `search_with_synthesis.min_confidence` uses the same normalized `0-1`
 source-reliability scale as the other search tools. Use `min_source_count` for

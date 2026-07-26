@@ -23,7 +23,7 @@ Not recommended for: Simple queries — use free_search instead.
         min_source_count: z.number().int().min(1).max(12).optional().default(1)
           .describe('Minimum independent upstream provider families; accepts 1-12 for compatibility, current adapters expose at most 11'),
         time_range: z.enum(['day', 'week', 'month', 'year']).optional()
-          .describe('Reserved compatibility field; recency filtering is not yet enforced end to end'),
+          .describe('Deprecated compatibility field; returns UNSUPPORTED_FILTER because general-search recency is not enforced end to end'),
         language: z.enum(['auto', 'en', 'zh']).optional().default('auto')
           .describe('Language preference'),
         include_domains: z.array(z.string()).optional()
@@ -45,6 +45,26 @@ Not recommended for: Simple queries — use free_search instead.
     },
     async (input, extra) => {
       try {
+        if (input.time_range !== undefined) {
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                error: {
+                  code: 'UNSUPPORTED_FILTER',
+                  field: 'time_range',
+                  requested_value: input.time_range,
+                  message:
+                    'free_search_advanced.time_range is deprecated because the selected general-search adapters cannot enforce one cross-engine recency contract.',
+                  suggestion:
+                    'Remove time_range. For news-only retrieval, use free_search_news and inspect each result published_at when present.',
+                },
+              }, null, 2),
+            }],
+            isError: true,
+          };
+        }
+
         const legacySourceCount = input.min_confidence > 1 ? Math.ceil(input.min_confidence) : 1;
         const results = await searchWithFallback({
           query: input.query,

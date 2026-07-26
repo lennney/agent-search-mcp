@@ -80,6 +80,10 @@ tags:
 
 ### Fixes
 
+- Deprecated the non-functional `free_search_advanced.time_range`
+  compatibility field without removing its schema. Requests that provide it
+  now fail before any engine call with a machine-readable
+  `UNSUPPORTED_FILTER` instead of silently returning unfiltered results.
 - Apply include/exclude domain policy before title and URL deduplication, use
   exact host/subdomain matching, and fail closed for invalid include filters.
   Excluded or lookalike domains can no longer suppress an allowed same-title

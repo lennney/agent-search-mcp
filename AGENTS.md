@@ -87,8 +87,8 @@ fasm extract "https://..."
   basket；`meta.execution.quality_gate_stage` 必须反映实际判断阶段。
 - DDG Lite 只在 HTML HTTP 202 后、同一总 deadline 内机会性尝试一次；它不是
   限流绕过。调用方取消或其他 provider/IP 级限制不得触发重复请求。
-- `free_search_advanced.time_range` 当前仅是兼容保留字段，未端到端执行；完成
-  实现或正式弃用前不得宣传为可用的时间过滤能力。
+- `free_search_advanced.time_range` 是已弃用的兼容保留字段。传入时必须在
+  搜索前返回 `UNSUPPORTED_FILTER`，不得静默忽略或宣传为通用时间过滤。
 - 冻结 fixture 只证明格式和指标代码可复现，不代表搜索质量。公开质量数字必须来自
   非空多系统 capture、完整裁决和明确口径；零结果不得被静默删除。
 - 第三方摘要不自动继承 Apache-2.0。提交 capture 前核对再分发许可与署名。

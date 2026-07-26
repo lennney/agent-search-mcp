@@ -738,8 +738,10 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 - [x] Close the semantic-enabled path: each routing checkpoint now validates
       the post-semantic display basket before skipping later free/optional
       phases or query expansion (semantic features remain off by default).
-- [ ] Either implement `free_search_advanced.time_range` end to end or deprecate
-      the reserved compatibility field; do not advertise it as active filtering.
+- [x] Deprecate the reserved `free_search_advanced.time_range` field without
+      removing it from the compatibility schema. Requests now fail before
+      search with a machine-readable `UNSUPPORTED_FILTER` instead of silently
+      returning unfiltered results.
 
 Research:
 [`docs/research/2026-07-26-agent-search-product-architecture.md`](../../research/2026-07-26-agent-search-product-architecture.md)

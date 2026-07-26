@@ -31,12 +31,14 @@ tags:
   覆盖必须分别达标，执行结果通过 `meta.execution` 解释。
 - 开启 semantic dedup/rerank 后，每个路由检查点都必须用变换后的展示篮子
   决定是否继续，并通过 `quality_gate_stage` 区分判断阶段。
+- `free_search_advanced.time_range` 保留输入兼容但已弃用；传入时在引擎调用前
+  返回机器可读的 `UNSUPPORTED_FILTER`，不再静默返回未过滤结果。
 - DDG Lite 只在 HTML HTTP 202 后、同一 deadline 内尝试一次，不能增加增信。
 - 冻结 benchmark 只验证格式、Token 和指标代码，不代表搜索质量。
 
 ## 当前验证
 
-- 稳定测试：600 passed / 53 files。
+- 稳定测试：601 passed / 53 files。
 - 实验 MCP 2026：21 passed / 7 files。
 - TypeScript/Windows build、冻结 Token benchmark 和 bootstrap quality
   benchmark：通过；bootstrap 仍不具备质量声明资格。
@@ -46,8 +48,7 @@ tags:
 
 1. 用 10–20 条非空 pooled query 校准暂定的 `0.35` relevance floor；
    AI 只处理低置信或分歧样本，不扩大成长周期评测。
-2. 实现或正式弃用 `free_search_advanced.time_range` 保留字段。
-3. 在稳定网络 runner 捕获非空多系统 fixture；单出口 DDG 202 只保留为负面证据。
+2. 在稳定网络 runner 捕获非空多系统 fixture；单出口 DDG 202 只保留为负面证据。
 
 ## 文档权威
 

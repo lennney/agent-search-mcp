@@ -158,6 +158,9 @@ mcp_servers:
 | `fetch_juejin_article` | 获取掘金文章内容 | 中文开发者文章 |
 
 所有工具均为只读、幂等，带 MCP 2025 注解。
+`free_search_advanced.time_range` 仍保留在兼容 schema 中，但已弃用：传入后会在
+调用任何引擎前返回 `UNSUPPORTED_FILTER`，因为通用搜索适配器没有统一且可验证的
+时间过滤合同。
 
 ---
 
