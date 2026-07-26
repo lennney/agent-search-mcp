@@ -4,6 +4,7 @@ export type EngineFailureType = EngineError['type'];
 
 const ENGINE_FAILURE_TYPES = new Set<EngineFailureType>([
   'validation_error',
+  'parse_error',
   'timeout',
   'upstream_4xx',
   'upstream_5xx',

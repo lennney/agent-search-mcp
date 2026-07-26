@@ -200,4 +200,20 @@ describe('search configuration doctor', () => {
       });
     expect(JSON.stringify(report)).not.toContain('\"0\"');
   });
+
+  it('reports cooldown persistence provenance without exposing its path', () => {
+    const secretPath = 'C:\\private\\runner\\cooldowns.json';
+    const report = createDoctorReport({
+      environment: { PROVIDER_COOLDOWN_STORE_PATH: secretPath },
+      semanticProbe: () => true,
+    });
+    expect(report.configuration.find(
+      check => check.id === 'provider-cooldown-store',
+    )).toMatchObject({
+      status: 'present',
+      required: false,
+      provenance: ['environment:PROVIDER_COOLDOWN_STORE_PATH'],
+    });
+    expect(JSON.stringify(report)).not.toContain(secretPath);
+  });
 });

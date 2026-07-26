@@ -49,7 +49,8 @@ export interface DoctorReport {
       | 'duckduckgo-proxy'
       | 'sogou-proxy'
       | 'semantic-flags'
-      | 'request-budget';
+      | 'request-budget'
+      | 'provider-cooldown-store';
   }>;
 }
 
@@ -123,6 +124,11 @@ export function createDoctorReport(
       ...inspectRequestBudget(environment),
       required: true,
     },
+    {
+      id: 'provider-cooldown-store',
+      ...inspectCooldownStore(environment),
+      required: false,
+    },
   ];
   const runtime: DoctorReport['runtime'] = {
     node: {
@@ -150,6 +156,23 @@ export function createDoctorReport(
   };
   report.status = summarizeStatus(report);
   return report;
+}
+
+function inspectCooldownStore(
+  environment: Readonly<Record<string, string | undefined>>,
+): DoctorCheck {
+  const path = environment.PROVIDER_COOLDOWN_STORE_PATH;
+  return {
+    status: path === undefined || path === ''
+      ? 'missing'
+      : path.trim()
+        ? 'present'
+        : 'invalid',
+    required: false,
+    provenance: path === undefined || path === ''
+      ? ['built-in:memory-cooldown-store']
+      : ['environment:PROVIDER_COOLDOWN_STORE_PATH'],
+  };
 }
 
 function inspectRequestBudget(

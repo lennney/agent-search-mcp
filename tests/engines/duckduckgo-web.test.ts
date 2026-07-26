@@ -108,4 +108,20 @@ describe('DuckDuckGo Web representation', () => {
     });
     await expect(searchDuckDuckGoWeb('test query', 10)).resolves.toEqual([]);
   });
+
+  it('classifies malformed provider payloads separately from network failures', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(new Response(
+        `<link id="deep_preload_link" href="${PRELOAD_URL}">`,
+        { status: 200 },
+      ))
+      .mockResolvedValueOnce(new Response('{not-json', { status: 200 })) as typeof fetch;
+
+    await expect(searchDuckDuckGoWeb('test query', 10, {
+      throwOnError: true,
+    })).rejects.toMatchObject({
+      failureType: 'parse_error',
+      retryable: false,
+    });
+  });
 });

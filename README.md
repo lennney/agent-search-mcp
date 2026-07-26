@@ -262,6 +262,7 @@ search results.
 | `PROXY_URL` | `http://127.0.0.1:7890` | Shared HTTP(S) proxy when `USE_PROXY=true` |
 | `DUCKDUCKGO_PROXY_URL` | — | DuckDuckGo-only proxy override; enables proxying for DDG |
 | `SOGOU_PROXY_URL` | — | Sogou-only proxy override; enables proxying for Sogou |
+| `PROVIDER_COOLDOWN_STORE_PATH` | — | Optional JSON store for cooldown recovery across local process restarts |
 | `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
 | `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
 | `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |

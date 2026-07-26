@@ -79,7 +79,7 @@ export async function searchDuckDuckGoWeb(
       payload = JSON.parse(apiBody);
     } catch (error) {
       throw new EngineAdapterError(
-        'unknown',
+        'parse_error',
         'DuckDuckGo Web API returned malformed JSON',
         {
           retryable: false,

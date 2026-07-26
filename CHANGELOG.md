@@ -13,6 +13,10 @@ tags:
 
 ### Features
 
+- Added a replaceable provider-cooldown store with memory and opt-in local-file
+  adapters. CAPTCHA/rate-limit suspensions survive process restarts without
+  persisting queries or credentials; expired/corrupt state fails open, and
+  cooldown/policy skips now remain visible in `partialFailures`.
 - Added one request-level search budget across actual adapter attempts,
   end-to-end elapsed time, admitted raw results, and evidence characters.
   Parallel, waterfall, retry, and query-expansion paths share the same ledger;

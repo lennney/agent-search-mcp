@@ -21,6 +21,7 @@ describe('loadConfig', () => {
     delete process.env.DEFAULT_ENGINE;
     delete process.env.ALLOWED_ENGINES;
     delete process.env.EVIDENCE_BUDGET_CHARS;
+    delete process.env.PROVIDER_COOLDOWN_STORE_PATH;
     
     const config = loadConfig();
     expect(config.mode).toBe('stdio');
@@ -34,6 +35,12 @@ describe('loadConfig', () => {
     expect(config.searchBudgetMaxCalls).toBe(16);
     expect(config.searchBudgetMaxElapsedMs).toBe(30_000);
     expect(config.searchBudgetMaxResults).toBe(100);
+    expect(config.providerCooldownStorePath).toBe('');
+  });
+
+  it('reads an opt-in provider cooldown store path', () => {
+    process.env.PROVIDER_COOLDOWN_STORE_PATH = './state/cooldowns.json';
+    expect(loadConfig().providerCooldownStorePath).toBe('./state/cooldowns.json');
   });
 
   it('clamps request budget environment values', () => {

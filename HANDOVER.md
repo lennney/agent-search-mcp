@@ -90,3 +90,13 @@ tags:
 - Live smoke: pure-Node DDG returned 10 results. Sogou produced a structured
   `bot_challenge`; DDG+Sogou still returned DDG evidence with that failure.
 - Next P1.2 item: a replaceable durable provider-cooldown store.
+
+## 2026-07-26 provider-cooldown checkpoint
+
+- `ProviderCooldownStore` is the seam; memory remains the default adapter and
+  `PROVIDER_COOLDOWN_STORE_PATH` opts into restart-safe local JSON state;
+  two independent Node processes verified challenge capture then cooldown skip.
+- Stored records contain only provider, failure type, and expiry. Corrupt or
+  expired state fails open; policy/cooldown skips remain in `partialFailures`.
+- Next roadmap item: prototype the opt-in persistent exact-result cache behind
+  a similarly replaceable store interface.

@@ -55,6 +55,7 @@ const engineErrorSchema = z.object({
   engine: z.string(),
   type: z.enum([
     'validation_error',
+    'parse_error',
     'timeout',
     'upstream_4xx',
     'upstream_5xx',

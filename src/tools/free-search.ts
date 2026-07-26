@@ -8,7 +8,10 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import { searchYouCom } from '../engines/youcom.js';
-import { isEngineAdapterError } from '../engines/engine-error.js';
+import {
+  EngineAdapterError,
+  isEngineAdapterError,
+} from '../engines/engine-error.js';
 import { searchWikipedia } from '../engines/wikipedia.js';
 import { searchStartpage } from '../engines/startpage.js';
 import { searchYandex } from '../engines/yandex.js';
@@ -50,6 +53,7 @@ import {
   ServerMetrics,
   abortableDelay,
   SearchRequestBudget,
+  createProviderCooldownStore,
   type SearchRequestBudgetSnapshot,
 } from '../infrastructure/index.js';
 
@@ -73,11 +77,13 @@ const ENGINE_WEIGHTS: Record<string, number> = {
 };
 
 // Infrastructure singletons
+const config = loadConfig();
 const cache = new SearchCache();
-const healthTracker = new HealthTracker();
+const healthTracker = new HealthTracker(
+  createProviderCooldownStore(config.providerCooldownStorePath),
+);
 const serverMetrics = new ServerMetrics(cache);
 const rateLimiter = new RateLimiter();
-const config = loadConfig();
 const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
 
 function isSemanticRoutingEnabled(): boolean {
@@ -112,13 +118,44 @@ async function searchEngine(
   // Skip engines blocked by policy
   if (!enginePolicy.isAllowed(engine)) {
     logger.info({ engine }, 'Engine blocked by policy');
-    return { engine, status: 'skipped', results: [] };
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: new EngineAdapterError(
+        'permission_denied',
+        `${engine} is blocked by the configured engine policy`,
+        {
+          retryable: false,
+          suggestion: 'Choose an allowed engine or update the engine policy',
+        },
+      ),
+    };
   }
 
   // Skip unhealthy providers
-  if (!healthTracker.isHealthy(engine)) {
-    logger.warn({ engine }, 'Skipping unhealthy provider');
-    return { engine, status: 'skipped', results: [] };
+  const availability = healthTracker.getAvailability(engine);
+  if (!availability.available) {
+    const retryAt = availability.retryAt === null
+      ? 'after provider recovery'
+      : new Date(availability.retryAt).toISOString();
+    logger.warn(
+      { engine, failureType: availability.failureType, retryAt: availability.retryAt },
+      'Skipping unavailable provider',
+    );
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: new EngineAdapterError(
+        availability.failureType,
+        `${engine} is cooling down until ${retryAt}`,
+        {
+          retryable: true,
+          suggestion: 'Use another provider or retry after the cooldown expires',
+        },
+      ),
+    };
   }
 
   // Rate limit before making the request
@@ -206,10 +243,24 @@ async function searchEngine(
       }
 
       // Non-retryable or max retries exceeded
-      if (isEngineAdapterError(lastError) && lastError.cooldownMs) {
-        healthTracker.suspend(engine, lastError.cooldownMs);
+      if (
+        isEngineAdapterError(lastError)
+        && lastError.cooldownMs
+        && lastError.failureType !== 'budget_exhausted'
+      ) {
+        healthTracker.suspend(
+          engine,
+          lastError.cooldownMs,
+          lastError.failureType,
+        );
       } else {
-        healthTracker.recordFailure(engine);
+        healthTracker.recordFailure(
+          engine,
+          isEngineAdapterError(lastError)
+            && lastError.failureType !== 'budget_exhausted'
+            ? lastError.failureType
+            : 'unknown',
+        );
       }
       logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
       return { engine, status: 'failed', results: [], error: lastError };
@@ -275,6 +326,9 @@ function classifyEngineError(engine: string, err: Error): EngineError {
   }
   const msg = err.message.toLowerCase();
 
+  if (msg.includes('malformed') || msg.includes('parse error') || msg.includes('parser')) {
+    return { engine, type: 'parse_error', message: err.message, suggestion: 'Use another engine while the response parser is checked' };
+  }
   if (msg.includes('timeout') || msg.includes('abort') || msg.includes('etimedout')) {
     return { engine, type: 'timeout', message: err.message, suggestion: 'Retry with a shorter query or try again later' };
   }

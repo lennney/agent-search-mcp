@@ -1,5 +1,10 @@
 import { SearchCache } from './cache.js';
 import { logger } from './logger.js';
+import {
+  MemoryProviderCooldownStore,
+  type ProviderCooldownFailureType,
+  type ProviderCooldownStore,
+} from './provider-cooldown-store.js';
 
 export interface ServerMetricsData {
   /** Server uptime in seconds */
@@ -95,10 +100,21 @@ export interface ProviderHealth {
   circuitCooldownMs: number;
   /** Explicit upstream suspension, e.g. after a CAPTCHA challenge. */
   suspendedUntil: number | null;
+  suspensionFailureType: ProviderCooldownFailureType | null;
+  lastFailureType: ProviderCooldownFailureType | null;
 }
+
+export type ProviderAvailability =
+  | { available: true }
+  | {
+      available: false;
+      failureType: ProviderCooldownFailureType;
+      retryAt: number | null;
+    };
 
 export class HealthTracker {
   private health = new Map<string, ProviderHealth>();
+  private readonly cooldownStore: ProviderCooldownStore;
   
   // Circuit breaker configuration
   private static readonly FAILURE_THRESHOLD = 5;
@@ -106,12 +122,38 @@ export class HealthTracker {
   private static readonly MAX_COOLDOWN_MS = 300_000; // 5 minutes
   private static readonly HALF_OPEN_MAX_ATTEMPTS = 1;
 
+  constructor(
+    cooldownStore: ProviderCooldownStore = new MemoryProviderCooldownStore(),
+  ) {
+    this.cooldownStore = cooldownStore;
+    let activeCooldowns: ReturnType<ProviderCooldownStore['loadActive']> = [];
+    try {
+      activeCooldowns = cooldownStore.loadActive(Date.now());
+    } catch (error) {
+      logger.warn(
+        { error: error instanceof Error ? error.message : String(error) },
+        'Provider cooldown store failed to load; starting with memory state',
+      );
+    }
+    for (const record of activeCooldowns) {
+      const health = this.getOrCreate(record.provider);
+      health.suspendedUntil = record.expires_at;
+      health.suspensionFailureType = record.failure_type;
+      health.lastError = Date.now();
+      health.isHealthy = false;
+    }
+  }
+
   recordSuccess(provider: string, latency: number): void {
     const h = this.getOrCreate(provider);
+    const hadSuspension = h.suspendedUntil !== null;
     h.lastSuccess = Date.now();
     h.errorCount = Math.max(0, h.errorCount - 1);
     h.avgLatency = (h.avgLatency + latency) / 2;
     h.suspendedUntil = null;
+    h.suspensionFailureType = null;
+    h.lastFailureType = null;
+    if (hadSuspension) this.removePersistedCooldown(provider);
     
     // Close circuit on success (recovery)
     // Allow immediate recovery when error count drops below threshold
@@ -125,10 +167,14 @@ export class HealthTracker {
     h.isHealthy = this.calculateHealth(h);
   }
 
-  recordFailure(provider: string): void {
+  recordFailure(
+    provider: string,
+    failureType: ProviderCooldownFailureType = 'unknown',
+  ): void {
     const h = this.getOrCreate(provider);
     h.lastError = Date.now();
     h.errorCount++;
+    h.lastFailureType = failureType;
     
     // Open circuit if threshold exceeded
     if (h.errorCount >= HealthTracker.FAILURE_THRESHOLD && h.circuitState === 'closed') {
@@ -156,7 +202,11 @@ export class HealthTracker {
    * This is separate from the generic failure-count circuit breaker so a
    * single CAPTCHA does not need four more requests before traffic stops.
    */
-  suspend(provider: string, cooldownMs: number): void {
+  suspend(
+    provider: string,
+    cooldownMs: number,
+    failureType: ProviderCooldownFailureType = 'bot_challenge',
+  ): void {
     if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) {
       throw new Error('Provider suspension cooldown must be positive');
     }
@@ -164,7 +214,14 @@ export class HealthTracker {
     const now = Date.now();
     h.lastError = now;
     h.suspendedUntil = Math.max(h.suspendedUntil ?? 0, now + cooldownMs);
+    h.suspensionFailureType = failureType;
+    h.lastFailureType = failureType;
     h.isHealthy = false;
+    this.persistCooldown({
+      provider,
+      failure_type: failureType,
+      expires_at: h.suspendedUntil,
+    });
     logger.warn(
       { provider, cooldownMs },
       'Provider suspended after upstream challenge',
@@ -179,11 +236,21 @@ export class HealthTracker {
   }
 
   isHealthy(provider: string): boolean {
+    return this.getAvailability(provider).available;
+  }
+
+  getAvailability(provider: string): ProviderAvailability {
     const h = this.health.get(provider);
-    if (!h) return true; // Unknown providers are assumed healthy
+    if (!h) return { available: true }; // Unknown providers are assumed healthy
 
     this.refreshSuspension(h);
-    if (h.suspendedUntil !== null) return false;
+    if (h.suspendedUntil !== null) {
+      return {
+        available: false,
+        failureType: h.suspensionFailureType ?? h.lastFailureType ?? 'unknown',
+        retryAt: h.suspendedUntil,
+      };
+    }
     
     // Check if circuit should transition to half-open
     if (h.circuitState === 'open' && h.circuitOpenedAt) {
@@ -191,17 +258,29 @@ export class HealthTracker {
       if (elapsed >= h.circuitCooldownMs) {
         h.circuitState = 'half-open';
         logger.info({ provider }, 'Health circuit half-open; testing recovery');
-        return true; // Allow one test request
+        return { available: true }; // Allow one test request
       }
-      return false; // Still in cooldown
+      return {
+        available: false,
+        failureType: h.lastFailureType ?? 'unknown',
+        retryAt: h.circuitOpenedAt + h.circuitCooldownMs,
+      };
     }
     
-    return h.isHealthy;
+    return h.isHealthy
+      ? { available: true }
+      : {
+          available: false,
+          failureType: h.lastFailureType ?? 'unknown',
+          retryAt: null,
+        };
   }
 
   private refreshSuspension(h: ProviderHealth): void {
     if (h.suspendedUntil === null || Date.now() < h.suspendedUntil) return;
     h.suspendedUntil = null;
+    h.suspensionFailureType = null;
+    this.removePersistedCooldown(h.provider);
     h.isHealthy = this.calculateHealth(h);
     logger.info({ provider: h.provider }, 'Provider suspension expired');
   }
@@ -228,8 +307,34 @@ export class HealthTracker {
         circuitOpenedAt: null,
         circuitCooldownMs: HealthTracker.INITIAL_COOLDOWN_MS,
         suspendedUntil: null,
+        suspensionFailureType: null,
+        lastFailureType: null,
       });
     }
     return this.health.get(provider)!;
+  }
+
+  private persistCooldown(
+    record: Parameters<ProviderCooldownStore['put']>[0],
+  ): void {
+    try {
+      this.cooldownStore.put(record);
+    } catch (error) {
+      logger.warn(
+        { provider: record.provider, error: error instanceof Error ? error.message : String(error) },
+        'Provider cooldown store rejected an update; continuing in memory',
+      );
+    }
+  }
+
+  private removePersistedCooldown(provider: string): void {
+    try {
+      this.cooldownStore.remove(provider);
+    } catch (error) {
+      logger.warn(
+        { provider, error: error instanceof Error ? error.message : String(error) },
+        'Provider cooldown store rejected a removal; continuing in memory',
+      );
+    }
   }
 }

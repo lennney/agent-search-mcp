@@ -771,7 +771,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
 - [x] Define one explicit request budget envelope across calls, elapsed time,
       result count, and evidence characters. Exhaustion must return a
       machine-readable reason and observed/limit values, never an empty success.
-- [ ] Evaluate durable provider cooldown as a replaceable store:
+- [x] Evaluate durable provider cooldown as a replaceable store:
   - classify CAPTCHA, 429, 403, timeout, parse drift, and cancellation
     separately;
   - preserve every skip/failure in `partialFailures`;

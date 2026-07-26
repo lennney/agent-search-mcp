@@ -21,6 +21,7 @@ export interface Config {
   searchBudgetMaxCalls: number;
   searchBudgetMaxElapsedMs: number;
   searchBudgetMaxResults: number;
+  providerCooldownStorePath: string;
   minConfidence: number;
   minSourceCount: number;
   semanticDedup: boolean;
@@ -81,6 +82,7 @@ export function loadConfig(): Config {
     searchBudgetMaxCalls: boundedInteger('SEARCH_BUDGET_MAX_CALLS', 16, 1, 100),
     searchBudgetMaxElapsedMs: boundedInteger('SEARCH_BUDGET_MAX_ELAPSED_MS', 30_000, 1_000, 120_000),
     searchBudgetMaxResults: boundedInteger('SEARCH_BUDGET_MAX_RESULTS', 100, 1, 500),
+    providerCooldownStorePath: process.env.PROVIDER_COOLDOWN_STORE_PATH || '',
     minConfidence: legacyMinConfidence <= 1 ? Math.max(legacyMinConfidence, 0) : 0,
     minSourceCount: Math.min(12, Number.isFinite(explicitMinSourceCount)
       ? Math.max(explicitMinSourceCount, 1)

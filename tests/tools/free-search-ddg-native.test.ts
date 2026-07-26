@@ -113,6 +113,7 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
     })),
     HealthTracker: vi.fn(() => ({
       isHealthy: vi.fn(() => true),
+      getAvailability: vi.fn(() => ({ available: true })),
       recordSuccess: vi.fn(),
       recordFailure: vi.fn(),
     })),

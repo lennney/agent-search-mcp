@@ -224,6 +224,7 @@ HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 
 | `PROXY_URL` | `http://127.0.0.1:7890` | `USE_PROXY=true` 时使用的共享 HTTP(S) 代理 |
 | `DUCKDUCKGO_PROXY_URL` | — | 仅覆盖 DuckDuckGo，并直接启用该引擎代理 |
 | `SOGOU_PROXY_URL` | — | 仅覆盖 Sogou，并直接启用该引擎代理 |
+| `PROVIDER_COOLDOWN_STORE_PATH` | — | 可选 JSON 状态文件，用于本机进程重启后恢复 Provider 冷却 |
 | `SEMANTIC_DEDUP` | `false` | 语义去重（需 `pip install model2vec`） |
 | `DEDUP_THRESHOLD` | `0.85` | 语义去重的余弦相似度阈值 |
 | `SEMANTIC_RERANK` | `false` | 语义重排（需 `pip install model2vec`） |

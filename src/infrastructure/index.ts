@@ -1,7 +1,7 @@
 export { SearchCache } from './cache.js';
 export { logger } from './logger.js';
 export { HealthTracker, ServerMetrics } from './health.js';
-export type { ProviderHealth, ServerMetricsData } from './health.js';
+export type { ProviderAvailability, ProviderHealth, ServerMetricsData } from './health.js';
 export { RateLimiter } from './rate-limiter.js';
 export type { RateLimitInfo } from './rate-limiter.js';
 export { validateUrl } from './url-validator.js';
@@ -27,3 +27,13 @@ export type {
   SearchRequestBudgetLimits,
   SearchRequestBudgetSnapshot,
 } from './search-request-budget.js';
+export {
+  createProviderCooldownStore,
+  FileProviderCooldownStore,
+  MemoryProviderCooldownStore,
+} from './provider-cooldown-store.js';
+export type {
+  ProviderCooldownFailureType,
+  ProviderCooldownRecord,
+  ProviderCooldownStore,
+} from './provider-cooldown-store.js';
