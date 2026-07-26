@@ -12,7 +12,7 @@ tags:
 
 ## 当前状态
 
-- `package.json` 当前版本为 `3.1.3`；精确变更历史以 Git 和 `CHANGELOG.md` 为准。
+- `package.json` 当前版本为 `3.2.0`；精确变更历史以 Git 和 `CHANGELOG.md` 为准。
 - 稳定产品面是 Node.js >=18.17、TypeScript ESM、MCP stdio/HTTP 和 `fasm` CLI。
 - 12 个适配器均进入统一路由：8 个零密钥，4 个可选 API。
 - Slim Guard 是独立产品；本仓库只维护可选证据交接合同。

@@ -11,6 +11,24 @@ tags:
 
 ## Unreleased
 
+## v3.2.0 (2026-07-26)
+
+> **Headline: Free by default, paid quality escalation when explicitly enabled,
+> with auditable evidence, budgets, and safer cross-platform operation.**
+
+### 📢 Why Update
+
+- Zero-key users keep the complete default search path; merely configuring an
+  API key no longer authorizes paid requests.
+- BYOK users can explicitly choose `quality_escalation` or `paid_first`, while
+  `free_only` provides a hard no-spend policy.
+- Search failures, provider families, request budgets, evidence provenance, and
+  routing stop reasons are machine-readable instead of being hidden as empty
+  results.
+- The packed package has been installed and stdio-smoked on Windows and Linux
+  with Node 18, 20, and 22. Live search quality and availability figures remain
+  intentionally unclaimed.
+
 ### Features
 
 - Added one provider-routing policy interface shared by parallel and waterfall
@@ -22,7 +40,7 @@ tags:
   two network operations, a 10-second minimum interval, cleared optional
   credentials, and a one-attempt search budget.
 
-### Fixes
+### Runtime and quality infrastructure
 
 - Restored the declared Node 18.17 runtime contract by keeping Pino on its 9.x
   line. Pino 10 pulled `thread-stream` 4, whose package metadata requires
@@ -249,11 +267,11 @@ tags:
 - Added a redacted MCP 2026 P2 HTTP capture with exact SDK versions, an actual
   local runtime record, configured CI targets, and explicit failure responses.
 
-## v3.3.0 (2026-07-24)
+### Semantic capabilities carried into v3.2.0
 
 > **Headline: Semantic dedup + rerank via Model2Vec. <10ms latency. Optional, opt-in.**
 
-### 🆕 Features
+#### 🆕 Features
 
 - **Semantic dedup** (`SEMANTIC_DEDUP=true`): Removes semantically duplicate results across engines using cosine similarity on Model2Vec embeddings. Keeps higher-confidence items. Adds `removedCount` feedback.
 - **Semantic rerank** (`SEMANTIC_RERANK=true`): Reorders results by semantic similarity to the query. Returns top-K most relevant results.
@@ -261,7 +279,7 @@ tags:
 - **Zero dependency by default**: Semantic features are OFF by default. No Python/model2vec required unless explicitly enabled.
 - **Graceful degradation**: If the Python bridge is unavailable (no model2vec installed, process crash, etc.), results pass through unchanged — no broken searches.
 
-### 🔧 Fixes
+#### 🔧 Fixes
 
 - **Restored zero-Python DDG fallback**: The search orchestrator no longer rejects DuckDuckGo before its Node.js HTML fallback can run.
 - **Protected stdio JSON-RPC**: Circuit-breaker transitions now use the stderr logger instead of writing to stdout.
@@ -270,15 +288,15 @@ tags:
 - **CI coverage**: Restored Node.js 18/20/22 runtime coverage, added a Node.js 22 quality gate, disabled matrix fail-fast, and added a Windows build job.
 - **Node.js 18 compatibility**: Pinned Cheerio to its Node 18-compatible release and close idle HTTP connections during shutdown.
 - **Lint compatibility**: Pinned TypeScript to the supported 6.x API until `typescript-eslint` supports TypeScript 7.
-- **Runtime metadata**: MCP initialization, HTTP health, and capabilities now report v3.1.3 / Apache-2.0 consistently with the published package.
+- **Runtime metadata**: MCP initialization, HTTP health, and capabilities report the package version / Apache-2.0 consistently.
 
-### 📚 Documentation
+#### 📚 Documentation
 
 - Replaced volatile competitor pricing claims with a capability-based comparison linked to official repositories.
 - Marked historical benchmark percentages as exploratory until engine-call telemetry and frozen fixtures are implemented.
 - Added a reusable English/Chinese promotion kit and rewrote the Juejin draft around verified capabilities.
 
-### 🔧 Env vars
+#### 🔧 Env vars
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -289,23 +307,23 @@ tags:
 | `RERANK_TOP_K` | `5` | Results to keep after rerank |
 | `RERANK_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for rerank |
 
-### 📊 Stats
+#### 📊 Historical development snapshot
 
 - **Tests**: 498 passing
 - **Files**: 43 test files
 
-## v3.2.0 (2026-07-24)
+### Token controls carried into v3.2.0
 
 > **Headline: Progressive disclosure + confidence filtering. 36-58% fewer tokens in compact mode.**
 
-### 🆕 Features
+#### 🆕 Features
 
 - **Progressive disclosure**: `MAX_FULL_RESULTS` (default 3) — first N results full (title+snippet+confidence), remaining compacted (title+url+`compacted:true`). Agent can expand via `free_extract`. Saves ~36% tokens.
 - **Confidence filtering**: `MIN_CONFIDENCE` (default 0=off) — filter out low-confidence results before formatting. Adds `filtered_count` to meta.
 - **Traceable**: `compacted:true` marker, `compacted_count`, `filtered_count` in meta — Agent knows what's truncated and can recover.
 - **New env vars**: `MAX_FULL_RESULTS` (1-20), `MIN_CONFIDENCE` (0.0-3.0)
 
-### 🔧 Fixes
+#### 🔧 Fixes
 
 - `compact` mode now includes `compacted_count` and `filtered_count` in meta when respective options are active
 

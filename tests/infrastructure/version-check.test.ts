@@ -16,6 +16,6 @@ describe('version check', () => {
       'version-check.js',
     )).href;
 
-    expect(readCurrentVersion(compiledModule)).toBe('3.1.3');
+    expect(readCurrentVersion(compiledModule)).toBe('3.2.0');
   });
 });
