@@ -93,23 +93,27 @@ tags:
   `@hono/node-server` 的 2 个 moderate `serve-static` 路径穿越公告；本项目不注册
   静态文件服务，当前路径不可达。上游最新 SDK 仍依赖 Hono Node Server 1.x，
   不用强制 major override 掩盖风险，发布说明应保留该审计事实。
-- 精确候选 `04a44ba5f5b5bf51e71d12428e4d2b2a25333963` 的 tarball SHA-256 为
-  `B5BB3F8F2F3421535BF2E689E3C70F3DD8037FD60FB2C9B3F66C7150A2375784`；
+- 精确候选 `3f170675837e6d98ed4dc80a9e745277efe30044` 的 tarball SHA-256 为
+  `4F849C96CD405C62E8DF4EA957B40154C1A8E7024778672324CC108E8FC87C56`；
+  产物保留在仓库外的
+  `C:\Users\LIU\.codex\release-artifacts\agent-search-mcp\3f170675837e6d98ed4dc80a9e745277efe30044\agent-search-mcp-3.2.0.tgz`。
   Windows 与 WSL2 Ubuntu 上的 Node 18.20.8 / 20.20.2 / 22.23.1 安装、
-  doctor、stdio initialize/tools/list 和退出全部通过，未调用真实搜索。
+  doctor、stdio initialize/tools/list 和退出全部通过，均发现 8 个工具；本轮未调用
+  真实搜索，保留 `73c34969` 的一次有限 Live E2E 作为非降级观察。
 
 ## 下一步
 
-1. 从待发布 commit 生成精确 npm tarball，完成 Node 18/20/22 和 Windows/Linux
-   安装、stdio 初始化及进程退出 smoke；不在此步骤运行真实搜索。
-2. 在合法且已资格确认的备用网络出口，显式开启有限联网 E2E，低频捕获非空
-   Sogou 中文 fixture 和
-   DDG Lite 机会性 fixture；当前出口不再使用。
-3. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
+1. 分别取得明确授权后，才可 push 当前 Agent Search 提交、发布已保留的精确
+   npm tarball、创建 GitHub tag/Release、更新 MCP Registry；不得重新打包。
+2. Agent Search 上线后，再单独部署产品主页、把 GitHub Homepage 改到
+   `/en/agent-search-mcp`，随后刷新 Glama 等目录。
+3. 不为本次发布重复探测 DDG/Sogou；只有后续搜索主链发生变化，或进入单独的
+   低频质量采样任务时，才重新取得联网授权。
+4. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
    离线 importer 进入 pooling，不能把配置级探针写成产品对比。
-4. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
+5. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
    `benchmark:calibrate-relevance`；完成前保持内部阈值 `0.35` 不变。
-5. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
+6. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
    搜索质量或 DDG 可用率数字。
 
 ## 文档权威

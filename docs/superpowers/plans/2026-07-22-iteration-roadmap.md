@@ -892,17 +892,19 @@ Evidence:
 
 #### Release-candidate gate
 
-- [ ] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
+- [x] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
 - [x] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
       `fasm.cmd`，Linux runner 验证包安装与进程退出。
-- [ ] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
+- [x] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
 - [x] 从待发布 commit 生成 npm pack，使用该精确 tarball 做安装 smoke；发布时不得重新打包
       不同内容。
-- [ ] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
+- [x] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
       质量声明，不从当前受限出口反复探测。
-- [ ] README、CHANGELOG、HANDOVER 和生成能力矩阵与运行时一致；发布说明不宣称未经
+      本次候选复用 `73c34969` 的一次有限证据；两提交间无 `src/**` 变化，未再次探测
+      DDG/Sogou。
+- [x] README、CHANGELOG、HANDOVER 和生成能力矩阵与运行时一致；发布说明不宣称未经
       adjudication 的准确率、可用率或付费渠道排名。
-- [ ] 门禁完成后创建检查点 commit。版本 bump、npm publish、GitHub Release 和推广仍需
+- [x] 门禁完成后创建检查点 commit。版本 bump、npm publish、GitHub Release 和推广仍需
       分别获得明确授权。
 
 ---

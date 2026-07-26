@@ -2,10 +2,12 @@
 
 ## Candidate identity
 
-- Git commit: `73c34969bbb92d5f9c70ab7ffedf02c5be5d2f2f`
+- Git commit: `3f170675837e6d98ed4dc80a9e745277efe30044`
 - Artifact: `agent-search-mcp-3.2.0.tgz`
-- SHA-256: `6206B15AD3D30BA45A7E74F4F8689EA88EF5AE6A2E05B355C7E8CD27326FCC26`
-- npm pack: 72 files, 106.0 kB packed, 375.3 kB unpacked
+- Retained path:
+  `C:\Users\LIU\.codex\release-artifacts\agent-search-mcp\3f170675837e6d98ed4dc80a9e745277efe30044\agent-search-mcp-3.2.0.tgz`
+- SHA-256: `4F849C96CD405C62E8DF4EA957B40154C1A8E7024778672324CC108E8FC87C56`
+- npm pack: 72 files, 101,030 bytes packed, 361,419 bytes unpacked
 
 Rejected candidates are retained only as failure evidence:
 
@@ -40,12 +42,19 @@ independent hosted CI runner.
 
 ## Limited Live E2E
 
-After explicit authorization to retry, the candidate ran a bounded stdio
-search smoke with `LIVE_E2E_MAX_REQUESTS=1`, a single DDG adapter-attempt
-budget, no automatic retry, and paid providers disabled. MCP initialize,
-tools/list, structured output, and a non-empty search result set passed. The
-search call completed in about 5.4 seconds; extract was skipped by the
-one-request limit.
+No live provider was probed for the final candidate. The release gate retains
+the single bounded stdio search smoke previously captured from commit
+`73c34969bbb92d5f9c70ab7ffedf02c5be5d2f2f`: it used
+`LIVE_E2E_MAX_REQUESTS=1`, one DDG adapter-attempt budget, no automatic retry,
+and no paid provider. MCP initialize, tools/list, structured output, and a
+non-empty search result set passed in about 5.4 seconds; extract was skipped by
+the one-request limit.
+
+`git diff --name-only 73c34969..3f170675` contains no `src/**` change. The
+intervening executable change is limited to the opt-in live-E2E harness and
+tests; the remaining changes are package/Registry metadata, documentation, and
+archive cleanup. The retained result is therefore used only as a bounded
+no-regression observation. DDG and Sogou were not called again.
 
 The npm 3.1.3 comparison returned an MCP search result in about 2.5 seconds,
 but also exposed pre-existing release drift: its initialize metadata reported
