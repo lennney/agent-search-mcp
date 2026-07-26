@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
+import { readFileSync, realpathSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { SearchProvider } from './types.js';
 import { searchWithFallback } from './tools/free-search.js';
 import { createHttpServer } from './infrastructure/http.js';
@@ -201,13 +201,20 @@ async function main(): Promise<void> {
   }
 }
 
-// Run main only when executed directly (not when imported)
-const isMainModule = process.argv[1] && (
-  process.argv[1].endsWith('/cli.js') || 
-  process.argv[1].endsWith('/cli.ts')
-);
+export function isMainModulePath(
+  entryPath: string | undefined,
+  moduleUrl: string = import.meta.url,
+): boolean {
+  if (!entryPath) return false;
+  const modulePath = fileURLToPath(moduleUrl);
+  try {
+    return realpathSync(entryPath) === realpathSync(modulePath);
+  } catch {
+    return resolve(entryPath) === resolve(modulePath);
+  }
+}
 
-if (isMainModule) {
+if (isMainModulePath(process.argv[1])) {
   main().catch((error) => {
     console.error('Error:', error.message);
     process.exit(1);

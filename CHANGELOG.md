@@ -99,6 +99,10 @@ tags:
 
 ### Fixes
 
+- Fixed packaged `fasm` startup on Windows by resolving the executable entry
+  against the CLI module, corrected compiled version detection so update checks
+  use the root package version, and bounded waterfall query expansion to one
+  generation instead of recursively re-expanding generated queries.
 - Preserved Sogou cookies across trusted HTTPS redirects, rejected protocol
   downgrade, classified `/antispider/` as `bot_challenge`, corrected the DDG
   rate-limiter key, and added a descriptive Wikipedia API User-Agent.

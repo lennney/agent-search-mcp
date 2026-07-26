@@ -330,6 +330,8 @@ DENIED_ENGINES=yandex,mojeek   # Exclude specific engines
 ## CLI
 
 `agent-search-mcp` ships with a standalone CLI (`fasm`).
+The packaged entrypoint resolves npm's platform shim/symlink target, including
+the Windows `fasm.cmd` shim.
 
 ```bash
 # Search

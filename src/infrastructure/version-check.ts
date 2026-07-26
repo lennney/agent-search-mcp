@@ -1,3 +1,7 @@
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
 /**
  * Version check — notifies users when a newer version is available on npm.
  * Non-blocking: check runs in background, doesn't delay CLI startup.
@@ -63,17 +67,19 @@ function printUpdateNotice(latest: string): void {
   );
 }
 
-// Read version from package.json at module load time
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-let CURRENT_VERSION = '0.0.0';
-
-try {
-  const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
-  CURRENT_VERSION = pkg.version;
-} catch {
-  // Fallback: can't read package.json (e.g., in test environment)
+export function readCurrentVersion(moduleUrl: string = import.meta.url): string {
+  const moduleDirectory = dirname(fileURLToPath(moduleUrl));
+  try {
+    const packageJson = JSON.parse(readFileSync(
+      join(moduleDirectory, '..', '..', 'package.json'),
+      'utf-8',
+    )) as { version?: unknown };
+    return typeof packageJson.version === 'string'
+      ? packageJson.version
+      : '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
 }
+
+const CURRENT_VERSION = readCurrentVersion();

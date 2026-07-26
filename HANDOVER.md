@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T15:00:00+08:00'
+timestamp: '2026-07-26T15:55:00+08:00'
 description: 当前状态、核心契约和下一步
 tags:
 - agent-search-mcp
@@ -39,6 +39,7 @@ tags:
 - DDG/Sogou 共享 request-local Undici 代理 transport；支持引擎级覆盖和
   `USE_PROXY=true` + `PROXY_URL`，不读取 ambient proxy 变量，凭证不进入错误。
   DDG/Sogou 反爬挑战统一返回 `bot_challenge` 并冷却。
+- 瀑布查询扩展只执行一代；生成的备选查询不得再次触发查询扩展。
 - 冻结 benchmark 只验证格式、Token 和指标代码，不代表搜索质量。
 - pooled capture 保留每个系统的内部路由信号，但 blinded reviewer packet
   必须移除这些信号；只有 completed adjudication 能生成阈值校准报告。
@@ -47,13 +48,14 @@ tags:
 
 ## 当前验证
 
-- 稳定测试：630 passed / 58 files。
+- 稳定测试：633 passed / 59 files。
 - 实验 MCP 2026：21 passed / 7 files。
 - TypeScript/Windows build、冻结 Token benchmark 和 bootstrap quality
   benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors / 64 个既有 warnings。
-- Node 18.20.8 transport 冒烟与 npm pack dry-run：通过；发布包不再包含
-  `scripts/**`。audit 无 high/critical，仍有 MCP SDK/Hono 链上的 2 个 moderate。
+- Node 18.20.8 transport 冒烟、npm pack dry-run 与打包后 Windows `fasm.cmd`
+  真实 DDG 搜索：通过；发布包不再包含 `scripts/**`。audit 无 high/critical，
+  仍有 MCP SDK/Hono 链上的 2 个 moderate。
 
 ## 下一步
 

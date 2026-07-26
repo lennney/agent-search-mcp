@@ -818,6 +818,8 @@ Research:
 - [x] Add an explicit Node 18.17-compatible Undici proxy transport for DDG and
       Sogou after dependency review. Keep it request-local, redact credentials,
       preserve cancellation, and do not consume ambient proxy variables.
+- [x] Verify the packed Windows `fasm.cmd` entry against live native DDG search,
+      and bound fallback query expansion to one generation.
 - [ ] Capture a non-empty Sogou fixture from a legitimate alternate exit. Do
       not add fingerprint rotation or challenge-evasion behavior.
 - [ ] Capture actual Agent Search and comparison-system results on the qualified

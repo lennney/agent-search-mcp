@@ -263,6 +263,7 @@ DENIED_ENGINES=yandex,mojeek   # 排除特定引擎
 ## CLI
 
 `agent-search-mcp` 附带独立的命令行工具（`fasm`）。
+发布包入口会解析 npm 的平台 shim/symlink，包括 Windows 的 `fasm.cmd`。
 
 ```bash
 # 搜索

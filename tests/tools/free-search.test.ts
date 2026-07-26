@@ -890,6 +890,41 @@ describe('searchWithFallback — waterfall', () => {
       ['sogou'],
     ]);
   });
+
+  it('runs each expanded query once without recursively expanding it', async () => {
+    (searchDuckDuckGo as any).mockResolvedValue([]);
+    (searchSogou as any).mockResolvedValue([]);
+    (expandQuery as any).mockReturnValue(['alternative-query']);
+    (checkConfidenceBasket as any).mockReturnValue({
+      sufficient: false,
+      basketConfidence: 0,
+      basketRelevance: 0,
+      relevantResultsCount: 0,
+      relevanceThreshold: 0.35,
+      providerFamilyCount: 0,
+      topResultsCount: 0,
+      analyzedCount: 0,
+    });
+
+    try {
+      const result = await searchWithFallback({
+        query: 'original-query-no-recursion',
+        engines: ['duckduckgo', 'sogou'],
+        waterfall: true,
+      });
+
+      expect(searchDuckDuckGo).toHaveBeenCalledTimes(2);
+      expect(searchSogou).toHaveBeenCalledTimes(2);
+      expect(result.meta.execution?.searched_engines).toEqual([
+        'duckduckgo',
+        'sogou',
+        'duckduckgo',
+        'sogou',
+      ]);
+    } finally {
+      (expandQuery as any).mockReturnValue([]);
+    }
+  });
 });
 
 describe('setupFreeSearchTool', () => {

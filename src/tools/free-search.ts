@@ -1045,6 +1045,7 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
           query: altQuery,
           waterfall: true,
           enrich: false,
+          expandQueries: false,
         }, depth + 1);
         const altExecution = altSearch.meta.execution;
         if (altExecution) {
