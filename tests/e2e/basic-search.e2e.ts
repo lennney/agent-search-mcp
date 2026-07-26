@@ -6,7 +6,10 @@ import { fileURLToPath } from 'url';
 import { createInterface, Interface } from 'readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SERVER_PATH = resolve(__dirname, '../../dist/index.js');
+const SERVER_PATH = process.env.E2E_SERVER_PATH
+  ? resolve(process.env.E2E_SERVER_PATH)
+  : resolve(__dirname, '../../dist/index.js');
+const EXPECTED_SERVER_VERSION = process.env.E2E_EXPECTED_SERVER_VERSION || '3.2.0';
 
 // Guard: the E2E test spawns the compiled binary, so dist/ must exist.
 // CI runs build before test, but this check gives a clear failure message
@@ -20,6 +23,7 @@ const LIVE_REQUEST_LIMIT = Number.parseInt(
   process.env.LIVE_E2E_MAX_REQUESTS || '2',
   10,
 );
+const liveExtractIt = LIVE_NETWORK_E2E && LIVE_REQUEST_LIMIT >= 2 ? it : it.skip;
 const LIVE_MIN_INTERVAL_MS = Number.parseInt(
   process.env.LIVE_E2E_MIN_INTERVAL_MS || '10000',
   10,
@@ -247,7 +251,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     const result = (response as JsonRpcResponse).result as Record<string, unknown>;
     expect(result).toHaveProperty('serverInfo');
     expect((result.serverInfo as Record<string, unknown>).name).toBe('agent-search-mcp');
-    expect((result.serverInfo as Record<string, unknown>).version).toBe('3.2.0');
+    expect((result.serverInfo as Record<string, unknown>).version).toBe(EXPECTED_SERVER_VERSION);
   }, 20000);
 
   it('lists tools after initialization', async () => {
@@ -324,6 +328,8 @@ function waitForStartup(ms: number = 500): Promise<void> {
       results: expect.any(Array),
       meta: expect.any(Object),
     }));
+    const structuredContent = result.structuredContent as Record<string, unknown>;
+    expect((structuredContent.results as unknown[]).length).toBeGreaterThan(0);
     // The compact text view keeps clients without structured-output support useful.
     expect(result).toHaveProperty('content');
     const content = result.content as Array<Record<string, unknown>>;
@@ -338,7 +344,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect((textContent as Record<string, unknown>).text).toBeTruthy();
   }, 60000);
 
-  liveNetworkIt('calls free_extract and returns content', async () => {
+  liveExtractIt('calls free_extract and returns content', async () => {
     await claimLiveRequest();
     proc = spawnServer();
     reader = createMessageReader(proc, 20000);

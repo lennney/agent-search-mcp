@@ -38,14 +38,21 @@ Linux coverage used official Node Linux x64 distributions inside WSL2 Ubuntu.
 It verifies Linux binaries and filesystem/process behavior, but is not an
 independent hosted CI runner.
 
-## Live E2E decision
+## Limited Live E2E
 
-Live E2E was skipped. The only retained `ready` qualification report was
-captured at `2026-07-26T06:46:19.954Z`; a later same-day qualification on the
-current outlet observed DDG HTTP 202 challenges and superseded that result.
-No newer qualified alternate runner was available, so the current outlet was
-not probed again. Release notes therefore make no search accuracy or provider
-availability claim.
+After explicit authorization to retry, the candidate ran a bounded stdio
+search smoke with `LIVE_E2E_MAX_REQUESTS=1`, a single DDG adapter-attempt
+budget, no automatic retry, and paid providers disabled. MCP initialize,
+tools/list, structured output, and a non-empty search result set passed. The
+search call completed in about 5.4 seconds; extract was skipped by the
+one-request limit.
+
+The npm 3.1.3 comparison returned an MCP search result in about 2.5 seconds,
+but also exposed pre-existing release drift: its initialize metadata reported
+3.1.1 and it lacked the current output schema and structured result channel.
+No functional or contract regression was observed in 3.2.0. These isolated
+requests are not sufficient for search accuracy, latency, or provider
+availability claims.
 
 ## Known audit exception
 

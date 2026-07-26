@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const npmCli = process.env.npm_execpath;
+const npmCommand = process.platform === 'win32' && npmCli
+  ? process.execPath
+  : 'npm';
+const npmArgsPrefix = process.platform === 'win32' && npmCli
+  ? [npmCli]
+  : [];
 if (process.env.LIVE_E2E !== 'true') {
   console.error(
     'Live E2E is disabled. Set LIVE_E2E=true to authorize the bounded network smoke.',
@@ -17,8 +23,9 @@ const minIntervalMs = boundedInteger(
   60_000,
 );
 
-await run(npmCommand, ['run', 'build']);
+await run(npmCommand, [...npmArgsPrefix, 'run', 'build']);
 await run(npmCommand, [
+  ...npmArgsPrefix,
   'test',
   '--',
   '--run',
