@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T22:31:36+08:00'
+timestamp: '2026-07-26T22:58:28+08:00'
 description: 当前状态、稳定契约和下一步
 tags:
 - agent-search-mcp
@@ -97,19 +97,20 @@ tags:
   `MODE` / `PORT` 传输覆盖。
 - 外部导入、pooling、runner qualification 的纯函数与失败边界有单元测试。
 - 当前精确候选来自
-  `0c89ec1438f8aecd3b9b21d47fe239964f0ec514`；唯一 tarball 包含 77 个文件，
-  大小 106,095 bytes，SHA-256 为
-  `E5D1D7683A25BA9CAB32038A901F38A60F23127C858DB253432E762DAAC670EC`。
+  `a1de48515d84748d8bf40e66d8853266e0dd1268`；唯一 tarball 包含 77 个文件，
+  大小 106,180 bytes，SHA-256 为
+  `002EBC7C7AC7E4B8330C1AB25288CD4DB71917ECBC4C2A5C7CB76BE08BFABAEA`。
   Windows 与 WSL2 Ubuntu 的 Node 18.20.8 / 20.20.2 / 22.23.1 安装、
   doctor、平台 launcher、stdio initialize/tools/list 和退出全部通过，均发现
-  8 个工具及 16 个 Provider；没有调用搜索或提取工具。
+  8 个工具及 16 个 Provider，并实际解析
+  `@hono/node-server` 1.19.15；没有调用搜索或提取工具。
 - 六个安装单元均提示 `whatwg-encoding@3.1.1` 已弃用，来源是固定的
   `cheerio@1.0.0` 传递依赖；没有 `EBADENGINE`。Pino 10 候选 `ff5dea0`
-  与扩展适配器前候选 `3f170675` 只作历史证据，不得发布。
-- `npm audit --omit=dev` 当前报告 MCP SDK 1.29.0 传递依赖
-  `@hono/node-server` 的 2 个 moderate `serve-static` 路径穿越公告；本项目不注册
-  静态文件服务，当前路径不可达。上游最新 SDK 仍依赖 Hono Node Server 1.x，
-  不用强制 major override 掩盖风险，发布说明应保留该审计事实。
+  及旧候选 `0c89ec1` / `3f170675` 只作历史证据，不得发布。
+- Hono 官方 GHSA-frvp-7c67-39w9 公告将 1.19.15 列为 1.x 修复版本；
+  `npm audit --omit=dev` 的 registry payload 仍用 `<2.0.5` 范围，因此继续报告
+  2 个 moderate。保留该元数据差异，不降级 MCP SDK，也不强制引入要求
+  Node 20 的 Hono 2.x；本项目不注册受影响的 `serve-static`。
 - 当前候选保留 `73c34969` 的一次有限 DDG Live E2E 作为时间点非降级观察；
   DDG Web/HTML/Lite、共享 HTTP 与取消实现未改变，限速修改没有改变 DDG 间隔。
   本轮未重复探测 DDG/Sogou，也不据此声明可用率或准确率。
@@ -138,4 +139,4 @@ tags:
 - 评测方法：`benchmarks/README.md`。
 - 历史变更：Git / `CHANGELOG.md`；plan/review/evidence 只作追溯，不复制到本文件。
 - 当前发布候选证据：
-  `docs/evidence/2026-07-26-release-candidate-0c89ec1.md`。
+  `docs/evidence/2026-07-26-release-candidate-a1de485.md`。

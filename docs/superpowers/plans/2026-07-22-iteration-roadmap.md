@@ -899,8 +899,8 @@ Evidence:
 
 #### Release-candidate gate
 
-当前候选来自 `0c89ec1`。唯一 tarball 的 SHA-256 为
-`E5D1D7683A25BA9CAB32038A901F38A60F23127C858DB253432E762DAAC670EC`；
+当前候选来自 `a1de485`。唯一 tarball 的 SHA-256 为
+`002EBC7C7AC7E4B8330C1AB25288CD4DB71917ECBC4C2A5C7CB76BE08BFABAEA`；
 历史产物只保留作证据，不能发布。
 
 - [x] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
