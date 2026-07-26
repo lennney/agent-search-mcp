@@ -893,10 +893,10 @@ Evidence:
 #### Release-candidate gate
 
 - [ ] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
-- [ ] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
+- [x] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
       `fasm.cmd`，Linux runner 验证包安装与进程退出。
 - [ ] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
-- [ ] 从待发布 commit 生成 npm pack，使用该精确 tarball 做安装 smoke；发布时不得重新打包
+- [x] 从待发布 commit 生成 npm pack，使用该精确 tarball 做安装 smoke；发布时不得重新打包
       不同内容。
 - [ ] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
       质量声明，不从当前受限出口反复探测。

@@ -93,6 +93,10 @@ tags:
   `@hono/node-server` 的 2 个 moderate `serve-static` 路径穿越公告；本项目不注册
   静态文件服务，当前路径不可达。上游最新 SDK 仍依赖 Hono Node Server 1.x，
   不用强制 major override 掩盖风险，发布说明应保留该审计事实。
+- 精确候选 `04a44ba5f5b5bf51e71d12428e4d2b2a25333963` 的 tarball SHA-256 为
+  `B5BB3F8F2F3421535BF2E689E3C70F3DD8037FD60FB2C9B3F66C7150A2375784`；
+  Windows 与 WSL2 Ubuntu 上的 Node 18.20.8 / 20.20.2 / 22.23.1 安装、
+  doctor、stdio initialize/tools/list 和退出全部通过，未调用真实搜索。
 
 ## 下一步
 
@@ -116,3 +120,4 @@ tags:
 - 当前计划：`docs/superpowers/plans/2026-07-22-iteration-roadmap.md`。
 - 评测方法：`benchmarks/README.md`。
 - 历史变更：Git / `CHANGELOG.md`；plan/review/evidence 只作追溯，不复制到本文件。
+- 发布候选证据：`docs/evidence/2026-07-26-release-candidate-smoke.md`。
