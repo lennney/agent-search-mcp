@@ -13,9 +13,14 @@ const infrastructureState = vi.hoisted(() => ({
     ALLOWED_ENGINES: [] as string[],
     DENIED_ENGINES: [] as string[],
     evidenceBudgetChars: 1200,
+    snippetLength: 200,
+    maxFullResults: 3,
     searchBudgetMaxCalls: 16,
     searchBudgetMaxElapsedMs: 30_000,
     searchBudgetMaxResults: 100,
+    searchCacheDirectory: '',
+    searchCacheTtlMs: 60_000,
+    searchCacheMaxEntries: 1_000,
     outputStyle: 'normal' as 'normal' | 'compact',
     minConfidence: 0,
     minSourceCount: 1,
@@ -223,7 +228,8 @@ beforeAll(async () => {
 
 // ── Tests ──────────────────────────────────────────────────────────
 describe('searchWithFallback — parallel', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await new Promise<void>(resolve => setImmediate(resolve));
     vi.clearAllMocks();
     resetAggregationMocks();
     infrastructureState.cacheGet.mockReturnValue(null);
@@ -277,6 +283,23 @@ describe('searchWithFallback — parallel', () => {
     }));
     expect(searchDuckDuckGo).toHaveBeenCalledTimes(1);
     expect(searchSogou).not.toHaveBeenCalled();
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(infrastructureState.cacheSet).not.toHaveBeenCalled();
+  });
+
+  it('does not cache an empty all-provider failure response', async () => {
+    const failure = new EngineAdapterError(
+      'upstream_5xx',
+      'provider failed',
+      { retryable: false, suggestion: 'retry later' },
+    );
+    (searchDuckDuckGo as any).mockRejectedValue(failure);
+    (searchSogou as any).mockRejectedValue(failure);
+
+    const response = await searchWithFallback({ query: 'uncacheable failure' });
+    expect(response.results).toEqual([]);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(infrastructureState.cacheSet).not.toHaveBeenCalled();
   });
 
   it('passes the query and configured evidence budget into formatting', async () => {
@@ -945,10 +968,8 @@ describe('searchWithFallback — waterfall', () => {
 
     expect(result.cache_hit).toBe(true);
     expect(searchDuckDuckGo).not.toHaveBeenCalled();
-    expect(infrastructureState.cacheMakeKey).toHaveBeenCalledWith(
-      expect.stringContaining('"waterfall":true'),
-      10,
-      ['duckduckgo', 'sogou'],
+    expect(infrastructureState.cacheGet).toHaveBeenCalledWith(
+      expect.stringMatching(/^search-cache-key-v1:[a-f0-9]{64}$/),
     );
   });
 

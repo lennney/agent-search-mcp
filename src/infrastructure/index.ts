@@ -32,6 +32,28 @@ export {
   FileProviderCooldownStore,
   MemoryProviderCooldownStore,
 } from './provider-cooldown-store.js';
+export {
+  createExactCacheStore,
+  FileExactCacheStore,
+  MemoryExactCacheStore,
+} from './exact-cache-store.js';
+export type {
+  ExactCacheEntry,
+  ExactCacheStore,
+  FileExactCacheStoreOptions,
+} from './exact-cache-store.js';
+export {
+  createSearchCacheKey,
+  PROVIDER_POLICY_VERSION,
+  SEARCH_CACHE_KEY_VERSION,
+  SEARCH_EVIDENCE_SCHEMA_VERSION,
+} from './search-cache-key.js';
+export type { SearchCacheKeyInput } from './search-cache-key.js';
+export {
+  isCacheableSearchResponse,
+  isSearchResponseCacheValue,
+} from './search-cache-policy.js';
+export type { SearchResponseCacheValue } from './search-cache-policy.js';
 export type {
   ProviderCooldownFailureType,
   ProviderCooldownRecord,

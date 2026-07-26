@@ -13,6 +13,11 @@ tags:
 
 ### Features
 
+- Added an opt-in, restart-safe exact-result cache behind a replaceable store
+  interface. Versioned hashed keys bind search policy and freshness; atomic
+  local files fail open and never reuse stale, malformed, empty, or
+  budget-exhausted responses. A portable benchmark gates Linux and Windows on
+  Node 18/20/22 without adding native or vector dependencies.
 - Added a replaceable provider-cooldown store with memory and opt-in local-file
   adapters. CAPTCHA/rate-limit suspensions survive process restarts without
   persisting queries or credentials; expired/corrupt state fails open, and

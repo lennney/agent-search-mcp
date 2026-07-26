@@ -54,6 +54,10 @@ import {
   abortableDelay,
   SearchRequestBudget,
   createProviderCooldownStore,
+  createExactCacheStore,
+  createSearchCacheKey,
+  isCacheableSearchResponse,
+  isSearchResponseCacheValue,
   type SearchRequestBudgetSnapshot,
 } from '../infrastructure/index.js';
 
@@ -78,7 +82,15 @@ const ENGINE_WEIGHTS: Record<string, number> = {
 
 // Infrastructure singletons
 const config = loadConfig();
-const cache = new SearchCache();
+const cache = new SearchCache({
+  maxSize: config.searchCacheMaxEntries,
+  defaultTtlMs: config.searchCacheTtlMs,
+  store: createExactCacheStore(
+    config.searchCacheDirectory,
+    config.searchCacheMaxEntries,
+  ),
+  validate: isSearchResponseCacheValue,
+});
 const healthTracker = new HealthTracker(
   createProviderCooldownStore(config.providerCooldownStorePath),
 );
@@ -460,12 +472,55 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
 function makeSearchCacheKey(options: SearchWithFallbackOptions): string {
   const count = options.count ?? 10;
   const engines = options.engines ?? ['duckduckgo', 'sogou'];
-  return cache.makeKey(makeCollapseKey(options), count, engines);
+  return createSearchCacheKey({
+    request: {
+      query: options.query,
+      count,
+      engines: [...engines].sort(),
+      language: options.language ?? 'auto',
+      include_domains: [...(options.includeDomains ?? [])].sort(),
+      exclude_domains: [...(options.excludeDomains ?? [])].sort(),
+      min_confidence: options.minConfidence ?? 0,
+      min_source_count: options.minSourceCount ?? 1,
+    },
+    strategy: {
+      mode: options.waterfall ? 'waterfall' : 'parallel',
+      waterfall_min_results: options.waterfallMinResults ?? 3,
+      waterfall_min_confidence: options.waterfallMinConfidence ?? 0.6,
+      expand_queries: options.expandQueries !== false,
+      enrich: options.enrich === true,
+      enrich_max: options.enrichMax ?? null,
+      enrich_min_confidence: options.enrichMinConfidence ?? null,
+      semantic_dedup: config.semanticDedup,
+      dedup_threshold: config.dedupThreshold,
+      dedup_model: config.dedupModel,
+      semantic_rerank: config.semanticRerank,
+      rerank_top_k: config.rerankTopK,
+      rerank_model: config.rerankModel,
+    },
+    output: {
+      style: config.outputStyle,
+      snippet_length: config.snippetLength,
+      max_full_results: config.maxFullResults,
+      evidence_budget_chars: config.evidenceBudgetChars,
+      min_confidence: config.minConfidence,
+      min_source_count: config.minSourceCount,
+    },
+    provider_policy: {
+      allowed_engines: normalizePolicyList(config.ALLOWED_ENGINES),
+      denied_engines: normalizePolicyList(config.DENIED_ENGINES),
+    },
+    freshness: {
+      ttl_ms: config.searchCacheTtlMs,
+    },
+  });
 }
 
 function cloneCachedSearchResponse(cached: SearchResponse): SearchResponse {
+  const stable = { ...cached };
+  delete stable.rate_limits;
   return {
-    ...cached,
+    ...stable,
     meta: {
       ...cached.meta,
       ...(cached.meta.execution
@@ -477,6 +532,11 @@ function cloneCachedSearchResponse(cached: SearchResponse): SearchResponse {
       : {}),
     cache_hit: true,
   };
+}
+
+function normalizePolicyList(value: string | string[]): string[] {
+  const entries = Array.isArray(value) ? value : value.split(',');
+  return entries.map(entry => entry.trim()).filter(Boolean).sort();
 }
 
 function collectEngineOutcomes(
@@ -910,7 +970,9 @@ async function executeParallelSearch(
   // Don't block the response - write cache in background
   setImmediate(() => {
     try {
-      cache.set(cacheKey, response);
+      if (isCacheableSearchResponse(response)) {
+        cache.set(cacheKey, response);
+      }
       logger.info({ total: response.meta.total }, 'Search complete');
     } catch (err) {
       logger.error({ err }, 'Cache write failed');
@@ -1298,7 +1360,9 @@ async function executeWaterfallSearch(
 
   setImmediate(() => {
     try {
-      cache.set(cacheKey, response);
+      if (isCacheableSearchResponse(response)) {
+        cache.set(cacheKey, response);
+      }
     } catch (err) {
       logger.error({ err }, "Cache write failed");
     }

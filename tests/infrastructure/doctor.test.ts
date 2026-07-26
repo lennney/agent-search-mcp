@@ -216,4 +216,25 @@ describe('search configuration doctor', () => {
     });
     expect(JSON.stringify(report)).not.toContain(secretPath);
   });
+
+  it('reports exact-cache provenance without exposing its directory', () => {
+    const secretDirectory = 'C:\\private\\runner\\search-cache';
+    const report = createDoctorReport({
+      environment: {
+        SEARCH_CACHE_DIRECTORY: secretDirectory,
+        SEARCH_CACHE_TTL_MS: '60000',
+      },
+      semanticProbe: () => true,
+    });
+    expect(report.configuration.find(check => check.id === 'exact-cache'))
+      .toMatchObject({
+        status: 'present',
+        required: false,
+        provenance: [
+          'environment:SEARCH_CACHE_DIRECTORY',
+          'environment:SEARCH_CACHE_TTL_MS',
+        ],
+      });
+    expect(JSON.stringify(report)).not.toContain(secretDirectory);
+  });
 });

@@ -100,3 +100,16 @@ tags:
   expired state fails open; policy/cooldown skips remain in `partialFailures`.
 - Next roadmap item: prototype the opt-in persistent exact-result cache behind
   a similarly replaceable store interface.
+
+## 2026-07-26 persistent exact-cache checkpoint
+
+- `SearchCache` now owns one small store interface; memory remains the default,
+  while `SEARCH_CACHE_DIRECTORY` opts into atomic local-file persistence.
+- Versioned hashed keys bind filters, routing, provider policy, evidence schema,
+  output policy, and TTL. Only positive non-budget-exhausted responses persist;
+  stale/corrupt data fails open and cached rate-limit snapshots are discarded.
+- `benchmark:exact-cache` records cold start, RSS, p95 read/write, hit rate,
+  stale/error reuse, and eviction. CI runs it on Linux and Windows with Node
+  18/20/22. No native/vector dependency was added.
+- Next roadmap item: add a deterministic routing classifier as advisory evidence
+  before it can influence engine selection.

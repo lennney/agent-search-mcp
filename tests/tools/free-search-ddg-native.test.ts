@@ -125,6 +125,11 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
       searchBudgetMaxElapsedMs: 30_000,
       searchBudgetMaxResults: 100,
       evidenceBudgetChars: 1200,
+      snippetLength: 200,
+      maxFullResults: 3,
+      searchCacheDirectory: '',
+      searchCacheTtlMs: 60_000,
+      searchCacheMaxEntries: 1_000,
     })),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   };

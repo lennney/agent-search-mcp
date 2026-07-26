@@ -1,11 +1,13 @@
-export interface CacheEntry {
-  data: any;
-  expiry: number;
-}
+import {
+  MemoryExactCacheStore,
+  type ExactCacheStore,
+} from './exact-cache-store.js';
 
 export interface SearchCacheOptions {
   maxSize?: number;
   defaultTtlMs?: number;
+  store?: ExactCacheStore;
+  validate?: (value: unknown) => boolean;
 }
 
 export interface SearchCacheStats {
@@ -24,63 +26,52 @@ export interface SearchCacheStats {
  * - stats() provides hit/miss telemetry for cache tuning.
  */
 export class SearchCache {
-  private cache = new Map<string, CacheEntry>();
-  private maxSize: number;
-  private defaultTtlMs: number;
+  private readonly store: ExactCacheStore;
+  private readonly maxSize: number;
+  private readonly defaultTtlMs: number;
+  private readonly validate?: (value: unknown) => boolean;
   private hits = 0;
   private misses = 0;
 
   constructor(options: SearchCacheOptions = {}) {
-    this.maxSize = options.maxSize ?? 1000;
+    this.maxSize = Math.max(1, options.maxSize ?? 1000);
     this.defaultTtlMs = options.defaultTtlMs ?? 60_000;
+    this.store = options.store ?? new MemoryExactCacheStore(this.maxSize);
+    this.validate = options.validate;
   }
 
-  get(key: string): any | null {
-    const entry = this.cache.get(key);
+  get(key: string): unknown | null {
+    const entry = this.store.get(key, Date.now());
     if (!entry) {
       this.misses++;
       return null;
     }
-    if (Date.now() > entry.expiry) {
-      this.cache.delete(key);
+    if (this.validate && !this.validate(entry.data)) {
+      this.store.delete(key);
       this.misses++;
       return null;
     }
-    // LRU: move to end (most recently used)
-    this.cache.delete(key);
-    this.cache.set(key, entry);
     this.hits++;
     return entry.data;
   }
 
-  set(key: string, data: any): void {
+  set(key: string, data: unknown): void {
     this.setWithTtl(key, data, this.defaultTtlMs);
   }
 
-  setWithTtl(key: string, data: any, ttlMs: number): void {
-    // If key already exists, remove it first so re-insert tracks as new
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    }
-
-    // Evict: drop oldest entries until under maxSize
-    while (this.cache.size >= this.maxSize) {
-      const oldest = this.cache.keys().next().value;
-      if (oldest === undefined) break;
-      this.cache.delete(oldest);
-    }
-
-    this.cache.set(key, { data, expiry: Date.now() + ttlMs });
+  setWithTtl(key: string, data: unknown, ttlMs: number): void {
+    if (this.validate && !this.validate(data)) return;
+    this.store.set(key, { data, expiry: Date.now() + ttlMs });
   }
 
   /** Number of entries currently in the cache. */
   size(): number {
-    return this.cache.size;
+    return this.store.size();
   }
 
   /** Remove all entries. */
   clear(): void {
-    this.cache.clear();
+    this.store.clear();
   }
 
   /** Hit/miss telemetry for cache tuning. */
@@ -88,7 +79,7 @@ export class SearchCache {
     return {
       hits: this.hits,
       misses: this.misses,
-      size: this.cache.size,
+      size: this.store.size(),
       maxSize: this.maxSize,
     };
   }

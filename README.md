@@ -263,12 +263,20 @@ search results.
 | `DUCKDUCKGO_PROXY_URL` | — | DuckDuckGo-only proxy override; enables proxying for DDG |
 | `SOGOU_PROXY_URL` | — | Sogou-only proxy override; enables proxying for Sogou |
 | `PROVIDER_COOLDOWN_STORE_PATH` | — | Optional JSON store for cooldown recovery across local process restarts |
+| `SEARCH_CACHE_DIRECTORY` | — | Opt in to restart-safe exact-result caching in this local directory |
+| `SEARCH_CACHE_TTL_MS` | `60000` | Exact-result freshness window (1000-86400000 ms) |
+| `SEARCH_CACHE_MAX_ENTRIES` | `1000` | Maximum memory or local-file exact-cache entries (1-10000) |
 | `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
 | `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
 | `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |
 | `RERANK_TOP_K` | `5` | Results to keep after semantic rerank |
 
 **Zero config works** — the 8 free engines need no API keys.
+
+The exact-result cache remains memory-only unless `SEARCH_CACHE_DIRECTORY` is
+set. Opting in stores complete search responses locally; cache keys bind the
+request policy and freshness contract, while stale, malformed, empty, and
+budget-exhausted responses are never reused.
 
 DuckDuckGo is implemented entirely in Node.js (Web preload → HTML → Lite);
 Python and `ddgs` are not used. Proxy URLs may contain standard URL credentials,

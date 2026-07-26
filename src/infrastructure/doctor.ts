@@ -50,7 +50,8 @@ export interface DoctorReport {
       | 'sogou-proxy'
       | 'semantic-flags'
       | 'request-budget'
-      | 'provider-cooldown-store';
+      | 'provider-cooldown-store'
+      | 'exact-cache';
   }>;
 }
 
@@ -129,6 +130,11 @@ export function createDoctorReport(
       ...inspectCooldownStore(environment),
       required: false,
     },
+    {
+      id: 'exact-cache',
+      ...inspectExactCache(environment),
+      required: false,
+    },
   ];
   const runtime: DoctorReport['runtime'] = {
     node: {
@@ -156,6 +162,40 @@ export function createDoctorReport(
   };
   report.status = summarizeStatus(report);
   return report;
+}
+
+function inspectExactCache(
+  environment: Readonly<Record<string, string | undefined>>,
+): DoctorCheck {
+  const directory = environment.SEARCH_CACHE_DIRECTORY;
+  const numericBounds = [
+    ['SEARCH_CACHE_TTL_MS', 1_000, 86_400_000],
+    ['SEARCH_CACHE_MAX_ENTRIES', 1, 10_000],
+  ] as const;
+  const invalidNumber = numericBounds.some(([name, min, max]) => {
+    if (environment[name] === undefined) return false;
+    const value = Number(environment[name]);
+    return !Number.isInteger(value) || value < min || value > max;
+  });
+  const configuredNames = [
+    ...(directory === undefined || directory === ''
+      ? []
+      : ['SEARCH_CACHE_DIRECTORY']),
+    ...numericBounds
+      .map(([name]) => name)
+      .filter(name => environment[name] !== undefined),
+  ];
+  return {
+    status: invalidNumber || (directory !== undefined && directory !== '' && !directory.trim())
+      ? 'invalid'
+      : directory?.trim()
+        ? 'present'
+        : 'missing',
+    required: false,
+    provenance: configuredNames.length > 0
+      ? configuredNames.map(name => `environment:${name}`)
+      : ['built-in:memory-exact-cache'],
+  };
 }
 
 function inspectCooldownStore(

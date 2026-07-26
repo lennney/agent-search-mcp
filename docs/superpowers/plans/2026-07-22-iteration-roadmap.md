@@ -777,7 +777,7 @@ Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-0
   - preserve every skip/failure in `partialFailures`;
   - bind persisted state to provider/failure type with expiry and bounded
     recovery; never persist credentials or query text.
-- [ ] Prototype persistent exact cache behind an opt-in interface before any
+- [x] Prototype persistent exact cache behind an opt-in interface before any
       semantic vector cache:
   - cache keys bind language, strategy, filters, provider-policy version,
     evidence schema, and freshness policy;

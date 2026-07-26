@@ -225,12 +225,19 @@ HTTP 部署另提供仅供探针使用的匿名 `GET /health`；它不会返回 
 | `DUCKDUCKGO_PROXY_URL` | — | 仅覆盖 DuckDuckGo，并直接启用该引擎代理 |
 | `SOGOU_PROXY_URL` | — | 仅覆盖 Sogou，并直接启用该引擎代理 |
 | `PROVIDER_COOLDOWN_STORE_PATH` | — | 可选 JSON 状态文件，用于本机进程重启后恢复 Provider 冷却 |
+| `SEARCH_CACHE_DIRECTORY` | — | 可选本地目录，用于跨进程重启复用精确搜索结果 |
+| `SEARCH_CACHE_TTL_MS` | `60000` | 精确结果的新鲜度窗口（1000-86400000 毫秒） |
+| `SEARCH_CACHE_MAX_ENTRIES` | `1000` | 内存或本地文件缓存的最大条目数（1-10000） |
 | `SEMANTIC_DEDUP` | `false` | 语义去重（需 `pip install model2vec`） |
 | `DEDUP_THRESHOLD` | `0.85` | 语义去重的余弦相似度阈值 |
 | `SEMANTIC_RERANK` | `false` | 语义重排（需 `pip install model2vec`） |
 | `RERANK_TOP_K` | `5` | 语义重排保留的结果数 |
 
 **零配置即可使用** — 8 个免费引擎无需任何 API Key。
+
+未设置 `SEARCH_CACHE_DIRECTORY` 时仍只使用内存缓存。显式启用后会在本机
+保存完整搜索响应；缓存键绑定请求策略和新鲜度契约，过期、损坏、空结果和
+预算耗尽响应不会被复用。
 
 DuckDuckGo 现为纯 Node.js 实现（Web preload → HTML → Lite），不再探测或
 调用 Python/ddgs。代理 URL 可包含标准 URL 凭证，但凭证不会进入 dispatcher

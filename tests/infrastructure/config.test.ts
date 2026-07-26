@@ -22,6 +22,9 @@ describe('loadConfig', () => {
     delete process.env.ALLOWED_ENGINES;
     delete process.env.EVIDENCE_BUDGET_CHARS;
     delete process.env.PROVIDER_COOLDOWN_STORE_PATH;
+    delete process.env.SEARCH_CACHE_DIRECTORY;
+    delete process.env.SEARCH_CACHE_TTL_MS;
+    delete process.env.SEARCH_CACHE_MAX_ENTRIES;
     
     const config = loadConfig();
     expect(config.mode).toBe('stdio');
@@ -36,6 +39,19 @@ describe('loadConfig', () => {
     expect(config.searchBudgetMaxElapsedMs).toBe(30_000);
     expect(config.searchBudgetMaxResults).toBe(100);
     expect(config.providerCooldownStorePath).toBe('');
+    expect(config.searchCacheDirectory).toBe('');
+    expect(config.searchCacheTtlMs).toBe(60_000);
+    expect(config.searchCacheMaxEntries).toBe(1_000);
+  });
+
+  it('reads and clamps opt-in exact-cache configuration', () => {
+    process.env.SEARCH_CACHE_DIRECTORY = './state/exact-cache';
+    process.env.SEARCH_CACHE_TTL_MS = '500';
+    process.env.SEARCH_CACHE_MAX_ENTRIES = '999999';
+    const config = loadConfig();
+    expect(config.searchCacheDirectory).toBe('./state/exact-cache');
+    expect(config.searchCacheTtlMs).toBe(1_000);
+    expect(config.searchCacheMaxEntries).toBe(10_000);
   });
 
   it('reads an opt-in provider cooldown store path', () => {
