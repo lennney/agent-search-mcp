@@ -2,7 +2,7 @@
   "name": "agent-search-mcp",
   "mcpName": "io.github.lennney/agent-search-mcp",
   "version": "3.2.0",
-  "description": "Free, lightweight MCP search for AI agents with zero-key sources and compact multi-source evidence.",
+  "description": "Free, lightweight MCP search for AI agents — no API keys required, 8 zero-key engines, compact multi-source evidence.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -36,6 +36,7 @@
     "ai-agent",
     "agent-search",
     "free-search",
+    "no-api-key",
     "zero-api-key",
     "token-efficient",
     "context-compression",
