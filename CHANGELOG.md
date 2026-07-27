@@ -13,6 +13,10 @@ tags:
 
 > **Headline: Free by default, paid quality escalation when explicitly enabled,
 > with auditable evidence, budgets, and safer cross-platform operation.**
+>
+> ℹ️ **Pre-release**: `v3.2.0-beta.0` was published on npm (tag: `beta`) on
+> 2026-07-27 for server validation before this stable release. The beta is
+> identical to this stable candidate in features.
 
 ### 📢 Why Update
 

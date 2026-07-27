@@ -22,6 +22,8 @@ tags:
 - `2026-07-28` 能力仅在 `experiments/mcp-2026/` 验证，不宣称生产兼容。
 - 本轮授权仅覆盖提交并推送 PR 分支、观察 CI；不发布 npm/GitHub Release，
   不创建 tag，不更新 MCP Registry。
+  **例外**：`v3.2.0-beta.0` 已独立发布到 npm（tag `beta`），供服务器先行验证。
+  本 PR 合并后将发布 `v3.2.0` stable 覆盖 beta。
 
 ## 稳定契约
 

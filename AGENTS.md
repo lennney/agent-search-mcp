@@ -20,6 +20,7 @@ Hermes 仅可作为带 commit/path 的同步投影。
 ## 当前边界
 
 - 稳定实现使用 Node.js >=18.17、TypeScript ESM 和 MCP SDK v1，支持 stdio/HTTP。
+- **npm tag**: `latest` 指向 v3.1.3（稳定），`beta` 指向 v3.2.0-beta.0（服务器验证中）。
 - `2026-07-28` 适配仅位于 `experiments/mcp-2026/`；通过正式一致性验证前，
   不宣称生产兼容。
 - Slim Guard 是独立产品和仓库；没有明确任务时，不在本项目中修改它。
