@@ -1,7 +1,7 @@
 {
   "name": "agent-search-mcp",
   "mcpName": "io.github.lennney/agent-search-mcp",
-  "version": "3.1.3",
+  "version": "3.2.0-beta.0",
   "description": "Zero-config MCP web search for AI agents: 12 adapters (8 zero-key), native Chinese search, multi-source aggregation, extraction, news & Streamable HTTP. Works with Claude Code, Cursor, Codex.",
   "type": "module",
   "main": "./dist/index.js",

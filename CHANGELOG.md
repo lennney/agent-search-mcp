@@ -11,76 +11,59 @@ tags:
 
 ## Unreleased
 
-### Features
+## v3.2.0-beta.0 (2026-07-27)
 
-- Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
-- Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
-- Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
-- Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
+> **Headline: Beta release — Progressive disclosure + semantic dedup/rerank. Server testing.**
 
-### Documentation
+This is a **beta** release (`npm tag: beta`) for server-side validation before stable v3.2.0. Semantic features are opt-in (OFF by default). See below for full changelog.
 
-- Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
-
-## v3.3.0 (2026-07-24)
-
-> **Headline: Semantic dedup + rerank via Model2Vec. <10ms latency. Optional, opt-in.**
-
-### 🆕 Features
+### 🆕 Semantic Layer (P2)
 
 - **Semantic dedup** (`SEMANTIC_DEDUP=true`): Removes semantically duplicate results across engines using cosine similarity on Model2Vec embeddings. Keeps higher-confidence items. Adds `removedCount` feedback.
 - **Semantic rerank** (`SEMANTIC_RERANK=true`): Reorders results by semantic similarity to the query. Returns top-K most relevant results.
 - **Model2Vec bridge**: Persistent Python child process (`src/aggregation/semantic_bridge.py`) running `minishlab/M2V_base_output` (256-dim, 7.2MB model). Embedding speed ~35µs/text, dedup + rerank <5ms total latency.
-- **Zero dependency by default**: Semantic features are OFF by default. No Python/model2vec required unless explicitly enabled.
-- **Graceful degradation**: If the Python bridge is unavailable (no model2vec installed, process crash, etc.), results pass through unchanged — no broken searches.
+- **Zero dependency by default**: Semantic features OFF by default. No Python/model2vec required unless explicitly enabled.
+- **Graceful degradation**: If Python bridge is unavailable, results pass through unchanged — no broken searches.
+
+### 🆕 Progressive Disclosure
+
+- **Progressive disclosure**: `MAX_FULL_RESULTS` (default 3) — first N results full, remaining compacted. Agent can expand via `free_extract`. Saves ~36-58% tokens in compact mode.
+- **Confidence filtering**: `MIN_CONFIDENCE` (default 0=off) — filter low-confidence results. Adds `filtered_count` to meta.
+- **Traceable**: `compacted:true` marker, `compacted_count`, `filtered_count` in meta.
+- **New env vars**: `MAX_FULL_RESULTS` (1-20), `MIN_CONFIDENCE` (0.0-3.0), `SEMANTIC_DEDUP`, `SEMANTIC_RERANK`, `DEDUP_THRESHOLD`, `RERANK_TOP_K`
+
+### 🆕 Platform & Infrastructure
+
+- **Unified 12 search adapters** across MCP, advanced search, CLI, and waterfall routing.
+- **Split result signals** into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as deprecated compatibility alias.
+- **Capture/replay benchmark** with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate.
+- **Secured HTTP MCP** with required Bearer authentication and browser Origin allowlisting. `HTTP_ALLOW_UNAUTHENTICATED=true` to disable.
+- **Closed CSDN SSRF path**: `fetch_csdn_article` accepts only HTTPS `blog.csdn.net` URLs.
+- **Cross-platform build**: Node.js build helper replaces POSIX-only mkdir/cp; `npm run build` works on Windows.
+- **CI coverage**: Node.js 18/20/22 across Linux + Windows.
+- **Runtime metadata**: MCP init, HTTP health, capabilities now report v3.2.0-beta.0 consistently.
 
 ### 🔧 Fixes
 
-- **Restored zero-Python DDG fallback**: The search orchestrator no longer rejects DuckDuckGo before its Node.js HTML fallback can run.
-- **Protected stdio JSON-RPC**: Circuit-breaker transitions now use the stderr logger instead of writing to stdout.
-- **Closed CSDN SSRF path**: `fetch_csdn_article` now accepts only HTTPS `blog.csdn.net` URLs and rejects redirects.
-- **Cross-platform build**: Replaced POSIX-only `mkdir`/`cp` commands with a Node.js build helper; `npm run build` now works on Windows.
-- **CI coverage**: Restored Node.js 18/20/22 runtime coverage, added a Node.js 22 quality gate, disabled matrix fail-fast, and added a Windows build job.
-- **Node.js 18 compatibility**: Pinned Cheerio to its Node 18-compatible release and close idle HTTP connections during shutdown.
-- **Lint compatibility**: Pinned TypeScript to the supported 6.x API until `typescript-eslint` supports TypeScript 7.
-- **Runtime metadata**: MCP initialization, HTTP health, and capabilities now report v3.1.3 / Apache-2.0 consistently with the published package.
+- Restored zero-Python DDG fallback (orchestrator no longer rejects DDG before HTML fallback runs).
+- Protected stdio JSON-RPC (circuit-breaker uses stderr logger, not stdout).
+- Node.js 18 compatibility: pinned Cheerio to compatible release.
+- Lint compatibility: pinned TypeScript to 6.x until typescript-eslint supports TS 7.
 
 ### 📚 Documentation
 
-- Replaced volatile competitor pricing claims with a capability-based comparison linked to official repositories.
-- Marked historical benchmark percentages as exploratory until engine-call telemetry and frozen fixtures are implemented.
-- Added a reusable English/Chinese promotion kit and rewrote the Juejin draft around verified capabilities.
-
-### 🔧 Env vars
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `SEMANTIC_DEDUP` | `false` | Enable semantic dedup |
-| `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold |
-| `DEDUP_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for dedup |
-| `SEMANTIC_RERANK` | `false` | Enable semantic rerank |
-| `RERANK_TOP_K` | `5` | Results to keep after rerank |
-| `RERANK_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for rerank |
+- Replaced volatile competitor pricing claims with capability-based comparison.
+- Added promotion kit (EN/ZH) and rewrote Juejin draft.
+- Restored historical 28.7%/35.5% token savings and 75% engine-call measurements with explicit environment boundaries.
 
 ### 📊 Stats
 
-- **Tests**: 498 passing
+- **Tests**: 498 passing (was 448 at v3.1.3)
 - **Files**: 43 test files
+- **Engines**: 11 (8 free, 3 paid)
+- **Dependencies**: 5 production (unchanged)
 
-## v3.2.0 (2026-07-24)
-
-> **Headline: Progressive disclosure + confidence filtering. 36-58% fewer tokens in compact mode.**
-
-### 🆕 Features
-
-- **Progressive disclosure**: `MAX_FULL_RESULTS` (default 3) — first N results full (title+snippet+confidence), remaining compacted (title+url+`compacted:true`). Agent can expand via `free_extract`. Saves ~36% tokens.
-- **Confidence filtering**: `MIN_CONFIDENCE` (default 0=off) — filter out low-confidence results before formatting. Adds `filtered_count` to meta.
-- **Traceable**: `compacted:true` marker, `compacted_count`, `filtered_count` in meta — Agent knows what's truncated and can recover.
-- **New env vars**: `MAX_FULL_RESULTS` (1-20), `MIN_CONFIDENCE` (0.0-3.0)
-
-### 🔧 Fixes
-
-- `compact` mode now includes `compacted_count` and `filtered_count` in meta when respective options are active
+---
 
 ## v3.1.2 (2026-07-22)
 
