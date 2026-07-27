@@ -1,6 +1,7 @@
-# agent-search-mcp 迭代路线图 — v3.1.0 → v3.2.0
+# agent-search-mcp 迭代路线图 — v3.1.x → 下一可发布版本
 
-> **状态**: v3.1.0 已发布。11 引擎、DDGS 独立化、工具可见性控制、TDQS 修复全部完成。
+> **状态**: v3.1.0 已发布；仓库当前为 16 个搜索适配器（9 个零密钥 + 7 个可选 API）。
+> 当前工作先通过发布候选门禁，不预先承诺版本号或发布日期。
 > **旧 6 阶段路线图** (2026-07-16): ✅ Phase 1-6 全部完成 — 见尾部"旧路线图状态"表。
 > **本篇为新路线图**: 基于竞品调研和 v3.1.0 状态制定的 4 个迭代方向 + 持续分发。
 
@@ -272,59 +273,56 @@ HTTP 模式下 MCP 工具映射为 REST 端点，OpenAPI 可让非 MCP 客户端
 > **竞品对标**: web-search-mcp (Playwright 浏览器搜索), gajae-code (TLS 指纹)
 > **核心**: 消除 Python 最后的硬依赖 + 让 DDG 可用率接近 100%
 
-## C1: DDG News HTML 回退 (P0)
+## C1: 新闻搜索语义收敛 (P0)
 
-**目标**: `searchDuckduckgoNews()` 在无 Python 时返回结果而非空数组。
+**状态**: 2026-07-27 撤销。DDG HTML 只是通用网页，Bing News 的受限 Live
+Smoke 也未得到稳定 RSS 响应，因此删除 `free_search_news`、Bing News 运行时
+路径及专属测试。通用搜索继续拒绝无法跨引擎兑现的 `time_range`。
 
-当前：`searchDuckduckgoNews()` 在 `getPythonBin() === null` 时直接 `return []`。
-
-参照 `duckduckgo-html.ts` `searchDuckDuckGoHtml()` 模式，实现 News HTML 版本。
-
-DDG News URL: `https://html.duckduckgo.com/html/?q=...`（与 web 搜索同端点，但渲染新闻卡片）
-
-或者：`https://duckduckgo.com/news` 的 HTML 结构。
-
-**改动清单**:
-
-| 文件 | 操作 | 说明 |
-|------|------|------|
-| `src/engines/duckduckgo-html.ts` | 扩展 | 新增 `searchDuckDuckGoNewsHtml()` |
-| `src/engines/duckduckgo.ts` | 修改 | `searchDuckduckgoNews()` Python 不可用时调用 HTML 回退 |
-| `tests/engines/duckduckgo-html.test.ts` | 扩展 | News HTML 测试用例 |
-| `tests/tools/free-search-ddg-unavailable.test.ts` | 扩展 | News 回退测试 |
-
-**关键实现**: DDG News 无专用 HTML 端点。新闻搜索需从通用 HTML 结果中过滤 news 类结果，或参考 `gh.franksnyder` 的 DDG News API 封装。
-
-**测试**: vitest — mock DDG News HTML 响应，验证回退路径正确 (+10-15 tests)
-
-**验证**: `npm test` ✅, 模拟无 Python 环境验证 News 可搜
+以后重新引入新闻工具仍需按新增引擎门禁单独评审，并先取得可复现的真实源证据。
 
 ---
 
-## C2: `lite.duckduckgo.com` 第三层回退 (P1)
+## C2: DuckDuckGo Lite 同源机会性尝试 (P1)
 
-**目标**: 当 `html.duckduckgo.com` 返回 202 (限流) 时，用 Lite 端点救火。
+**状态**: 代码与确定性 fixture 已完成；跨网络可用率证据仍待稳定 runner。
 
-DDG Lite: `https://lite.duckduckgo.com/lite/` — 极简 HTML 版，反爬更少。
+**目标**: 当 `html.duckduckgo.com` 返回 202 时，在同一总 deadline
+内最多尝试一次 `https://lite.duckduckgo.com/lite/`，同时保持失败透明。
 
 Lite HTML 结构不同：
 - 结果 class: `.result-link` (标题) / `.result-snippet` (摘要)
 - 无 JavaScript，纯表格布局
-- 限流策略更宽松
+
+2026-07-26 源码调查修正了最初假设：SearXNG 和 DDGS 当前都没有
+HTML → Lite 自动回退，且 SearXNG 将二者描述为同一类 IP 级 bot blocker。
+因此本实现是项目自己的机会性兼容路径，不宣称 Lite 限流更宽松，也不把
+HTML/Lite 算成两个来源。
 
 **改动清单**:
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
 | `src/engines/duckduckgo-html.ts` | 扩展 | 新增 `searchDuckDuckGoLiteHtml()` |
-| 同上 | 修改 | `searchDuckDuckGoHtml()` 失败 202 时自动 fallback |
-| `tests/engines/duckduckgo-html.test.ts` | 扩展 | Lite 路径测试 |
+| 同上 | 修改 | HTML 202 时最多一次 Lite attempt，共享取消与总 deadline |
+| `src/aggregation/dedup.ts` | 修改 | HTML/Lite 保持同一 provider family，不增加 `source_count` |
+| `tests/engines/duckduckgo-html.test.ts` | 扩展 | DOM 邻近配对、双失败、软失败和取消 |
 
-**回退链**: Python ddgs → cheerio HTML → Lite HTML → 空数组
+**回退链**: 页面签发 Web preload → cheerio HTML → Lite HTML → 空数组
 
-**测试**: vitest — mock Lite HTML 响应 + 202 触发回退验证 (+5-8 tests)
+**测试**: vitest — mock Lite HTML 响应 + 202 触发回退验证
 
-**验证**: `npm test` ✅
+**验证边界**:
+
+- [x] 同一逻辑 engine / provider family；
+- [x] HTML 202 后仅一次 Lite attempt；
+- [x] 调用方取消后不启动 Lite；
+- [x] Lite parser 按相邻 table row 关联摘要，不用全局数组 index；
+- [ ] 在不同网络 runner 捕获非空 Lite fixture，证明机会性收益；
+- [ ] 在真实捕获完成前，不发布“DDG 可用率提升”数字。
+
+研究依据:
+[`docs/research/2026-07-26-agent-search-product-architecture.md`](../../research/2026-07-26-agent-search-product-architecture.md)
 
 ---
 
@@ -632,7 +630,274 @@ cheerio 解析器依赖 CSS 类名（`.result`, `.result__a`, `.result__snippet`
 | Phase 3 | 中文搜索护城河 | ✅ 完成 | 中文权威源、查询优化、摘要长度 |
 | Phase 4 | 答案引擎 | ✅ 完成 | search_with_synthesis (零 LLM) |
 | Phase 5 | 扩充免费引擎 | ✅ 完成 | Wikipedia + Startpage |
-| Phase 6 | 语言检测 + 新闻搜索 | ✅ 完成 | detectLanguage, rate_limits, news search, Yandex, Mojeek |
+| Phase 6 | 语言检测 + 搜索扩展 | ✅ 完成 | detectLanguage, rate_limits, Yandex, Mojeek |
 | ~~Phase 6~~ | ~~插件系统~~ | 🚫 跳过 | 加引擎比加系统更有价值 |
 
-**成果总结**: 旧路线图从 140 测试→438 测试，4→8 免费引擎，6→8 MCP 工具，4 生产依赖不变。
+**成果总结**: 旧路线图从 140 测试→438 测试，4→8 免费引擎，
+当前保留 7 个 MCP 工具，4 生产依赖不变。
+## 2026-07-26: Agent Search core evidence track
+
+This track belongs to **Agent Search only**. Slim Guard remains a separate
+product and is not modified by this work. The integration contract will be
+designed after the search entrypoint can expose reliable evidence and failure
+semantics on its own.
+
+### P0 - trustworthy execution semantics
+
+- [x] Preserve per-engine outcomes (`success`, `skipped`, `failed`) so fallback
+      continues while real upstream failures appear in `partialFailures`.
+- [x] Propagate MCP request cancellation through search orchestration, retry
+      backoff, rate-limit waits, engine HTTP calls, and content enrichment.
+- [x] Stop treating successful content extraction as corroboration: enrichment
+      may improve the snippet, but must not add a fixed confidence bonus.
+- [x] Use one cache-key contract for parallel and waterfall reads/writes, and
+      make waterfall searches consume cached responses.
+
+### P1 - evidence-first retrieval
+
+- [x] Introduce query-aware passage selection and explicit output budgets.
+- [x] Separate provenance, relevance, corroboration, freshness, and extraction
+      quality instead of compressing them into one opaque score.
+- [x] Return compact evidence packets that Slim Guard can later transform
+      without losing source or failure metadata.
+
+Evidence: [`docs/evidence/2026-07-26-evidence-packets.md`](../../evidence/2026-07-26-evidence-packets.md).
+
+### P2 - measurable ecosystem contract
+
+- [ ] Add benchmark datasets with adjudicated relevance labels and raw traces.
+  - [x] Capture raw response hashes, engine outcomes, latency, and failures.
+  - [x] Generate a pending label template without inventing judgments.
+  - [x] Add deterministic multi-system URL pooling, provenance-blinded packets,
+        completed-review import, and disagreement/adjudication validation.
+  - [x] Generate per-system pooled-qrels comparison reports from completed
+        adjudication without inferring unmeasured answer correctness.
+  - [x] Report pre-adjudication reviewer reliability with raw agreement and
+        pairwise kappa without hiding low-agreement queries.
+  - [x] Separate completed review evidence from public-claim readiness with
+        minimum distinct-query gates overall and per slice.
+  - [x] Add deterministic query-paired bootstrap intervals for every system
+        pair and require uncertainty reporting for public-claim readiness.
+  - [x] Add blinded pointwise AI judging with two independent model families,
+        a third-family disagreement adjudicator, and hashed verdict evidence.
+  - [ ] Complete two-model AI review and third-model adjudication on a non-empty
+        pooled capture.
+- [x] Report quality, citation support, latency, and failure transparency as
+      separate dimensions; keep answer correctness and tokens per correct
+      answer explicitly unmeasured when no synthesized answer exists.
+- [x] Define an optional Slim Guard integration contract without making direct
+      Agent Search installation depend on the gateway.
+
+### P1.1 - research-informed routing corrections
+
+- [x] Audit current Tavily, Exa, Brave, Firecrawl, DDGS, SearXNG, Vane,
+      GPT Researcher, Open Deep Research, and Jina DeepResearch source code.
+- [x] Treat upstream provider family, adapter name, relevance, confidence, and
+      corroboration as different concepts. DuckDuckGo/Bing no longer create
+      false independent corroboration.
+- [x] Make explicit engine selection authoritative in parallel as well as
+      waterfall mode.
+- [x] Require result count, per-result relevance, average confidence, and
+      independent provider families before skipping later search batches.
+- [x] Return `stop_reason` and the observed quality-gate diagnostics in
+      execution metadata.
+- [x] Re-evaluate the quality gate after optional API phases before query
+      expansion.
+- [x] Keep same-provider adapters as sequential failure/low-quality fallbacks
+      without letting them create independent corroboration.
+- [x] Bound every public and internal `count` path so a zero batch size cannot
+      stall waterfall execution.
+- [x] Pin provider-family semantics in a machine-readable Slim Guard handoff
+      contract and verify runtime/benchmark parity.
+- [x] Make an HTML-202/Lite combined DDG failure non-retryable so one MCP
+      request cannot repeat the same Lite representation.
+- [x] Put filtering, domain policy, deduplication, scoring, and the quality
+      gate behind one search-evidence interface shared by parallel and
+      waterfall routing. Domain policy now runs before deduplication and uses
+      exact host/subdomain matching.
+- [x] Expose one shared Search Evidence Packet for primary and advanced search
+      through MCP `structuredContent` and `outputSchema`; keep the text channel
+      as a compact view instead of a second JSON contract.
+- [ ] Calibrate the provisional per-result relevance floor on a non-empty
+      pooled capture. It is an internal routing heuristic, not a public
+      relevance probability.
+  - [x] Preserve protected per-system routing signals and add a deterministic
+        completed-qrels calibrator with minimum-sample and label-balance gates.
+  - [x] Add a 10-query bilingual evergreen calibration set; keep the parent
+        item open until a genuinely multi-system capture completes review.
+- [x] Close the semantic-enabled path: each routing checkpoint now validates
+      the post-semantic display basket before skipping later free/optional
+      phases or query expansion (semantic features remain off by default).
+- [x] Deprecate the reserved `free_search_advanced.time_range` field without
+      removing it from the compatibility schema. Requests now fail before
+      search with a machine-readable `UNSUPPORTED_FILTER` instead of silently
+      returning unfiltered results.
+
+### P1.2 - mcp-web-hound research assimilation
+
+- [x] Audit
+      [`mcp-web-hound@f468da9`](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11)
+      at source level instead of copying its README feature matrix.
+- [x] Correct the transient comparison snapshot: first Git/npm dates, npm
+      release count, Node/license boundary, Star/Fork, and the 2026-07-18 to
+      2026-07-24 npm download window. Downloads remain package pulls, not users.
+- [x] Add the real search-policy diagram, a restrained Star CTA, and a
+      capability-based MCP Web Hound comparison to both READMEs.
+- [x] Surface the existing `search://health`, `mcp://health/metrics`,
+      `search://capabilities`, and HTTP `/health` control plane instead of
+      adding a duplicate default-visible MCP `status` tool.
+- [x] Add a read-only `fasm doctor` design and implementation:
+  - report provider/optional-dependency readiness and config provenance;
+  - print only `present` / `missing` / `invalid`, never key or token values;
+  - provide `--json` with a stable schema and no implicit config writes;
+  - cover secret redaction, Node 18, Windows, and zero-key startup in tests.
+- [x] Define one explicit request budget envelope across calls, elapsed time,
+      result count, and evidence characters. Exhaustion must return a
+      machine-readable reason and observed/limit values, never an empty success.
+- [x] Evaluate durable provider cooldown as a replaceable store:
+  - classify CAPTCHA, 429, 403, timeout, parse drift, and cancellation
+    separately;
+  - preserve every skip/failure in `partialFailures`;
+  - bind persisted state to provider/failure type with expiry and bounded
+    recovery; never persist credentials or query text.
+- [x] Prototype persistent exact cache behind an opt-in interface before any
+      semantic vector cache:
+  - cache keys bind language, strategy, filters, provider-policy version,
+    evidence schema, and freshness policy;
+  - benchmark install success, cold start, RSS, p95, hit rate, stale/error
+    reuse, and eviction on Node 18/20/22 plus Windows/Linux;
+  - keep native/vector dependencies out of the default package until all gates
+    pass.
+- [x] Benchmark deterministic routing against a lightweight intent classifier
+      on bilingual docs/news/code/general slices. A classifier is eligible only
+      if it changes routing and improves quality without violating latency,
+      memory, cancellation, or zero-key startup gates.
+  - Outcome: the candidate changes routes but has no completed quality evidence,
+    so it remains benchmark-only and is not production-eligible.
+- [x] Collect issue/usage evidence before adding GitHub/GitLab search tools.
+      Direct code-hosting APIs do not automatically inherit the Web Search
+      cache, budget, failure, or evidence contract.
+  - Outcome (2026-07-26): package and repository usage exists, but there are no
+    issue/discussion or public integration requests for dedicated code-hosting
+    search. Keep domain-filtered Web Search plus `fetch_github_readme`; do not
+    add GitHub/GitLab tools without new demand evidence.
+- [x] Generate the public capability matrix from the engine/tool registry and
+      config schema so documentation cannot advertise unregistered tools or
+      unused budgets.
+
+Research:
+[`docs/research/2026-07-26-agent-search-product-architecture.md`](../../research/2026-07-26-agent-search-product-architecture.md)
+
+### P1.3 - zero-key runner reliability
+
+- [x] Add the page-issued DuckDuckGo Web preload as the first native Node
+      representation, with exact HTTPS host/path validation and a stable
+      request identity across bootstrap and result fetch.
+- [x] Remove the Python/ddgs subprocess path. Use the project-owned
+      Web → HTML → Lite chain as same-provider representations without
+      increasing `source_count`.
+- [x] Classify DDG/Sogou anti-bot responses as `bot_challenge`; suspend the
+      provider immediately for a bounded cooldown and retain the failure in
+      `partialFailures`.
+- [x] Continue Sogou cookies only across trusted HTTPS redirects and reject
+      protocol downgrade. The current runner still reaches `/antispider/`;
+      do not present this as a parser or API-key failure.
+- [x] Add a privacy-preserving runner qualification gate. The 2026-07-26 local
+      DDG/Wikipedia adapter probe is ready on 10/10 bilingual queries.
+      The gate now exits non-zero for `insufficient-runner`; a later same-day
+      retest qualified 8/10 after DDG HTTP 202 challenge/cooldown, so no quality
+      capture was produced from that run.
+- [x] Add an explicit Node 18.17-compatible Undici proxy transport for DDG and
+      Sogou after dependency review. Keep it request-local, redact credentials,
+      preserve cancellation, and do not consume ambient proxy variables.
+- [x] Verify the packed Windows `fasm.cmd` entry against live native DDG search,
+      and bound fallback query expansion to one generation.
+- [ ] Capture a non-empty Sogou fixture from a legitimate alternate exit. Do
+      not add fingerprint rotation or challenge-evasion behavior.
+- [ ] Capture actual Agent Search and comparison-system results on the qualified
+      runner, then run the small blinded AI review. Adapter readiness is not a
+      product-quality claim.
+  - [x] Keep comparison providers outside runtime: normalize bounded,
+        license-disclosed offline exports into the existing traced capture
+        contract. Qualification probes use conservative pacing and no
+        automatic retries.
+
+Evidence:
+
+- [`docs/evidence/2026-07-26-ddg-html-lite-network-observation.md`](../../evidence/2026-07-26-ddg-html-lite-network-observation.md)
+- [`docs/evidence/2026-07-26-p2-quality-pilot.md`](../../evidence/2026-07-26-p2-quality-pilot.md)
+- [`docs/evidence/2026-07-26-search-pooling-contract.md`](../../evidence/2026-07-26-search-pooling-contract.md)
+- [`docs/research/2026-07-26-search-quality-evaluation.md`](../../research/2026-07-26-search-quality-evaluation.md)
+- [`docs/contracts/slim-guard-evidence-handoff-v1.md`](../../contracts/slim-guard-evidence-handoff-v1.md)
+
+### P1.4 - free core, paid quality escalation, and release readiness
+
+产品默认面继续服务零密钥用户。付费渠道只使用用户自带凭证，并且必须由
+显式策略启用；配置了凭证不等于授权每次请求产生费用。
+
+#### Routing policy
+
+- [x] 在一个小型路由策略 interface 后实现以下模式，避免各工具分别解释环境变量：
+  - `free_first`（默认）：零密钥渠道先行，不自动产生付费调用；
+  - `quality_escalation`：免费证据未通过质量门槛时，才调用已配置的付费渠道；
+  - `paid_first`：已配置的付费渠道先行，失败或证据不足时回退免费渠道；
+  - `free_only`：即使存在 API key 也禁止付费调用。
+- [x] 用户显式传入 `engines` 时保持最高优先级；缺少凭证继续返回
+      `permission_denied`，不得静默替换为另一个付费渠道。
+- [x] 默认可选顺序保留原有 `brave,exa,tavily,youcom` 优先级，并把
+      `tencent_wsa,bocha,serper` 追加为显式 BYOK 候选；该顺序不是质量排名，
+      只有完成同查询集评测后才能按质量调整。
+- [x] 在 `meta.execution` 中记录实际阶段、调用渠道、停止原因和预算耗尽原因；
+      不记录 key、查询外的凭证信息或估算账单。
+- [x] 经明确授权补充 Wiby 零密钥官方 JSON 源，以及 Tencent WSA、Bocha、
+      Serper 三个可选 API；不引入浏览器运行时或新的生产依赖。
+      Wiby 只在免费瀑布后段补充小型网页，三个 BYOK 渠道默认不调用。
+- [x] Provider family 合同将 Tencent WSA 与 Sogou、Serper 与
+      Startpage/Google 保守归并，避免同上游多适配器虚增 `source_count`。
+- [x] 使用离线 fixture 验证新增适配器的解析、取消和失败语义。
+- [ ] 在单独授权的受控 runner 上比较新渠道；完成 pooled 评测前不宣称它们提高
+      准确率或可用率。
+- [ ] Perplexity Search 只作为下一付费候选进入离线适配器评测；通过准入门槛且获得
+      “增加引擎”授权后，才进入运行时注册表。
+
+#### Bounded E2E policy
+
+联网测试不是默认测试的一部分，且不得为了获得结果规避上游挑战或增加请求频率。
+
+| 层级 | 网络 | 触发方式 | 范围 |
+|------|------|----------|------|
+| 单元/fixture | 无 | 每次提交 | 所有适配器解析、路由、预算、失败语义 |
+| MCP smoke | 无 | 每次提交 | stdio/HTTP 初始化、工具发现、结构化输出、关闭 |
+| Live qualification | 有 | 手动或受控 runner | 固定少量查询、单次尝试、保守间隔；只判断 runner 是否合格 |
+| Release live smoke | 有 | 发布候选一次 | 1 个英文 + 1 个中文查询；每类只选一个已授权渠道，不做全引擎 fan-out |
+| Quality capture | 有 | 独立批准 | 固定查询集、可恢复运行、外部结果离线导入；不与发布 smoke 合并 |
+
+- [x] 为 live E2E 增加请求上限、最小间隔和 `LIVE_E2E=true` 显式开关；缺少开关时
+      必须 skip，不得自动联网。
+- [ ] 免费 live smoke 不把 DDG/Sogou 同时作为硬发布门槛：挑战响应必须透明记录，
+      但单一公共出口被限流不应诱发自动重试。
+- [ ] 付费 live smoke 只调用显式选择且存在凭证的一个渠道；测试输出只保留状态、
+      延迟、结果数和脱敏错误。
+
+#### Release-candidate gate
+
+当前候选来自 `a1de485`。唯一 tarball 的 SHA-256 为
+`002EBC7C7AC7E4B8330C1AB25288CD4DB71917ECBC4C2A5C7CB76BE08BFABAEA`；
+历史产物只保留作证据，不能发布。
+
+- [x] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
+- [x] 从当前最终提交生成唯一 tarball；记录 commit、SHA-256、文件数和大小。
+- [x] Node 18.17 / 20 / 22 至少完成安装、stdio 初始化和工具发现；Windows 跑打包后的
+      `fasm.cmd`，Linux runner 验证包安装与进程退出。
+- [x] HTTP 默认认证、Origin allowlist、stdio stdout 纯 JSON-RPC、SSRF 和凭证脱敏门禁通过。
+- [x] 使用同一个当前 tarball 完成全部安装 smoke；发布时不得重新打包不同内容。
+- [x] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
+      质量声明，不从当前受限出口反复探测。
+      本次保留 `73c34969` 的一次有限证据；后续修改没有改变 DDG/Sogou 请求链，
+      因此未重复探测。这份证据只用于时间点非降级观察。
+- [x] README、CHANGELOG、HANDOVER 和生成能力矩阵与运行时一致；发布说明不宣称未经
+      adjudication 的准确率、可用率或付费渠道排名。
+- [x] 门禁完成后创建检查点 commit。版本 bump、npm publish、GitHub Release 和推广仍需
+      分别获得明确授权。
+
+---

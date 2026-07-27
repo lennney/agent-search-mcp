@@ -1,117 +1,132 @@
----
-type: AgentInstruction
-title: Agent Search MCP — 多引擎统一搜索 MCP Server
-timestamp: '2026-07-20T23:35:20+08:00'
-description: 7 引擎搜索，MCP 协议接入，免费 + 多源验证 + Token 优化
-tags:
-- agent-search-mcp
-- agentinstruction
----
-# Agent Search MCP — 多引擎统一搜索 MCP Server
+﻿# Agent Search MCP
 
-一句话：12 个搜索适配器（8 个零密钥 + 4 个可选 API），MCP 协议接入，**中文原生 + 多源聚合 + Token 可控**。
+多引擎统一搜索 MCP Server，提供 stdio/HTTP MCP 接入和 `fasm` CLI。产品重点是
+**免费 + 省 Token + 中文原生 + 多源聚合**。
 
-## 当前阶段
+## 权威信息源
 
-**版本**: v3.1.0（已发布 npm + GitHub Release）— [查看完整路线图](docs/superpowers/plans/2026-07-22-iteration-roadmap.md)
+- 版本、依赖和脚本：`package.json`
+- 引擎注册与路由：`src/tools/free-search.ts`、`src/engines/`
+- 当前进度与待办：`HANDOVER.md`
+- 主路线图：`docs/superpowers/plans/2026-07-22-iteration-roadmap.md`
+- 生态与 `2026-07-28` 计划：
+  `docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md`
+- 编码规范：`docs/conventions.md`
 
-**测试**: 510 passed, 43 files | **适配器**: 12（8 零密钥, 4 可选 API）| **Python**: 可选（DDG 自动 HTML 回退）
+不要在本文件复制易过期的测试数量、发布状态或长篇实现日志。需要当前事实时，
+读取上述来源并运行对应命令。Git 中的 Plan/ADR 是计划与决策的唯一权威来源；
+Hermes 仅可作为带 commit/path 的同步投影。
 
-当前优先事项：
-1. **搜索质量证据** — 在稳定网络 runner 上捕获真实 fixture 并增加人工相关性标签
-2. **HTTP 部署指南** — Bearer 密钥轮换、Origin allowlist 与反向代理配置
-3. **信号校准** — 用真实失败查询持续校准 relevance/confidence/source_count
-4. **分发推广** — 发布已校准口径的掘金/Reddit/V2EX 素材（持续）
+## 当前边界
+
+- 稳定实现使用 Node.js >=18.17、TypeScript ESM 和 MCP SDK v1，支持 stdio/HTTP。
+- **npm tag**: `latest` 指向 v3.1.3（稳定），`beta` 指向 v3.2.0-beta.0（服务器验证中）。
+- `2026-07-28` 适配仅位于 `experiments/mcp-2026/`；通过正式一致性验证前，
+  不宣称生产兼容。
+- Slim Guard 是独立产品和仓库；没有明确任务时，不在本项目中修改它。
+- 搜索质量评测保持轻量：两个不同模型家族独立盲评，第三模型仅裁决分歧；
+  AI 结果必须标记为 `ai-reviewed` / `ai-judged`，不能冒充人工真值。
+
+## 修改前
+
+1. 阅读本文件、`HANDOVER.md`、`docs/conventions.md`，再按任务读取相关专题文档。
+2. 以当前源码和测试为准，不根据旧文档猜测接口或状态。
+3. 保留用户未提交的改动；不要回退无关文件。
+4. 新增引擎、改变 MCP 工具签名/包名、增加重大依赖或调整架构分层前，先询问。
 
 ## 常用命令
 
 ```bash
-npm run build                              # 编译 TypeScript
-npm test                                   # 跑测试（vitest）
-npm run dev                                # 本地运行（stdio 模式）
-npm run dev:http                           # HTTP 模式（端口 3000）
-npm run dev:both                           # stdio + HTTP 同时
-fasm search "query"                         # CLI 搜索
-fasm extract "https://..."                  # CLI 提取
+npm run build                 # 编译 TypeScript
+npm test                      # 默认离线稳定测试
+npm run test:e2e:live         # 仅在明确授权真实网络探测时运行
+npm run lint                  # 源码 lint
+npm run dev                   # stdio
+npm run dev:http              # HTTP（端口 3000）
+npm run benchmark:verify      # 冻结格式/Token 回归
+npm run benchmark:quality:verify
+npm run experimental:2026:test
+fasm search "query"
+fasm extract "https://..."
 ```
 
-## 技术栈
+## 目录
 
-- **运行时/语言**: Node.js ≥18 + TypeScript (ESM)
-- **MCP 框架**: @modelcontextprotocol/sdk ^1.29.0
-- **验证**: zod
-- **日志**: pino
-- **测试**: vitest
-- **包管理**: npm
-- **DDG 回退**: cheerio (纯 JS HTML 解析)
-- **Python (可选)**: ddgs (DuckDuckGo 后端，子进程调用)
+- `src/tools/`：MCP 工具
+- `src/engines/`：搜索适配器
+- `src/aggregation/`：路由、评分、去重、丰富化和格式化
+- `src/synthesis/`：结果合成
+- `src/infrastructure/`：安全、HTTP、缓存、限速和日志
+- `benchmarks/`：可复现基准、质量评测和评审流水线
+- `experiments/mcp-2026/`：隔离的 MCP 2026 实验实现
 
-## 技术判断
+命名、类型、导入和错误处理规则只在 `docs/conventions.md` 维护，避免重复和冲突。
 
-**形态**: MCP Server（stdio/HTTP 双模式）+ CLI (`fasm`)。
-**核心**: 多源搜索聚合、置信度评分、瀑布搜索、内容丰富化、查询扩展。
-**免费引擎**: ddg/sogou/bing/baidu/wikipedia/startpage/yandex/mojeek。
-**付费**: brave/tavily/exa（可选 fallback）。
+## 不可破坏的契约
 
-## 架构
+- 引擎失败必须降级/fallback；编排层保留 `partialFailures`，不得把真实异常静默
+  伪装成“零结果”。
+- 保持现有 MCP 工具输入签名和 stdio JSON-RPC 兼容。stdout 只输出协议数据；
+  运行日志走 logger/stderr。
+- API key 只能从环境变量读取，禁止写入源码、配置、fixture、日志或命令历史。
+- HTTP/both 默认要求 `HTTP_AUTH_TOKEN`；无认证必须显式开启。浏览器 Origin 必须
+  命中 `ALLOWED_ORIGINS`。
+- DDG 是纯 Node 实现，不探测或调用 Python/ddgs。主链依次尝试页面签发的
+  Web preload、HTML 和 Lite；Web preload 只接受精确 HTTPS host/path，
+  同一查询保持稳定 User-Agent。`cheerio` 固定为 `1.0.0`，代理 transport
+  固定使用 Node 18.17+ 兼容的 Undici 6。
+- DDG/Sogou 出站代理只读取 `DUCKDUCKGO_PROXY_URL` / `SOGOU_PROXY_URL`
+  或显式的 `USE_PROXY=true` + `PROXY_URL`；不要静默读取系统
+  `HTTP_PROXY` / `HTTPS_PROXY`。代理凭证不得进入错误、日志或 fixture。
+- 取消信号必须传入限速、重试、HTTP 和丰富化；带信号请求不得共享全局 pending
+  promise。parallel/waterfall 必须使用同一搜索选项缓存键。
+- 正文提取只能改善 snippet，不得增加 `confidence` 或 `source_count`；
+  `EVIDENCE_BUDGET_CHARS` 是整个响应共享预算。
+- Adapter 名称不等于独立来源；`source_count` 统计 upstream provider family。
+  DuckDuckGo/Bing 保守地归为同一 family，同一 provider 的 HTML/Lite 表示不能增信。
+  显式选择的同 family adapter 只作为顺序失败/低质后备；合同映射以
+  `docs/contracts/provider-families-v1.json` 为准。
+- 原始结果数量不能单独触发提前停止。逐条 relevance、平均 confidence 和
+  provider-family 覆盖必须分别通过；默认 relevance floor 是待 pooled qrels
+  校准的内部启发式。
+- 启用 semantic dedup/rerank 时，提前停止只能依据 post-semantic display
+  basket；`meta.execution.quality_gate_stage` 必须反映实际判断阶段。
+- DDG Lite 只在 HTML HTTP 202 后、同一总 deadline 内机会性尝试一次；它不是
+  限流绕过。调用方取消或其他 provider/IP 级限制不得触发重复请求。
+- DDG Web 已返回 `bot_challenge` 时不得继续切 HTML/Lite；只有非 challenge
+  的表示失败或空结果才进入下一表示。
+- Sogou `/antispider/` 和 DDG challenge 是 `bot_challenge`，不是缺 API Key；
+  provider 必须立即进入有界冷却，并通过 `partialFailures` 保留原因。
+- `free_search_advanced.time_range` 是已弃用的兼容保留字段。传入时必须在
+  搜索前返回 `UNSUPPORTED_FILTER`，不得静默忽略或宣传为通用时间过滤。
+- 冻结 fixture 只证明格式和指标代码可复现，不代表搜索质量。公开质量数字必须来自
+  非空多系统 capture、完整裁决和明确口径；零结果不得被静默删除。
+- runner qualification 只证明当前出口可生成多配置、多 family 的非空候选池；
+  adapter 配置级通过不能写成 Agent Search 产品质量或竞品胜负。
+- 日常测试不得访问真实搜索源。Live E2E/qualification/capture 必须显式触发、
+  使用保守间隔且不自动重试；出口出现 challenge 后停止继续探测。
+- 第三方摘要不自动继承 Apache-2.0。提交 capture 前核对再分发许可与署名。
 
-`src/` 下按职责分层：`tools/`（MCP 工具定义）、`engines/`（12 个引擎适配器）、`aggregation/`（评分/去重/丰富）、`synthesis/`（结果合成）、`infrastructure/`（安全/缓存/限速）。Agent 自己探索 `src/` 目录获取最新结构。
+## 完成标准
 
-## 编码规范
+- 代码变更：添加/更新测试，运行相关测试和 `npm run build`；影响稳定主路径时运行
+  `npm test`，影响实验路径时另跑 `npm run experimental:2026:test`。
+- 文档变更：只更新受影响的文档。长篇过程、证据和专题限制写入
+  `docs/evidence/`、Plan 或 ADR，不再堆进本文件。
+- 功能变更：按影响更新 `CHANGELOG.md`、`README.md`、`HANDOVER.md`。
+- 文档或 CI 小改不 bump 版本；发布、push、release 和安全设置变更需用户明确授权。
+- commit 格式：`type: 简短描述`，类型使用 `feat`、`fix`、`docs`、`chore`、
+  `revert`。
 
-详细规范见 `docs/conventions.md`。关键点：
-1. 文件/函数 snake_case，类/类型 PascalCase
-2. 每个引擎独立文件 `src/engines/{name}.ts`
-3. 每个 MCP 工具独立文件 `src/tools/{name}.ts`
+## 专题文档
 
-## 约束
+- 搜索基准与 AI 评测：`benchmarks/README.md`、`benchmarks/methodology.md`
+- HTTP 部署：`docs/http-deployment.md`
+- 搜索评测调研：`docs/research/2026-07-26-search-quality-evaluation.md`
+- Agent Search 产品与架构调研：
+  `docs/research/2026-07-26-agent-search-product-architecture.md`
+- 关键证据：`docs/evidence/`
+- 架构决策：`docs/decisions/`
 
-1. 引擎失败自动 fallback，不中断
-2. 搜索质量第一，引擎覆盖第二
-3. npm publish 前切 official registry（registry.npmjs.org）
-4. 包名: `agent-search-mcp`（npm）/ `free-agent-search-mcp`（AGENTS.md 标注）
-5. 不改现有工具接口签名（向后兼容）
-6. **版本号克制**: 不频繁发版。只有真正的新功能/修复才 bump。小文档改动、CI 调整不触发版本号变更。每周最多 1 次 publish。patch 版本只留给 bugfix。
-
-## 文档规范
-
-每次功能变更后更新 `CHANGELOG.md` / `README.md` / 功能文档。
-重大架构决策写 ADR 到 `docs/decisions/`。
-
-## 测试要求
-
-vitest，`tests/` 按功能目录组织。公共函数 + 新功能必须有测试。
-
-## 边界
-
-- ✅ Always: 跑测试、更新 CHANGELOG、build 通过、更新文档
-- ⚠️ Ask: 加新引擎、改 MCP 协议接口、改包名、加重大依赖、改架构分层
-- 🚫 Never: 硬编码 API key、删引擎 fallback 逻辑、改 stdio 协议、删测试
-
-## 已知陷阱
-
-- **Bing/Baidu 测试**: 实际搜索需要网络，单测用 mock 模拟 HTTP 响应
-- **ddgs 依赖**: Python 库 `ddgs` 为可选依赖。未安装时 DDG 引擎自动回退到 Node.js HTML 引擎（cheerio 解析）。Docker 镜像不含 Python，仅使用 HTML 引擎。`isDdgsAvailable()` 检测可用性，结果缓存在进程生命周期内
-- **cheerio 依赖**: DuckDuckGo HTML 引擎依赖 cheerio（纯 JS，无 native binding）。必须固定在 `1.0.0` 以维持 Node 18 支持；Cheerio 1.2+ 要求 Node 20.18.1+
-- **中文搜索**: Sogou + Baidu 专供中文搜索，不要用 Google Translate 翻译替代
-- **请求合并**: 相同查询在 100ms 内自动合并，避免并发重复请求
-- **Env 变量**: API key 通过环境变量传入，不走配置文件
-- **npm publish**: 当前 registry 是腾讯镜像（mirrors.tencentyun.com），publish 前必须切到 registry.npmjs.org
-- **工具可见性**: `ENABLED_TOOLS` / `DISABLED_TOOLS` 环境变量控制 MCP 工具注册。`DISABLED_TOOLS` 优先级高于 `ENABLED_TOOLS`。默认全部启用。资源（capabilities/health）不受此策略影响。
-- **路由能力面**: 12 个适配器已统一进入 MCP / CLI / 瀑布路由；You.com 必须有 `YDC_API_KEY`，不要把“包内存在”与“当前凭证可用”混淆。
-- **Benchmark 口径**: 可保留 2026-07-24 历史 30 查询实测的 28.7% / 35.5% / 75%，但必须限定当时查询集和环境。当前冻结 fixture + `gpt-tokenizer` 用于可重现的格式化回归，不代表搜索质量。
-- **HTTP 安全默认值**: HTTP / both 模式必须配置 `HTTP_AUTH_TOKEN`；只有显式 `HTTP_ALLOW_UNAUTHENTICATED=true` 才允许无认证运行。带 Origin 的浏览器请求必须命中 `ALLOWED_ORIGINS`。
-- **stdio 日志**: stdout 只用于 MCP JSON-RPC。运行日志必须走 `logger`（stderr）或 `console.error`，禁止在服务路径使用 `console.log`。
-
-## 文档索引
-
-`docs/conventions.md` — 编码规范  |  `docs/plans/` — 功能计划  |  `docs/decisions/` — ADR
-
-## Agent 规则
-
-- **修改代码前**: 先读此 AGENTS.md + HANDOVER.md + docs/conventions.md
-- **增加功能**: 新增引擎 → 改 engines/ + 注册；新增工具 → 改 tools/ + 注册
-- **完成变更后**: 更新 CHANGELOG + README + HANDOVER
-- **踩到新坑**: 更新 AGENTS.md "已知陷阱" 或写 LEARNINGS.md
-- **重大决策**: 写 ADR 到 docs/decisions/
-- **commit 格式**: `type: 简短描述`（类型: feat/fix/docs/chore/revert）
+禁止硬编码密钥、删除 fallback、删除测试换取通过、削弱安全门禁、伪造验证结果，
+或未经授权发布包/Release。

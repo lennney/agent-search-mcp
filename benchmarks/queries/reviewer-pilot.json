@@ -1,0 +1,20 @@
+[
+  {
+    "id": "reviewer-en-mcp",
+    "q": "Model Context Protocol",
+    "question": "What is the Model Context Protocol?",
+    "type": "factual",
+    "lang": "en",
+    "freshness": "evergreen",
+    "reference_answer": "An open protocol that standardizes how AI applications connect to external tools and data sources."
+  },
+  {
+    "id": "reviewer-zh-transformer",
+    "q": "Transformer 模型",
+    "question": "Transformer 模型是什么？",
+    "type": "factual",
+    "lang": "zh",
+    "freshness": "evergreen",
+    "reference_answer": "一种主要基于注意力机制处理序列数据的深度学习架构。"
+  }
+]

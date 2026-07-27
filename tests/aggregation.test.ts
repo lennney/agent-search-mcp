@@ -230,7 +230,7 @@ describe('formatResults', () => {
 import { checkConfidenceBasket } from '../src/aggregation/scorer.js';
 
 describe('checkConfidenceBasket', () => {
-  function makeResult(confidence: number, index: number): ScoredResult {
+  function makeResult(confidence: number, relevance: number, index: number): ScoredResult {
     return {
       title: `Result ${index}`,
       url: `https://example.com/${index}`,
@@ -238,7 +238,9 @@ describe('checkConfidenceBasket', () => {
       source: 'duckduckgo',
       engines: [],
       confidence,
-      score: confidence,
+      relevance,
+      source_count: 1,
+      score: relevance,
     };
   }
 
@@ -246,32 +248,36 @@ describe('checkConfidenceBasket', () => {
     const result = checkConfidenceBasket([]);
     expect(result.sufficient).toBe(false);
     expect(result.basketConfidence).toBe(0);
+    expect(result.basketRelevance).toBe(0);
+    expect(result.relevantResultsCount).toBe(0);
     expect(result.analyzedCount).toBe(0);
   });
 
-  it('returns sufficient=true when top-5 confidence meets threshold', () => {
-    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.8 + i * 0.01, i));
+  it('returns sufficient=true when top-5 confidence and relevance meet their thresholds', () => {
+    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.8 + i * 0.01, 0.5, i));
     const result = checkConfidenceBasket(results, { minResults: 3, minAvgConfidence: 0.6, topK: 5 });
     expect(result.sufficient).toBe(true);
     expect(result.basketConfidence).toBeGreaterThanOrEqual(0.8);
+    expect(result.basketRelevance).toBe(0.5);
+    expect(result.relevantResultsCount).toBe(5);
   });
 
   it('returns sufficient=false when confidence is too low', () => {
-    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.3, i));
+    const results = [1, 2, 3, 4, 5].map(i => makeResult(0.3, 0.8, i));
     const result = checkConfidenceBasket(results);
     expect(result.sufficient).toBe(false);
   });
 
   it('returns sufficient=false when not enough results (minResults)', () => {
-    const results = [makeResult(0.9, 1), makeResult(0.9, 2)];
+    const results = [makeResult(0.9, 0.8, 1), makeResult(0.9, 0.8, 2)];
     const result = checkConfidenceBasket(results, { minResults: 3, minAvgConfidence: 0.6, topK: 5 });
     expect(result.sufficient).toBe(false);
     expect(result.topResultsCount).toBe(2);
   });
 
   it('respects custom topK — picks only the top results', () => {
-    const high = [1, 2, 3].map(i => makeResult(0.9, i));
-    const low = [4, 5, 6, 7].map(i => makeResult(0.2, i));
+    const high = [1, 2, 3].map(i => makeResult(0.9, 0.8, i));
+    const low = [4, 5, 6, 7].map(i => makeResult(0.2, 0.8, i));
     const result = checkConfidenceBasket([...high, ...low], { topK: 3, minResults: 3, minAvgConfidence: 0.6 });
     expect(result.sufficient).toBe(true);
     expect(result.topResultsCount).toBe(3);
@@ -351,7 +357,7 @@ describe('isChinese', () => {
 // ─── Chinese snippet truncation ──────────────────────────────────────────
 
 describe('formatResults Chinese truncation', () => {
-  it('allows 300 chars for Chinese snippets instead of 200', () => {
+  it('selects a readable sentence within the Chinese 300-char ceiling', () => {
     const chineseSnippet = '这是一段很长的中文摘要文本，包含了很多有意义的信息，需要更长的显示长度才能完整表达内容。' +
       '中文的信息密度比英文更高，每个字符都承载更多信息，因此需要更长的截断长度来保证信息的完整性。' +
       '这是第三段的补充文本内容，用来确保总长度超过三百个字符，验证截断逻辑是否正确工作。' +
@@ -370,7 +376,9 @@ describe('formatResults Chinese truncation', () => {
     ];
     const formatted = formatResults(results);
     expect(formatted.results[0].snippet.length).toBeLessThanOrEqual(300);
-    expect(formatted.results[0].snippet.length).toBeGreaterThan(200);
+    expect(formatted.results[0].snippet.length).toBeGreaterThan(0);
+    expect((formatted.results[0] as any).evidence.selected_chars)
+      .toBe(formatted.results[0].snippet.length);
   });
 
   it('allows 150 chars for Chinese titles instead of 100', () => {

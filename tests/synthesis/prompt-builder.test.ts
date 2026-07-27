@@ -30,14 +30,15 @@ describe('buildPromptHint', () => {
 
   it('includes URL, source, confidence for each result', () => {
     const results = [
-      makeResult('Test', 'https://example.com', 'A snippet', 3, 'duckduckgo'),
+      makeResult('Test', 'https://example.com', 'A snippet', 0.83, 'duckduckgo'),
     ];
 
     const hint = buildPromptHint('test', results);
 
     expect(hint).toContain('URL: https://example.com');
     expect(hint).toContain('Source: duckduckgo');
-    expect(hint).toContain('Confidence: 3/3');
+    expect(hint).toContain('Confidence: 0.83/1');
+    expect(hint).toContain('0 = weakest source reliability, 1 = strongest');
   });
 
   it('limits to 10 results', () => {

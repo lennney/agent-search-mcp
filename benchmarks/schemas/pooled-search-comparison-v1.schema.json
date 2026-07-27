@@ -1,0 +1,562 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lennney/agent-search-mcp/benchmarks/schemas/pooled-search-comparison-v1.schema.json",
+  "title": "Agent Search pooled comparison report v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "label_status",
+    "claim_scope",
+    "quality_claim_eligible",
+    "source_pool_sha256",
+    "source_adjudication_sha256",
+    "source_captures",
+    "reviewers",
+    "adjudicator",
+    "claim_readiness",
+    "metric_scope",
+    "reviewer_agreement",
+    "systems",
+    "pairwise_comparisons",
+    "unmeasured"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "pooled-search-comparison"
+    },
+    "label_status": {
+      "enum": [
+        "human-verified",
+        "ai-reviewed"
+      ]
+    },
+    "claim_scope": {
+      "enum": [
+        "human-reviewed",
+        "ai-judged"
+      ]
+    },
+    "quality_claim_eligible": {
+      "type": "boolean"
+    },
+    "source_pool_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_adjudication_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "claim_readiness": {
+      "type": "object",
+      "required": [
+        "status",
+        "policy",
+        "checks"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "eligible",
+            "insufficient-sample"
+          ]
+        },
+        "policy": {
+          "type": "object",
+          "required": [
+            "minimum_overall_queries",
+            "minimum_slice_queries"
+          ],
+          "properties": {
+            "minimum_overall_queries": {
+              "const": 30
+            },
+            "minimum_slice_queries": {
+              "const": 10
+            }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "required": [
+            "review_evidence",
+            "multi_system",
+            "adjudicated_queries",
+            "distinct_queries",
+            "paired_uncertainty"
+          ],
+          "properties": {
+            "review_evidence": {
+              "type": "object",
+              "required": [
+                "passed",
+                "mode",
+                "reviewers",
+                "adjudicator_kind"
+              ],
+              "properties": {
+                "passed": {
+                  "const": true
+                },
+                "mode": {
+                  "enum": [
+                    "human",
+                    "ai"
+                  ]
+                },
+                "reviewers": {
+                  "type": "integer",
+                  "minimum": 2
+                },
+                "adjudicator_kind": {
+                  "enum": [
+                    "human",
+                    "ai"
+                  ]
+                }
+              }
+            },
+            "paired_uncertainty": {
+              "type": "object",
+              "required": [
+                "passed",
+                "reported_pairs",
+                "required_pairs"
+              ],
+              "properties": {
+                "passed": {
+                  "type": "boolean"
+                },
+                "reported_pairs": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "required_pairs": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "metric_scope": {
+      "type": "object",
+      "required": [
+        "cutoff",
+        "relevance_threshold",
+        "recall",
+        "queries_without_relevant_pool"
+      ],
+      "properties": {
+        "cutoff": {
+          "const": 5
+        },
+        "relevance_threshold": {
+          "const": 2
+        },
+        "recall": {
+          "const": "adjudicated-candidate-pool"
+        },
+        "queries_without_relevant_pool": {
+          "const": "scored-as-zero"
+        }
+      }
+    },
+    "reviewer_agreement": {
+      "type": "object",
+      "required": [
+        "reviewer_pairs",
+        "judged_candidates",
+        "relevance",
+        "citation_support"
+      ],
+      "properties": {
+        "reviewer_pairs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "judged_candidates": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "relevance": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/agreementMetric"
+            },
+            {
+              "required": [
+                "mean_pairwise_quadratic_weighted_kappa"
+              ]
+            }
+          ]
+        },
+        "citation_support": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/agreementMetric"
+            },
+            {
+              "required": [
+                "mean_pairwise_cohens_kappa"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "reviewers": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/humanActor"
+          },
+          {
+            "$ref": "#/$defs/aiActor"
+          }
+        ]
+      }
+    },
+    "adjudicator": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/humanActor"
+        },
+        {
+          "$ref": "#/$defs/aiActor"
+        }
+      ]
+    },
+    "systems": {
+      "type": "object",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "evaluated_queries",
+          "queries_with_relevant_pool",
+          "retrieval",
+          "citation_support",
+          "latency",
+          "failure_transparency",
+          "slices"
+        ]
+      }
+    },
+    "pairwise_comparisons": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/insufficientPairwiseComparison"
+          },
+          {
+            "$ref": "#/$defs/reportedPairwiseComparison"
+          }
+        ]
+      }
+    },
+    "unmeasured": {
+      "type": "object",
+      "required": [
+        "answer_accuracy",
+        "tokens_per_correct_answer"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "label_status": {
+            "const": "ai-reviewed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "claim_scope": {
+            "const": "ai-judged"
+          },
+          "reviewers": {
+            "items": {
+              "$ref": "#/$defs/aiActor"
+            }
+          },
+          "adjudicator": {
+            "$ref": "#/$defs/aiActor"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "claim_scope": {
+            "const": "human-reviewed"
+          },
+          "reviewers": {
+            "items": {
+              "$ref": "#/$defs/humanActor"
+            }
+          },
+          "adjudicator": {
+            "$ref": "#/$defs/humanActor"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "humanActor": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "human"
+        }
+      }
+    },
+    "aiActor": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "provider",
+        "model",
+        "model_family",
+        "temperature",
+        "prompt_version",
+        "prompt_sha256",
+        "completed_at"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "ai"
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model_family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "const": 0
+        },
+        "prompt_version": {
+          "const": "search-relevance-v1"
+        },
+        "prompt_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "pairwiseBase": {
+      "type": "object",
+      "required": [
+        "status",
+        "left_system",
+        "right_system",
+        "paired_queries",
+        "distinct_queries"
+      ],
+      "properties": {
+        "left_system": {
+          "type": "string",
+          "minLength": 1
+        },
+        "right_system": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paired_queries": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "distinct_queries": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "insufficientPairwiseComparison": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairwiseBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "required_queries",
+            "metrics"
+          ],
+          "properties": {
+            "status": {
+              "const": "insufficient-sample"
+            },
+            "required_queries": {
+              "const": 30
+            },
+            "metrics": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "reportedPairwiseComparison": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairwiseBase"
+        },
+        {
+          "type": "object",
+          "required": [
+            "method",
+            "metrics"
+          ],
+          "properties": {
+            "status": {
+              "const": "reported"
+            },
+            "method": {
+              "type": "object",
+              "required": [
+                "name",
+                "iterations",
+                "confidence_level",
+                "seed_sha256"
+              ],
+              "properties": {
+                "name": {
+                  "const": "paired-bootstrap-percentile"
+                },
+                "iterations": {
+                  "const": 2000
+                },
+                "confidence_level": {
+                  "const": 0.95
+                },
+                "seed_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            "metrics": {
+              "type": "object",
+              "required": [
+                "ndcg_at_5_percentage_points",
+                "precision_at_5_percentage_points",
+                "pooled_recall_at_5_percentage_points",
+                "reciprocal_rank_at_5_percentage_points",
+                "success_at_5_percentage_points",
+                "latency_ms"
+              ],
+              "additionalProperties": {
+                "$ref": "#/$defs/pairwiseMetric"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "pairwiseMetric": {
+      "type": "object",
+      "required": [
+        "delta",
+        "ci_95",
+        "direction"
+      ],
+      "properties": {
+        "delta": {
+          "type": "number"
+        },
+        "ci_95": {
+          "type": "object",
+          "required": [
+            "lower",
+            "upper"
+          ],
+          "properties": {
+            "lower": {
+              "type": "number"
+            },
+            "upper": {
+              "type": "number"
+            }
+          }
+        },
+        "direction": {
+          "enum": [
+            "higher-is-better",
+            "lower-is-better"
+          ]
+        }
+      }
+    },
+    "agreementMetric": {
+      "type": "object",
+      "required": [
+        "raw_agreement_percent",
+        "defined_pairs"
+      ],
+      "properties": {
+        "raw_agreement_percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "mean_pairwise_quadratic_weighted_kappa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "mean_pairwise_cohens_kappa": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "defined_pairs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,8 @@
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 import { describe, it, expect } from 'vitest';
-import { parseArgs } from '../src/cli.js';
+import { isMainModulePath, parseArgs } from '../src/cli.js';
 
 describe('parseArgs', () => {
   it('parses search command', () => {
@@ -67,5 +70,28 @@ describe('parseArgs', () => {
   it('parses --version flag', () => {
     const args = parseArgs(['node', 'cli.ts', '--version']);
     expect(args.version).toBe(true);
+  });
+
+  it('parses doctor with stable JSON output', () => {
+    const args = parseArgs(['node', 'cli.ts', 'doctor', '--json']);
+    expect(args).toMatchObject({
+      command: 'doctor',
+      json: true,
+    });
+  });
+});
+
+describe('CLI entrypoint', () => {
+  it('recognizes the executable module by resolved path', () => {
+    const modulePath = join(process.cwd(), 'dist', 'cli.js');
+
+    expect(isMainModulePath(
+      modulePath,
+      pathToFileURL(modulePath).href,
+    )).toBe(true);
+    expect(isMainModulePath(
+      join(process.cwd(), 'dist', 'other.js'),
+      pathToFileURL(modulePath).href,
+    )).toBe(false);
   });
 });

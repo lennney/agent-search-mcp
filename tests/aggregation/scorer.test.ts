@@ -69,6 +69,50 @@ describe('scoreAndRank', () => {
     expect(scored[0].url).toContain('exact');
   });
 
+  it('ranks broader query-term coverage above a one-term partial match', () => {
+    const results = [
+      makeResult({
+        url: 'https://example.com/exact',
+        title: 'Model Context Protocol',
+        snippet: 'The Model Context Protocol connects AI applications to tools and data.',
+        engines: ['ddg'],
+      }),
+      makeResult({
+        url: 'https://example.com/partial',
+        title: 'Communication protocol',
+        snippet: 'A protocol defines communication rules.',
+        engines: ['ddg'],
+      }),
+    ];
+
+    const scored = scoreAndRank(results, 'What is the Model Context Protocol?', weights);
+
+    expect(scored[0].url).toContain('exact');
+    expect(scored[0].relevance).toBeGreaterThan(scored[1].relevance);
+  });
+
+  it('uses CJK query terms when ranking Chinese results', () => {
+    const results = [
+      makeResult({
+        url: 'https://example.com/transformer',
+        title: 'Transformer 模型',
+        snippet: 'Transformer 模型使用注意力机制处理序列。',
+        engines: ['ddg'],
+      }),
+      makeResult({
+        url: 'https://example.com/chat',
+        title: '聊天机器人',
+        snippet: '介绍通用聊天应用。',
+        engines: ['ddg'],
+      }),
+    ];
+
+    const scored = scoreAndRank(results, 'Transformer 模型是什么？', weights);
+
+    expect(scored[0].url).toContain('transformer');
+    expect(scored[0].relevance).toBeGreaterThan(scored[1].relevance);
+  });
+
   it('handles missing snippet gracefully', () => {
     const results = [
       makeResult({ url: 'https://example.com/no-snippet', snippet: undefined, engines: ['brave'] }),
@@ -101,6 +145,20 @@ describe('scoreAndRank', () => {
     expect(scored[0].source_count).toBe(1);
   });
 
+  it('does not treat adapters from the same provider family as independent sources', () => {
+    const scored = scoreAndRank(
+      [makeResult({
+        url: 'https://example.com/same-family',
+        engines: ['duckduckgo', 'bing'],
+      })],
+      'test',
+      { duckduckgo: 0.8, bing: 0.9 },
+    );
+
+    expect(scored[0].source_count).toBe(1);
+    expect(scored[0].confidence).toBe(0.9);
+  });
+
   it('empty tokens returns default score 0.3', () => {
     // Short query (< 3 chars) produces no tokens
     const results = [
@@ -125,11 +183,75 @@ describe('checkConfidenceBasket', () => {
     };
   }
 
-  it('returns sufficient=true when top results meet threshold', () => {
+  it('returns sufficient=true when top results meet confidence and relevance thresholds', () => {
     const results = [scored(0.8), scored(0.7), scored(0.6), scored(0.5)];
     const basket = checkConfidenceBasket(results);
     expect(basket.sufficient).toBe(true);
     expect(basket.basketConfidence).toBeGreaterThanOrEqual(0.6);
+    expect(basket.basketRelevance).toBe(0.5);
+    expect(basket.relevantResultsCount).toBe(4);
+  });
+
+  it('does not stop early for high-confidence results with low query relevance', () => {
+    const results = [
+      { ...scored(0.9), relevance: 0.1, score: 0.1 },
+      { ...scored(0.9), relevance: 0.1, score: 0.1 },
+      { ...scored(0.9), relevance: 0.1, score: 0.1 },
+    ];
+
+    const basket = checkConfidenceBasket(results);
+
+    expect(basket.sufficient).toBe(false);
+    expect(basket.basketConfidence).toBe(0.9);
+    expect(basket.basketRelevance).toBe(0.1);
+    expect(basket.relevantResultsCount).toBe(0);
+  });
+
+  it('treats missing relevance as absent evidence', () => {
+    const legacyResults = [scored(0.9), scored(0.9), scored(0.9)].map((result) => {
+      const { relevance: _relevance, ...legacyResult } = result;
+      return legacyResult as ScoredResult;
+    });
+
+    const basket = checkConfidenceBasket(legacyResults);
+
+    expect(basket.sufficient).toBe(false);
+    expect(basket.basketRelevance).toBe(0);
+    expect(basket.relevantResultsCount).toBe(0);
+  });
+
+  it('requires enough individually relevant results and accepts a stricter override', () => {
+    const results = [
+      { ...scored(0.9), relevance: 0.35, score: 0.35 },
+      { ...scored(0.9), relevance: 0.35, score: 0.35 },
+      { ...scored(0.9), relevance: 0.1, score: 0.1 },
+    ];
+
+    expect(checkConfidenceBasket(results).sufficient).toBe(false);
+    expect(checkConfidenceBasket(results, { minRelevantResults: 2 }).sufficient).toBe(true);
+    expect(checkConfidenceBasket(results, {
+      minRelevantResults: 2,
+      minResultRelevance: 0.36,
+    }).sufficient).toBe(false);
+  });
+
+  it('requires independent provider families when requested', () => {
+    const sameFamily = [
+      { ...scored(0.9), source: 'duckduckgo', engines: ['duckduckgo'] },
+      { ...scored(0.9), source: 'bing', engines: ['bing'] },
+      { ...scored(0.9), source: 'duckduckgo', engines: ['duckduckgo'] },
+    ];
+    const independent = [
+      ...sameFamily.slice(0, 2),
+      { ...scored(0.9), source: 'sogou', engines: ['sogou'] },
+    ];
+
+    expect(checkConfidenceBasket(sameFamily, {
+      minProviderFamilies: 2,
+    }).sufficient).toBe(false);
+    expect(checkConfidenceBasket(independent, {
+      minProviderFamilies: 2,
+    }).sufficient).toBe(true);
   });
 
   it('returns sufficient=false when results are too few', () => {
@@ -143,10 +265,27 @@ describe('checkConfidenceBasket', () => {
     expect(basket.sufficient).toBe(false);
   });
 
+  it('treats invalid confidence values as absent evidence', () => {
+    const results = [
+      scored(Number.NaN),
+      scored(Number.POSITIVE_INFINITY),
+      scored(1.1),
+    ];
+
+    const basket = checkConfidenceBasket(results);
+
+    expect(basket.sufficient).toBe(false);
+    expect(basket.basketConfidence).toBe(0);
+  });
+
   it('returns zero values for empty results', () => {
     const basket = checkConfidenceBasket([]);
     expect(basket.sufficient).toBe(false);
     expect(basket.basketConfidence).toBe(0);
+    expect(basket.basketRelevance).toBe(0);
+    expect(basket.relevantResultsCount).toBe(0);
+    expect(basket.relevanceThreshold).toBe(0.35);
+    expect(basket.providerFamilyCount).toBe(0);
     expect(basket.topResultsCount).toBe(0);
     expect(basket.analyzedCount).toBe(0);
   });

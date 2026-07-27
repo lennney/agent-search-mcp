@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "default_rule": "unknown adapter names map to themselves",
+  "families": {
+    "duckduckgo": "bing",
+    "bing": "bing",
+    "startpage": "google",
+    "sogou": "sogou",
+    "baidu": "baidu",
+    "wikipedia": "wikipedia",
+    "yandex": "yandex",
+    "mojeek": "mojeek",
+    "wiby": "wiby",
+    "brave": "brave",
+    "tavily": "tavily",
+    "exa": "exa",
+    "youcom": "youcom",
+    "tencent_wsa": "sogou",
+    "bocha": "bocha",
+    "serper": "google"
+  }
+}

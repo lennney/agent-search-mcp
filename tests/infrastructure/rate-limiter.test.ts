@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { RateLimiter } from '../../src/infrastructure/rate-limiter.js';
+import { SEARCH_PROVIDERS } from '../../src/types.js';
 
 describe('RateLimiter', () => {
   it('returns remaining=1 for unused provider', () => {
@@ -48,6 +49,17 @@ describe('RateLimiter', () => {
   });
 
   // ---- Per-engine rate tests ----
+  it('defines an explicit interval for every registered provider', () => {
+    expect(Object.keys(RateLimiter.DEFAULT_ENGINE_RATES).sort())
+      .toEqual([...SEARCH_PROVIDERS].sort());
+  });
+
+  it('uses a conservative interval for the shared Wiby service', () => {
+    expect(RateLimiter.DEFAULT_ENGINE_RATES.wiby).toBeGreaterThanOrEqual(1_200);
+    expect(RateLimiter.DEFAULT_ENGINE_RATES.wiby)
+      .toBeGreaterThan(RateLimiter.DEFAULT_ENGINE_RATES.serper);
+  });
+
   it('uses shorter interval for paid (fast) engines', async () => {
     const rl = new RateLimiter({
       engineRates: { brave: 100, tavily: 100, ddg: 2000 },
@@ -79,5 +91,15 @@ describe('RateLimiter', () => {
     await rl.waitForSlot('any');
     const elapsed = Date.now() - start;
     expect(elapsed).toBeGreaterThanOrEqual(150);
+  });
+
+  it('aborts while waiting for the next slot', async () => {
+    const rl = new RateLimiter({ defaultIntervalMs: 10_000 });
+    await rl.waitForSlot('cancel-me');
+    const controller = new AbortController();
+    const pending = rl.waitForSlot('cancel-me', controller.signal);
+    controller.abort(new DOMException('cancelled', 'AbortError'));
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

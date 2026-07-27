@@ -15,7 +15,7 @@ export interface RateLimiterOptions {
  * Per-engine rate limiter for lightweight VPS.
  *
  * Free engines (DDG, Sogou, Baidu) need longer intervals to avoid anti-bot;
- * paid engines (Brave, Tavily, Exa, You.com) can be called more aggressively.
+ * optional API engines can be called more aggressively.
  *
  * All state is in-memory — no persistence, no background sweeps.
  */
@@ -24,22 +24,26 @@ export class RateLimiter {
   private engineRates: Record<string, number>;
   private defaultIntervalMs: number;
 
-  // Sensible defaults for 12 engines on a lightweight VPS
+  // Sensible defaults for registered engines on a lightweight VPS
   static readonly DEFAULT_ENGINE_RATES: Record<string, number> = {
     // Free engines — respectful intervals to avoid rate-limiting
-    ddg: 1_200,
+    duckduckgo: 1_200,
     sogou: 1_200,
     bing: 1_200,
     baidu: 1_500,
     wikipedia: 1_000,
     startpage: 1_000,
+    yandex: 600,
+    mojeek: 600,
+    wiby: 1_500,
     // Paid / API-based engines — fast calls
     brave: 400,
     tavily: 300,
     exa: 300,
     youcom: 500,
-    yandex: 600,
-    mojeek: 600,
+    tencent_wsa: 500,
+    bocha: 500,
+    serper: 400,
   };
 
   constructor(options: RateLimiterOptions = {}) {
@@ -52,13 +56,27 @@ export class RateLimiter {
     return this.engineRates[engine] ?? this.defaultIntervalMs;
   }
 
-  async waitForSlot(provider: string): Promise<void> {
+  async waitForSlot(provider: string, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
     const interval = this.intervalFor(provider);
     const last = this.lastRequest.get(provider) || 0;
     const wait = interval - (Date.now() - last);
     if (wait > 0) {
-      await new Promise(r => setTimeout(r, wait));
+      await new Promise<void>((resolve, reject) => {
+        const cleanup = () => signal?.removeEventListener('abort', abort);
+        const timer = setTimeout(() => {
+          cleanup();
+          resolve();
+        }, wait);
+        const abort = () => {
+          clearTimeout(timer);
+          cleanup();
+          reject(signal?.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+        };
+        signal?.addEventListener('abort', abort, { once: true });
+      });
     }
+    signal?.throwIfAborted();
     this.lastRequest.set(provider, Date.now());
   }
 

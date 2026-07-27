@@ -20,6 +20,13 @@ describe('loadConfig', () => {
     delete process.env.USE_PROXY;
     delete process.env.DEFAULT_ENGINE;
     delete process.env.ALLOWED_ENGINES;
+    delete process.env.EVIDENCE_BUDGET_CHARS;
+    delete process.env.PROVIDER_COOLDOWN_STORE_PATH;
+    delete process.env.SEARCH_CACHE_DIRECTORY;
+    delete process.env.SEARCH_CACHE_TTL_MS;
+    delete process.env.SEARCH_CACHE_MAX_ENTRIES;
+    delete process.env.SEARCH_PROVIDER_MODE;
+    delete process.env.PAID_ENGINE_ORDER;
     
     const config = loadConfig();
     expect(config.mode).toBe('stdio');
@@ -29,6 +36,73 @@ describe('loadConfig', () => {
     expect(config.useProxy).toBe(false);
     expect(config.defaultEngine).toBe('duckduckgo');
     expect(config.allowedEngines).toEqual([]);
+    expect(config.evidenceBudgetChars).toBe(1200);
+    expect(config.searchBudgetMaxCalls).toBe(16);
+    expect(config.searchBudgetMaxElapsedMs).toBe(30_000);
+    expect(config.searchBudgetMaxResults).toBe(100);
+    expect(config.providerCooldownStorePath).toBe('');
+    expect(config.searchCacheDirectory).toBe('');
+    expect(config.searchCacheTtlMs).toBe(60_000);
+    expect(config.searchCacheMaxEntries).toBe(1_000);
+    expect(config.searchProviderMode).toBe('free_first');
+    expect(config.paidEngineOrder).toEqual([
+      'brave',
+      'exa',
+      'tavily',
+      'youcom',
+      'tencent_wsa',
+      'bocha',
+      'serper',
+    ]);
+  });
+
+  it('parses explicit provider routing configuration', () => {
+    process.env.SEARCH_PROVIDER_MODE = 'quality_escalation';
+    process.env.PAID_ENGINE_ORDER = 'exa, brave';
+    const config = loadConfig();
+    expect(config.searchProviderMode).toBe('quality_escalation');
+    expect(config.paidEngineOrder).toEqual(['exa', 'brave']);
+  });
+
+  it('fails closed to free_first for an unknown provider mode', () => {
+    process.env.SEARCH_PROVIDER_MODE = 'always_paid';
+    expect(loadConfig().searchProviderMode).toBe('free_first');
+  });
+
+  it('reads and clamps opt-in exact-cache configuration', () => {
+    process.env.SEARCH_CACHE_DIRECTORY = './state/exact-cache';
+    process.env.SEARCH_CACHE_TTL_MS = '500';
+    process.env.SEARCH_CACHE_MAX_ENTRIES = '999999';
+    const config = loadConfig();
+    expect(config.searchCacheDirectory).toBe('./state/exact-cache');
+    expect(config.searchCacheTtlMs).toBe(1_000);
+    expect(config.searchCacheMaxEntries).toBe(10_000);
+  });
+
+  it('reads an opt-in provider cooldown store path', () => {
+    process.env.PROVIDER_COOLDOWN_STORE_PATH = './state/cooldowns.json';
+    expect(loadConfig().providerCooldownStorePath).toBe('./state/cooldowns.json');
+  });
+
+  it('clamps request budget environment values', () => {
+    process.env.SEARCH_BUDGET_MAX_CALLS = '0';
+    process.env.SEARCH_BUDGET_MAX_ELAPSED_MS = '999999';
+    process.env.SEARCH_BUDGET_MAX_RESULTS = 'bad';
+    const config = loadConfig();
+    expect(config.searchBudgetMaxCalls).toBe(1);
+    expect(config.searchBudgetMaxElapsedMs).toBe(120_000);
+    expect(config.searchBudgetMaxResults).toBe(100);
+  });
+
+  it('parses and clamps EVIDENCE_BUDGET_CHARS', () => {
+    process.env.EVIDENCE_BUDGET_CHARS = '2400';
+    expect(loadConfig().evidenceBudgetChars).toBe(2400);
+
+    process.env.EVIDENCE_BUDGET_CHARS = '50';
+    expect(loadConfig().evidenceBudgetChars).toBe(200);
+
+    process.env.EVIDENCE_BUDGET_CHARS = '999999';
+    expect(loadConfig().evidenceBudgetChars).toBe(20_000);
   });
 
   it('parses MODE=http correctly', () => {

@@ -63,4 +63,26 @@ describe('TavilyProvider', () => {
     expect(body.max_results).toBe(7);
     expect(body.api_key).toBe('test-key');
   });
+
+  it('ignores malformed or unsafe result entries', async () => {
+    process.env.TAVILY_API_KEY = 'test-key';
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [
+          null,
+          { title: 'Unsafe', url: 'data:text/plain,test' },
+          { title: 'Valid', url: 'https://example.com', content: 'Content' },
+        ],
+      }),
+    });
+
+    await expect(provider.search('test', 5)).resolves.toEqual([{
+      title: 'Valid',
+      url: 'https://example.com',
+      snippet: 'Content',
+      source: 'tavily',
+      engines: ['tavily'],
+    }]);
+  });
 });

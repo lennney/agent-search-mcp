@@ -1,5 +1,7 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
+import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const bingProvider = {
   id: 'bing' as const,
@@ -8,7 +10,7 @@ export const bingProvider = {
   languages: ['en', 'zh'],
 };
 
-export async function searchBing(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchBing(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${limit}`;
     const res = await fetch(url, {
@@ -17,22 +19,25 @@ export async function searchBing(query: string, limit: number = 10): Promise<Sea
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!res.ok) {
-      console.error(`Bing: HTTP ${res.status}`);
+      if (options?.throwOnError) throw new Error(`Bing HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Bing HTTP error');
       return [];
     }
 
     const html = await res.text();
     return parseBingResults(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('timeout')) {
-      console.error('Bing: Search timed out');
+      logger.warn('Bing search timed out');
     } else {
-      console.error('Bing search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Bing search failed');
     }
     return [];
   }
@@ -62,61 +67,5 @@ function parseBingResults(html: string, limit: number): SearchResult[] {
     }
   }
   
-  return results;
-}
-
-export async function searchBingNews(query: string, limit: number = 10): Promise<SearchResult[]> {
-  try {
-    const url = `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&count=${limit}&format=rss`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) {
-      console.error(`Bing News: HTTP ${res.status}`);
-      return [];
-    }
-
-    const xml = await res.text();
-    return parseBingNewsXML(xml, limit);
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    console.error('Bing News search failed:', msg.slice(0, 200));
-    return [];
-  }
-}
-
-function parseBingNewsXML(xml: string, limit: number): SearchResult[] {
-  const results: SearchResult[] = [];
-  const itemRegex = /<item>[\s\S]*?<\/item>/gi;
-  let match;
-
-  while ((match = itemRegex.exec(xml)) !== null && results.length < limit) {
-    const item = match[0];
-    const titleMatch = item.match(/<title>(?:<!\[CDATA\[)?([^\]<]+)/i);
-    const linkMatch = item.match(/<link>(?:<!\[CDATA\[)?([^\]<]+)/i);
-    const descMatch = item.match(/<description>(?:<!\[CDATA\[)?([^\]<]+)/i);
-    const dateMatch = item.match(/<pubDate>(?:<!\[CDATA\[)?([^\]<]+)/i);
-
-    const title = titleMatch ? decodeHTMLTags(titleMatch[1].trim()) : '';
-    const url = linkMatch ? linkMatch[1].trim() : '';
-    const snippet = descMatch ? decodeHTMLTags(descMatch[1].trim()) : '';
-    const date = dateMatch ? dateMatch[1].trim() : '';
-
-    if (title && url) {
-      results.push({
-        title: date ? `[${date}] ${title}` : title,
-        url,
-        snippet,
-        source: 'bing-news',
-        engines: ['bing'],
-      });
-    }
-  }
-
   return results;
 }

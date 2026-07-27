@@ -1,5 +1,7 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
+import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const yandexProvider = {
   id: 'yandex' as const,
@@ -8,7 +10,7 @@ export const yandexProvider = {
   languages: ['ru', 'en', 'auto'],
 };
 
-export async function searchYandex(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchYandex(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://yandex.com/search/?text=${encodeURIComponent(query)}`;
     const res = await fetch(url, {
@@ -16,22 +18,25 @@ export async function searchYandex(query: string, limit: number = 10): Promise<S
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      signal: AbortSignal.timeout(10000),
+      signal: withTimeout(options?.signal, 10000),
     });
 
     if (!res.ok) {
-      console.error(`Yandex: HTTP ${res.status}`);
+      if (options?.throwOnError) throw new Error(`Yandex HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Yandex HTTP error');
       return [];
     }
 
     const html = await res.text();
     return parseYandexHTML(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
-      console.error('Yandex: Search timed out');
+      logger.warn('Yandex search timed out');
     } else {
-      console.error('Yandex search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Yandex search failed');
     }
     return [];
   }

@@ -10,7 +10,7 @@
 | **函数** | `camelCase` | `searchWithFallback()`, `searchDuckDuckGo()` |
 | **类/类型/接口** | `PascalCase` | `SearchResult`, `BraveProvider`, `ScoredResult` |
 | **常量** | `UPPER_SNAKE` | `FREE_ENGINES`, `ENGINE_WEIGHTS` |
-| **环境变量** | `UPPER_SNAKE` | `JINA_API_KEY`, `BRAVE_API_KEY` |
+| **环境变量** | `UPPER_SNAKE` | `HTTP_AUTH_TOKEN`, `BRAVE_API_KEY` |
 
 ## 导入顺序
 
@@ -74,7 +74,9 @@ export async function doSomething(
 
 - 引擎失败 → 返回空数组，不抛异常
 - 聚合失败 → 返回原始数据（降级），不中断流程
-- API 调用失败 → console.error 日志 + 正常降级返回
+- API 调用失败 → 通过 `logger` 写入 stderr，并正常降级返回
+- MCP Server/runtime 禁止直接使用 `console`；人类直接调用的 CLI 入口可使用
+  stdout/stderr，适用文件由 ESLint 精确限定
 - 永远不要吞错误而不留日志
 
 ## 测试

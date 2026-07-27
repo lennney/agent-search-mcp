@@ -1,5 +1,7 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
+import { withTimeout } from '../infrastructure/abort.js';
+import { logger } from '../infrastructure/logger.js';
 
 export const startpageProvider = {
   id: 'startpage' as const,
@@ -8,24 +10,28 @@ export const startpageProvider = {
   languages: ['en', 'auto'],
 };
 
-async function getScValue(): Promise<string> {
+async function getScValue(options?: EngineSearchOptions): Promise<string> {
   try {
     const res = await fetch('https://www.startpage.com/', {
-      signal: AbortSignal.timeout(5000),
+      signal: withTimeout(options?.signal, 5000),
     });
+    if (!res.ok) throw new Error(`Startpage token HTTP ${res.status}`);
     const html = await res.text();
     const match = html.match(/name="sc"\s+value="([^"]+)"/);
     return match ? match[1] : '';
-  } catch {
+  } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     return '';
   }
 }
 
-export async function searchStartpage(query: string, limit: number = 10): Promise<SearchResult[]> {
+export async function searchStartpage(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
-    const sc = await getScValue();
+    const sc = await getScValue(options);
     if (!sc) {
-      console.error('Startpage: Failed to get sc token');
+      if (options?.throwOnError) throw new Error('Startpage token unavailable');
+      logger.warn('Startpage token unavailable');
       return [];
     }
 
@@ -48,22 +54,25 @@ export async function searchStartpage(query: string, limit: number = 10): Promis
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       body,
-      signal: AbortSignal.timeout(15000),
+      signal: withTimeout(options?.signal, 15000),
     });
 
     if (!res.ok) {
-      console.error(`Startpage: HTTP ${res.status}`);
+      if (options?.throwOnError) throw new Error(`Startpage HTTP ${res.status}`);
+      logger.warn({ status: res.status }, 'Startpage HTTP error');
       return [];
     }
 
     const html = await res.text();
     return parseStartpageHTML(html, limit);
   } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
     if (msg.includes('abort') || msg.includes('timeout')) {
-      console.error('Startpage: Search timed out');
+      logger.warn('Startpage search timed out');
     } else {
-      console.error('Startpage search failed:', msg.slice(0, 200));
+      logger.warn({ err: msg.slice(0, 200) }, 'Startpage search failed');
     }
     return [];
   }

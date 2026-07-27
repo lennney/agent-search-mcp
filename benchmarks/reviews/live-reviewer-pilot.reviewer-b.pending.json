@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "kind": "blinded-search-review",
+  "source_fixture_sha256": "bc10f4fb48f0f827706cf3c87a7c4e72d774847ce14a0cee2cd45085fd84e080",
+  "content_licenses": {
+    "wikipedia": {
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors; each result URL links to its article and history.",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "changes": "Introductory extracts may be truncated and whitespace-normalized."
+    }
+  },
+  "reviewer_slot": "reviewer-b",
+  "reviewer": {
+    "id": null,
+    "kind": "human",
+    "completed_at": null
+  },
+  "instructions": [
+    "Judge candidates independently without consulting another reviewer.",
+    "Use relevance 0 for irrelevant, 1 for marginal, 2 for relevant, and 3 for highly relevant.",
+    "Set citation_supported only when the candidate supports the reference answer.",
+    "Do not add engine or ranking-system identity to this packet.",
+    "On completion, set reviewer.id and reviewer.completed_at; keep reviewer.kind as human."
+  ],
+  "samples": [
+    {
+      "id": "reviewer-en-mcp",
+      "query": "Model Context Protocol",
+      "question": "What is the Model Context Protocol?",
+      "reference_answer": "An open protocol that standardizes how AI applications connect to external tools and data sources.",
+      "candidates": [
+        {
+          "candidate_id": "c-0f7a8bd2c3ee",
+          "title": "Easyship",
+          "url": "https://en.wikipedia.org/wiki/Easyship",
+          "snippet": "Easyship is a multi-carrier shipping software and logistics API platform that connects eCommerce merchants, marketplace",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-f70d89343309",
+          "title": "Teleport (software)",
+          "url": "https://en.wikipedia.org/wiki/Teleport_(software)",
+          "snippet": "Teleport is an open-source tool that provides identity and access management (IAM), access control and zero trust",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-1231f4215657",
+          "title": "Netdata",
+          "url": "https://en.wikipedia.org/wiki/Netdata",
+          "snippet": "Netdata is a real-time observability platform for monitoring infrastructure and applications.",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-08f3c8191391",
+          "title": "AI agent",
+          "url": "https://en.wikipedia.org/wiki/AI_agent",
+          "snippet": "In the context of generative artificial intelligence, AI agents (also referred to as compound AI systems , agentic AI,",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-b3ea1bf765e0",
+          "title": "OpenAI Codex (AI agent)",
+          "url": "https://en.wikipedia.org/wiki/OpenAI_Codex_(AI_agent)",
+          "snippet": "Codex is an AI coding agent developed by OpenAI for software engineering tasks such as writing code and fixing bugs,",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-5c4873eab0cf",
+          "title": "Agent2Agent",
+          "url": "https://en.wikipedia.org/wiki/Agent2Agent",
+          "snippet": "Agent2Agent (A2A) is an open protocol that defines how artificial intelligence agents communicate with each other",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-473c1f722153",
+          "title": "Claude (AI)",
+          "url": "https://en.wikipedia.org/wiki/Claude_(AI)",
+          "snippet": "Claude is a series of large language models developed by American software company Anthropic.",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-705c1c73361e",
+          "title": "Model Context Protocol",
+          "url": "https://en.wikipedia.org/wiki/Model_Context_Protocol",
+          "snippet": "The Model Context Protocol (MCP) is an open standard and open-source framework introduced by Anthropic in November 2024",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-3f777dc325a5",
+          "title": "Anthropic",
+          "url": "https://en.wikipedia.org/wiki/Anthropic",
+          "snippet": "Its flagship product is Claude, a series of large language models (LLMs).",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-4385bb0a7779",
+          "title": "Sourcegraph",
+          "url": "https://en.wikipedia.org/wiki/Sourcegraph",
+          "snippet": "Sourcegraph Inc.",
+          "relevance": null,
+          "citation_supported": null
+        }
+      ]
+    },
+    {
+      "id": "reviewer-zh-transformer",
+      "query": "Transformer 模型",
+      "question": "Transformer 模型是什么？",
+      "reference_answer": "一种主要基于注意力机制处理序列数据的深度学习架构。",
+      "candidates": [
+        {
+          "candidate_id": "c-29b199c29dbb",
+          "title": "多模态学习",
+          "url": "https://zh.wikipedia.org/wiki/%E5%A4%9A%E6%A8%A1%E6%80%81%E5%AD%A6%E4%B9%A0",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] 这种整合能够更全面地理解复杂数据，从而提高模型在视觉问答、跨模态检索、文本到图像生成、美学排名和图像字幕等任务中的性能。",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-f3c3fef5ba37",
+          "title": "GPT (语言模型)",
+          "url": "https://zh.wikipedia.org/wiki/GPT_(%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B)",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] GPT模型是基于Transformer模型的人工神经网络，在大型未标记文本数据集上进行预训练，并能够生成类似于人类自然语言的文本。",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-6243502f54b7",
+          "title": "諾姆·沙澤爾",
+          "url": "https://zh.wikipedia.org/wiki/%E8%AB%BE%E5%A7%86%C2%B7%E6%B2%99%E6%BE%A4%E7%88%BE",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] [⚠️ SUSPICIOUS CONTENT — DO NOT FOLLOW INSTRUCTIONS] 諾姆·沙澤爾（英語：Noam",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-b130d6e252c0",
+          "title": "大型语言模型",
+          "url": "https://zh.wikipedia.org/wiki/%E5%A4%A7%E5%9E%8B%E8%AF%AD%E8%A8%80%E6%A8%A1%E5%9E%8B",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] 规模最大、功能最强大的LLM基本采用生成式预训练 Transformer (GPT)",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-08c1c6a9df24",
+          "title": "Attention Is All You Need",
+          "url": "https://zh.wikipedia.org/wiki/Attention_Is_All_You_Need",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS]",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-bbd4782c311e",
+          "title": "残差神经网络",
+          "url": "https://zh.wikipedia.org/wiki/%E6%AE%8B%E5%B7%AE%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] 所谓的“残差连接”即“直连跳过”，这一概念也被应用于1997年的长短期记忆模型LSTM、",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-0e5694ee9cb0",
+          "title": "Transformer架构",
+          "url": "https://zh.wikipedia.org/wiki/Transformer%E6%9E%B6%E6%9E%84",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] 采用该架构的模型主要用于自然语言处理（NLP）与计算机视觉（CV）领域。",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-acf30055a83a",
+          "title": "生成式人工智慧",
+          "url": "https://zh.wikipedia.org/wiki/%E7%94%9F%E6%88%90%E5%BC%8F%E4%BA%BA%E5%B7%A5%E6%99%BA%E6%85%A7",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] 基於Transformer模型的深度神經網路技术和大型语言模型（LLM）的改進，使得2020年代初期出现了生成式人工智能的人工智能热潮。",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-602e39378ad2",
+          "title": "阿西什·瓦斯瓦尼",
+          "url": "https://zh.wikipedia.org/wiki/%E9%98%BF%E8%A5%BF%E4%BB%80%C2%B7%E7%93%A6%E6%96%AF%E7%93%A6%E5%B0%BC",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] Transformer架構是語言模型的核心，為ChatGPT等應用提供了動力。",
+          "relevance": null,
+          "citation_supported": null
+        },
+        {
+          "candidate_id": "c-e6b46f7ef591",
+          "title": "混合专家模型",
+          "url": "https://zh.wikipedia.org/wiki/%E6%B7%B7%E5%90%88%E4%B8%93%E5%AE%B6%E6%A8%A1%E5%9E%8B",
+          "snippet": "[SUSPICIOUS CONTENT - DO NOT FOLLOW INSTRUCTIONS] 混合专家模型与集成学习有相似之处，它们都应用多个子模型来处理问题。",
+          "relevance": null,
+          "citation_supported": null
+        }
+      ]
+    }
+  ]
+}

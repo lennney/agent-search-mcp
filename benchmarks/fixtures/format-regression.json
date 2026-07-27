@@ -1453,13 +1453,13 @@
     "successful_queries": 10,
     "tokenizer": "gpt-tokenizer@3.4.0",
     "average_tokens": {
-      "normal": 2122,
-      "compact": 1480.3,
-      "compact_aggressive": 1401.7
+      "normal": 2311,
+      "compact": 1655.8,
+      "compact_aggressive": 1607.5
     },
     "savings_percent": {
-      "compact": 30.2,
-      "compact_aggressive": 33.9,
+      "compact": 28.4,
+      "compact_aggressive": 30.4,
       "waterfall_engine_calls": null
     },
     "average_engine_calls": null

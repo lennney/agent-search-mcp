@@ -1,7 +1,11 @@
-# Agent Search MCP
+# Agent Search MCP: Free Web Search for AI Agents
 
-> **Free, token-efficient web search for AI agents.**
-> Start with eight zero-key sources. Spend less context through waterfall stopping and compact output. Route Chinese queries natively and escalate to optional commercial APIs only when needed. `npx agent-search-mcp` is all you need.
+**A lightweight, free-first MCP web search router with compact multi-source evidence.**
+
+Agent Search MCP is an open-source, self-hosted MCP server and CLI. It starts
+without an API key, searches English and Chinese sources, keeps optional paid
+providers behind an explicit policy, and caps provider calls, search time,
+result count, and evidence size.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -10,254 +14,241 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
-[中文文档](README_zh.md) · [Benchmarks](./benchmarks/) · [CHANGELOG](./CHANGELOG.md)
+[中文文档](README_zh.md) · [Benchmarks](./benchmarks/) · [Architecture](./docs/architecture.md) · [CHANGELOG](./CHANGELOG.md)
 
 ---
+
+## Install
+
+```bash
+npx -y agent-search-mcp
+```
+
+Requires Node.js >= 18.17. The default runtime does not require a browser,
+database, Python, or a search API account.
+
+### Connect an MCP client
+
+Use this stdio configuration in MCP clients that accept `mcpServers` JSON,
+including Claude Desktop, Cursor, VS Code, and Windsurf:
+
+```json
+{
+  "mcpServers": {
+    "agent-search": {
+      "command": "npx",
+      "args": ["-y", "agent-search-mcp"]
+    }
+  }
+}
+```
+
+Claude Code and Codex can register the same `npx -y agent-search-mcp` stdio
+command through their MCP settings.
+
+After a global install, check the local runtime without making a search request:
+
+```bash
+npm install -g agent-search-mcp
+fasm doctor
+```
 
 ## Why Agent Search MCP
 
-The immediate value is simple: **search without paying for an API, and return fewer tokens without blindly throwing away evidence**. The mechanism behind that promise is a search policy for **where to search, when to stop, how much context to spend, and what evidence to trust**. Agent Search MCP is that control layer: a local-first search router, not another single-backend search API.
+| Need | Product behavior |
+|---|---|
+| Free web search | Zero-key sources work without an API account |
+| Provider cost control | Paid providers run only under an explicit routing policy |
+| Token cost control | Compact output and one evidence budget bound response size |
+| Multi-source evidence | Results retain provenance, relevance, provider-family count, and partial failures |
+| Chinese web search | Sogou and Baidu handle Chinese queries without a translation layer |
+| Lightweight self-hosting | Pure Node.js runtime with stdio, Streamable HTTP, and CLI access |
 
-The route is deliberate: **zero-key start → Chinese-native routing → inspectable multi-source evidence → token-aware progressive search → optional commercial escalation**. The 12 adapters serve this route; adapter count is not the product story by itself.
+The default `free_first` policy never spends a configured API credential.
+`free_only` blocks paid providers. `quality_escalation` can call one configured
+paid provider after free evidence misses the quality gate, while `paid_first`
+tries that provider before the free fallback.
 
-| | Agent Search MCP | [Tavily](https://github.com/tavily-ai/tavily-mcp) | [Exa](https://github.com/exa-labs/exa-mcp-server) | [Brave](https://github.com/brave/brave-search-mcp-server) |
-|---|:---:|:---:|:---:|:---:|
-| **Search without account/API key** | **Yes** | No | No | No |
-| **Search backends** | **8 zero-key + 4 optional APIs** | Tavily API | Exa index | Brave index |
-| **Cross-engine aggregation** | **Yes** | Single upstream | Single upstream | Single upstream |
-| **Dedicated Chinese engines** | **Sogou + Baidu** | No | No | No |
-| **Local MCP server** | Yes | Yes | Yes | Yes |
-| **Best fit** | Zero-key, multilingual verification | Hosted search/extract/map/crawl | Semantic, code, and company research | Independent index + vertical search |
+Request budgets cap adapter attempts, elapsed time, and admitted results.
+The evidence budget caps query-relevant passages across the complete response.
+Compact mode keeps full detail for the first results and reduces later entries
+to source-preserving references.
 
-Comparison last checked 2026-07-25 against the linked official repositories. Commercial services have useful free allowances, but still require an account or credential; pricing changes, so this table intentionally avoids monthly-price claims.
+### Measured token reduction
 
-### Zero-key by default
+The checked-in bilingual fixture measures formatting with a locked tokenizer:
 
-Eight adapters need no credentials — DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, and Mojeek. Brave, Tavily, Exa, and You.com remain optional when you want their APIs.
+| Output | Average tokens per query | Savings vs normal |
+|---|---:|---:|
+| Normal | 2311.0 | |
+| Compact | 1655.8 | 28.4% |
+| Compact+ | 1607.5 | 30.4% |
 
-### Progressive multi-source search
+This fixture verifies output formatting and evidence-packet behavior. It does
+not measure live engine availability or search quality. See the
+[benchmark method and limitations](./benchmarks/#reproducible-fixture-replay).
 
-Parallel and waterfall orchestration, URL/title deduplication, ranking, and graceful fallback are built in. Compact mode supports progressive disclosure so agents can inspect the top results first and call `free_extract` only when deeper content is needed.
+## How the search router works
 
-### Token control is a product feature
+```mermaid
+flowchart LR
+    A["AI agent"] --> M["MCP search tools"]
+    M --> P["Provider and request policy"]
+    P --> F["Zero-key sources"]
+    P --> O["Optional paid provider"]
+    F --> E["Deduplicate, rank, and preserve failures"]
+    O --> E
+    E --> B["Evidence and token budget"]
+    B --> R["Compact multi-source result"]
+```
 
-`OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `MIN_CONFIDENCE`, and `MIN_SOURCE_COUNT` let operators trade context size against detail. A historical 30-query live run measured **28.7% fewer tokens in Compact mode**, **35.5% in Compact+**, and **75% fewer engine calls than naive eight-engine fan-out**. These are scoped measurements for that query set and environment, not universal guarantees. The new frozen-fixture replay uses an in-process tokenizer and currently measures 30.2% / 33.9% formatting savings reproducibly.
+The router evaluates each search batch against separate result, relevance,
+confidence, and provider-family gates. It stops after the evidence passes those
+gates and exposes the decision in `meta.execution`. Provider failures stay
+visible in `partialFailures`, so an empty result cannot hide an upstream error.
 
-### Native Chinese search
-
-Sogou + Baidu search the Chinese web directly — WeChat content, Baidu Baike, Chinese forums. Not a translation layer, not an afterthought.
+The [source-level product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md)
+explains where Agent Search MCP differs from Tavily, Exa, Brave Search,
+Firecrawl, and MCP Web Hound. It compares routing, evidence, local operation,
+paid-provider boundaries, and Chinese search without volatile pricing or
+popularity claims.
 
 ---
 
-## Quick Start
-
-```bash
-# One command — no install, no API keys
-npx agent-search-mcp
-```
-
-Requires Node.js >= 18.
-
-### Client Configuration
-
-<details>
-<summary><b>Claude Code / Claude Desktop</b></summary>
-
-```json
-{
-  "mcpServers": {
-    "agent-search": {
-      "command": "npx",
-      "args": ["-y", "agent-search-mcp"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Cursor / VS Code / Codex</b></summary>
-
-```json
-{
-  "mcpServers": {
-    "agent-search": {
-      "command": "npx",
-      "args": ["-y", "agent-search-mcp"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Windsurf</b></summary>
-
-```json
-{
-  "mcpServers": {
-    "agent-search": {
-      "command": "npx",
-      "args": ["-y", "agent-search-mcp"]
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>Hermes</b></summary>
-
-```yaml
-mcp_servers:
-  agent-search:
-    command: npx
-    args: ["-y", "agent-search-mcp"]
-```
-</details>
-
----
-
+<!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## Engines
 
-The package contains 12 engine adapters, all selectable through `free_search`, `free_search_advanced`, the CLI, and waterfall routing. Eight work without credentials; Brave, Tavily, Exa, and You.com are enabled when their API keys are present.
+The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapters.
 
-| Engine | Free | Strengths |
-|--------|:----:|-----------|
-| **DuckDuckGo** | ✅ | Privacy-focused, English web |
-| **Sogou** | ✅ | Chinese web search, WeChat content |
-| **Bing** | ✅ | Multilingual, strong English results |
-| **Baidu** | ✅ | Chinese web search, Baidu Baike |
-| **Wikipedia** | ✅ | Clean JSON API, structured knowledge |
-| **Startpage** | ✅ | Google results via privacy proxy |
-| **Yandex** | ✅ | Russian/Cyrillic web search |
-| **Mojeek** | ✅ | Independent crawler, privacy-focused |
-| Brave Search | ❌ | High-quality web results (2K free/month) |
-| Tavily | ❌ | Agent-optimized search (1K free/month) |
-| Exa | ❌ | Neural semantic search (1K free/month) |
-| You.com | ❌ | AI-powered search ($5/1K, free credits available) |
-
----
+| Engine | Access | Languages | Role |
+|---|---|---|---|
+| DuckDuckGo | Zero-key | en | General Web Search |
+| Sogou Search | Zero-key | zh | Chinese Web Search |
+| Bing | Zero-key | en, zh | Multilingual Web Search |
+| Baidu | Zero-key | zh | Chinese Web Search |
+| Wikipedia | Zero-key | en, zh, ja, de, fr, es, auto | Encyclopedic references |
+| Startpage | Zero-key | en, auto | Privacy-oriented Web Search |
+| Yandex | Zero-key | ru, en, auto | Russian and international Web Search |
+| Mojeek | Zero-key | en, auto | Independent privacy-oriented index |
+| Wiby | Zero-key | en | Independent small-Web index |
+| Brave Search | `BRAVE_API_KEY` | en, zh | Optional commercial Web Search |
+| Tavily Search | `TAVILY_API_KEY` | en, zh | Optional agent-oriented Search |
+| Exa Search | `EXA_API_KEY` | en, zh | Optional neural Search |
+| You.com Search | `YDC_API_KEY` | en, zh | Optional commercial Web Search |
+| Tencent Web Search API | `TENCENT_WSA_API_KEY` | zh | Optional official Chinese Web Search |
+| Bocha Web Search | `BOCHA_API_KEY` | zh, en | Optional Chinese-first AI Search |
+| Serper Google Search | `SERPER_API_KEY` | en, zh, auto | Optional Google SERP Search |
 
 ## Tools
 
-| Tool | Description | Best For |
-|------|-------------|----------|
-| `free_search` | Multi-engine search with auto-fallback | Quick fact-finding |
-| `free_search_advanced` | Filtered search with waterfall, domain filtering, enrichment | High-confidence results, date ranges |
-| `free_search_news` | News search across DDG News + Bing News | Recent news, current events |
-| `search_with_synthesis` | Deep search with prompt hint for LLM synthesis | Complex queries needing verification |
-| `free_extract` | Extract full page content as Markdown | Reading a page from search results |
-| `fetch_github_readme` | Fetch README from a GitHub repo | Project documentation |
-| `fetch_csdn_article` | Fetch content from CSDN | Chinese developer articles |
-| `fetch_juejin_article` | Fetch content from Juejin | Chinese developer articles |
+| Tool | Description | Best for |
+|---|---|---|
+| `free_search` | Multi-engine Web Search with bounded fallback | Quick facts and general discovery |
+| `free_search_advanced` | Filtered waterfall search and optional enrichment | Domain policy and progressive verification |
+| `free_extract` | Extract a URL as clean Markdown | Reading complete source pages |
+| `fetch_github_readme` | Fetch a public GitHub repository README | Project documentation |
+| `fetch_csdn_article` | Fetch a CSDN article | Chinese technical articles |
+| `fetch_juejin_article` | Fetch a Juejin article | Chinese developer articles |
+| `search_with_synthesis` | Search evidence with an LLM synthesis hint | Agent-authored answers from cited evidence |
 
-All tools are read-only and idempotent with MCP 2025 annotations.
+### Capability controls
+
+| Environment | Default | Purpose |
+|---|---|---|
+| `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | Tool registration allowlist and denylist; deny wins |
+| `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | Engine execution allowlist and denylist; deny wins |
+| `SEARCH_PROVIDER_MODE` | free_first | Default routing: free_first, quality_escalation, paid_first, or free_only |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper | Selects the first configured optional provider; not a quality claim |
+| `SEARCH_BUDGET_MAX_CALLS` | 16 | Adapter-attempt budget |
+| `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | End-to-end elapsed-time budget |
+| `SEARCH_BUDGET_MAX_RESULTS` | 100 | Admitted raw-result budget |
+| `EVIDENCE_BUDGET_CHARS` | 1200 | Evidence-character budget |
+<!-- END GENERATED CAPABILITY MATRIX -->
+
+Wiby is a genuine zero-key source backed by its official JSON API and is used
+late in the free waterfall as an independent small-Web supplement. Optional
+providers require user credentials; any signup credit or trial quota is
+provider-controlled and is not treated as permanent free access.
+
+All tools are read-only and idempotent. Search cancellation reaches rate-limit
+waits, retries, provider requests, and optional enrichment. Enrichment can
+improve a snippet but cannot increase source confidence or independent source
+count.
+
+`free_search_advanced.time_range` remains in the compatibility schema. The
+server returns `UNSUPPORTED_FILTER` before searching because the general web
+providers do not share one enforceable recency contract.
 
 ---
 
 ## Configuration
 
-### Environment Variables
+The generated capability table above lists the default request budgets. These
+settings cover the common deployment choices:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BRAVE_API_KEY` | — | Brave Search API key |
-| `TAVILY_API_KEY` | — | Tavily API key |
-| `EXA_API_KEY` | — | Exa API key |
-| `YDC_API_KEY` | — | You.com API key |
-| `LOG_LEVEL` | `info` | `info` or `debug` |
-| `MODE` | `stdio` | Transport: `stdio`, `http`, or `both` |
-| `PORT` | `3000` | HTTP server port (when `MODE=http` or `both`) |
-| `OUTPUT_STYLE` | `normal` | `compact` for token-optimized output |
-| `SNIPPET_LENGTH` | `200` | Max snippet characters (60–500) |
-| `MAX_FULL_RESULTS` | `3` | Full results before compacting (compact mode) |
-| `MIN_CONFIDENCE` | `0` | Confidence threshold filter (0.0–1.0); legacy values 2–3 map to source count |
-| `MIN_SOURCE_COUNT` | `1` | Minimum number of independent engine sources (1–12) |
-| `HTTP_AUTH_TOKEN` | — | Bearer token required by HTTP mode |
-| `HTTP_ALLOW_UNAUTHENTICATED` | `false` | Explicitly opt out of HTTP authentication (trusted local networks only) |
-| `ALLOWED_ORIGINS` | — | Comma-separated browser origins allowed to call HTTP endpoints |
-| `SEMANTIC_DEDUP` | `false` | Semantic dedup via Model2Vec (requires `pip install model2vec`) |
-| `DEDUP_THRESHOLD` | `0.85` | Cosine similarity threshold for semantic dedup |
-| `SEMANTIC_RERANK` | `false` | Semantic rerank via Model2Vec |
-| `RERANK_TOP_K` | `5` | Results to keep after semantic rerank |
+| Goal | Environment variables |
+|---|---|
+| Add an optional provider | `BRAVE_API_KEY`, `TAVILY_API_KEY`, `EXA_API_KEY`, `YDC_API_KEY`, `TENCENT_WSA_API_KEY`, `BOCHA_API_KEY`, or `SERPER_API_KEY` |
+| Choose spend policy | `SEARCH_PROVIDER_MODE`, `PAID_ENGINE_ORDER` |
+| Reduce response tokens | `OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS` |
+| Restrict tools or engines | `ENABLED_TOOLS`, `DISABLED_TOOLS`, `ALLOWED_ENGINES`, `DENIED_ENGINES` |
+| Use an explicit proxy | `DUCKDUCKGO_PROXY_URL`, `SOGOU_PROXY_URL`, or `USE_PROXY=true` with `PROXY_URL` |
+| Persist the exact-result cache | `SEARCH_CACHE_DIRECTORY`, `SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES` |
+| Enable optional semantic processing | `SEMANTIC_DEDUP`, `SEMANTIC_RERANK`, `DEDUP_THRESHOLD`, `RERANK_TOP_K` |
 
-**Zero config works** — the 8 free engines need no API keys.
-
-### Tool Visibility
-
-```bash
-# Only specific tools
-ENABLED_TOOLS=free_search,free_search_advanced,free_search_news
-
-# Disable specific tools
-DISABLED_TOOLS=free_extract,fetch_github_readme
-```
-
-`DISABLED_TOOLS` takes priority over `ENABLED_TOOLS`.
+Adding an API key does not authorize paid traffic. The routing policy controls
+provider use. The default exact-result cache stays in memory; setting
+`SEARCH_CACHE_DIRECTORY` opts into local persistence. Semantic processing is
+the only optional feature that uses Python and Model2Vec.
 
 ### HTTP deployment
 
-HTTP mode is secure-by-default: `/mcp` requires `Authorization: Bearer <token>`, and browser requests with an `Origin` header must match `ALLOWED_ORIGINS`. Keep `/health` available for probes, terminate TLS at a trusted reverse proxy, and rotate the token as a secret. See the [HTTP deployment guide](./docs/http-deployment.md).
-
-### Engine Filtering
-
-```bash
-ALLOWED_ENGINES=sogou,baidu    # Chinese-only
-DENIED_ENGINES=yandex,mojeek   # Exclude specific engines
-```
+HTTP mode requires `HTTP_AUTH_TOKEN` unless you set
+`HTTP_ALLOW_UNAUTHENTICATED=true`. Browser requests with an `Origin` header must
+match `ALLOWED_ORIGINS`. See the [HTTP deployment guide](./docs/http-deployment.md)
+for TLS termination, token rotation, and reverse-proxy examples.
 
 ---
 
 ## CLI
 
-`agent-search-mcp` ships with a standalone CLI (`fasm`).
+The package includes the `fasm` CLI:
 
 ```bash
-# Search
 fasm search "TypeScript MCP server"
 fasm search "query" --count 5 --engines bing,baidu,youcom --json
-
-# Extract
 fasm extract "https://example.com"
 fasm extract "https://example.com" --json
-
-# HTTP server (Bearer auth is required for MCP HTTP mode)
+fasm doctor
+fasm doctor --json
 HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 ```
 
----
-
-## Benchmark
-
-The benchmark has two evidence tracks. The historical 2026-07-24 live run covers 30 EN/ZH queries and measured 28.7% Compact, 35.5% Compact+, and 75% fewer calls versus naive eight-engine fan-out. Its raw responses were not frozen, so those figures remain historical environment-scoped measurements. The current runner captures actual execution telemetry and replays a frozen fixture through every output style with locked `gpt-tokenizer`; CI verifies the expected summary (currently 30.2% / 33.9%). Neither track is a cross-product quality ranking or a production guarantee.
-
-→ [Methodology, queries, limitations, and reports](./benchmarks/)
+`fasm doctor` reads local configuration without network probes and never prints
+credential or proxy values.
 
 ---
 
-## Companion Tools
+## Documentation and evidence
 
-**🛡️ [mcp-slim-guard](https://github.com/lennney/mcp-slim-guard)** — Add security + compression to your MCP stack
+| Document | Contents |
+|---|---|
+| [System architecture](./docs/architecture.md) | Routing, evidence, provider families, and configuration |
+| [Product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md) | Source-level review of Agent search products |
+| [Benchmarks](./benchmarks/) | Token fixture, live-run scope, and quality evaluation method |
+| [v3.2.0 release notes](./docs/releases/v3.2.0.md) | Provider policy, budgets, and migration notes |
+| [Earlier release candidate evidence](./docs/evidence/2026-07-26-release-candidate-smoke.md) | Pre-expansion packed-install matrix and limitations |
+| [MCP 2026 readiness](./docs/plans/2026-07-25-mcp-ecosystem-and-2026-readiness.md) | Isolated protocol experiment and remaining gates |
+
+## Companion: Slim Guard
+
+Agent Search controls retrieval work and compresses search evidence.
+[mcp-slim-guard](https://github.com/lennney/mcp-slim-guard) sits between an
+agent and MCP servers to handle tool-schema compression and security policy.
 
 ```bash
 npm install -g mcp-slim-guard
-mcp-slim-guard init
-mcp-slim-guard start
 ```
-
-```
-AI Agent → mcp-slim-guard (security + compression) → agent-search-mcp
-```
-
-| Feature | Benefit |
-|---------|---------|
-| **Schema compression** | Reclaim ~83% of context window — 1,736 → 300 tokens |
-| **Tool allow/deny** | Glob-based whitelist/blacklist for tool access control |
-| **SSRF protection** | IP blacklist + domain whitelist blocks internal network requests |
-| **Injection detection** | 17 heuristic patterns prevent prompt/shell/SQL injection |
-| **Rate limiting** | Token bucket per-tool, default 60 req/min |
-| **Audit logging** | Structured JSON audit log with rotation + gzip |
 
 ---
 
@@ -273,7 +264,8 @@ npm run dev        # stdio mode
 npm run dev:http   # HTTP mode (port 3000)
 ```
 
-The build helper is cross-platform; CI checks Node.js 18/20/22 on Linux and performs a Windows build smoke test.
+The stable package supports Node.js 18, 20, and 22. The isolated MCP 2026
+experiment requires Node.js 20 or newer.
 
 ---
 
@@ -282,3 +274,6 @@ The build helper is cross-platform; CI checks Node.js 18/20/22 on Linux and perf
 [Apache 2.0](LICENSE)
 
 Based on [open-websearch](https://github.com/Aas-ee/open-websearch) by Aas-ee.
+
+If Agent Search MCP helps your agent, [star the repository](https://github.com/lennney/agent-search-mcp)
+so other developers can find the project.

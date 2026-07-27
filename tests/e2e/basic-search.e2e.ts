@@ -6,7 +6,10 @@ import { fileURLToPath } from 'url';
 import { createInterface, Interface } from 'readline';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SERVER_PATH = resolve(__dirname, '../../dist/index.js');
+const SERVER_PATH = process.env.E2E_SERVER_PATH
+  ? resolve(process.env.E2E_SERVER_PATH)
+  : resolve(__dirname, '../../dist/index.js');
+const EXPECTED_SERVER_VERSION = process.env.E2E_EXPECTED_SERVER_VERSION || '3.2.0';
 
 // Guard: the E2E test spawns the compiled binary, so dist/ must exist.
 // CI runs build before test, but this check gives a clear failure message
@@ -14,6 +17,34 @@ const SERVER_PATH = resolve(__dirname, '../../dist/index.js');
 // E2E tests require a pre-built server. If dist/ is missing, skip all tests
 // with a clear message rather than a suite-level failure.
 const E2E_SKIP = !existsSync(SERVER_PATH);
+const LIVE_NETWORK_E2E = process.env.RUN_LIVE_NETWORK_E2E === 'true';
+const liveNetworkIt = LIVE_NETWORK_E2E ? it : it.skip;
+const LIVE_REQUEST_LIMIT = Number.parseInt(
+  process.env.LIVE_E2E_MAX_REQUESTS || '2',
+  10,
+);
+const liveExtractIt = LIVE_NETWORK_E2E && LIVE_REQUEST_LIMIT >= 2 ? it : it.skip;
+const LIVE_MIN_INTERVAL_MS = Number.parseInt(
+  process.env.LIVE_E2E_MIN_INTERVAL_MS || '10000',
+  10,
+);
+let liveRequests = 0;
+let lastLiveRequestAt = 0;
+
+async function claimLiveRequest(): Promise<void> {
+  if (liveRequests >= LIVE_REQUEST_LIMIT) {
+    throw new Error(`Live E2E request limit exceeded: ${LIVE_REQUEST_LIMIT}`);
+  }
+  const waitMs = Math.max(
+    LIVE_MIN_INTERVAL_MS - (Date.now() - lastLiveRequestAt),
+    0,
+  );
+  if (lastLiveRequestAt > 0 && waitMs > 0) {
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  }
+  liveRequests += 1;
+  lastLiveRequestAt = Date.now();
+}
 
 beforeAll(() => {
   if (E2E_SKIP) {
@@ -142,8 +173,15 @@ function spawnServer(): ChildProcess {
       MODE: 'stdio',
       // Prevent real API calls from using paid engines
       BRAVE_API_KEY: '',
+      BOCHA_API_KEY: '',
       TAVILY_API_KEY: '',
+      TENCENT_WSA_API_KEY: '',
       EXA_API_KEY: '',
+      SERPER_API_KEY: '',
+      YDC_API_KEY: '',
+      SEARCH_PROVIDER_MODE: 'free_only',
+      // One adapter attempt per live request: no automatic network retry.
+      SEARCH_BUDGET_MAX_CALLS: LIVE_NETWORK_E2E ? '1' : '16',
     },
   });
 }
@@ -216,7 +254,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     const result = (response as JsonRpcResponse).result as Record<string, unknown>;
     expect(result).toHaveProperty('serverInfo');
     expect((result.serverInfo as Record<string, unknown>).name).toBe('agent-search-mcp');
-    expect((result.serverInfo as Record<string, unknown>).version).toBeTruthy();
+    expect((result.serverInfo as Record<string, unknown>).version).toBe(EXPECTED_SERVER_VERSION);
   }, 20000);
 
   it('lists tools after initialization', async () => {
@@ -248,13 +286,18 @@ function waitForStartup(ms: number = 500): Promise<void> {
     const toolNames = tools.map((t) => t.name);
     expect(toolNames).toContain('free_search');
     expect(toolNames).toContain('free_extract');
+    const freeSearch = tools.find((tool) => tool.name === 'free_search');
+    expect(freeSearch?.outputSchema).toEqual(expect.objectContaining({
+      type: 'object',
+      required: expect.arrayContaining(['query', 'engines', 'results', 'meta', 'security_note']),
+    }));
   }, 20000);
 
-  it('calls free_search and returns results', async () => {
+  liveNetworkIt('calls free_search and returns results', async () => {
+    await claimLiveRequest();
     proc = spawnServer();
-    // free_search searches all 4 free engines (ddg, sogou, bing, baidu) in
-    // parallel batches. Baidu has a 10s timeout, so total search time is ~13s
-    // under normal conditions, but can be significantly longer under load.
+    // The bounded live smoke selects DDG explicitly and permits one adapter
+    // attempt. It does not fan out across the free-provider set.
     reader = createMessageReader(proc, 50000);
     await waitForStartup(500);
 
@@ -281,7 +324,15 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect(response).not.toHaveProperty('error');
 
     const result = (response as JsonRpcResponse).result as Record<string, unknown>;
-    // Result should have content array
+    expect(result).toHaveProperty('structuredContent');
+    expect(result.structuredContent).toEqual(expect.objectContaining({
+      query: 'test',
+      results: expect.any(Array),
+      meta: expect.any(Object),
+    }));
+    const structuredContent = result.structuredContent as Record<string, unknown>;
+    expect((structuredContent.results as unknown[]).length).toBeGreaterThan(0);
+    // The compact text view keeps clients without structured-output support useful.
     expect(result).toHaveProperty('content');
     const content = result.content as Array<Record<string, unknown>>;
     expect(Array.isArray(content)).toBe(true);
@@ -295,7 +346,8 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect((textContent as Record<string, unknown>).text).toBeTruthy();
   }, 60000);
 
-  it('calls free_extract and returns content', async () => {
+  liveExtractIt('calls free_extract and returns content', async () => {
+    await claimLiveRequest();
     proc = spawnServer();
     reader = createMessageReader(proc, 20000);
     await waitForStartup(500);

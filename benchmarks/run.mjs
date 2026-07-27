@@ -4,6 +4,13 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { encode } from 'gpt-tokenizer';
 
+import {
+  parseEngineSelection,
+  selectBenchmarkQueries,
+} from './lib/capture-options.mjs';
+import { countProviderFamilies } from './lib/evidence-handoff.mjs';
+import { buildCaptureTrace } from './lib/quality-metrics.mjs';
+
 const ROOT = resolve(import.meta.dirname, '..');
 const ALL_ENGINES = [
   'duckduckgo', 'sogou', 'bing', 'baidu',
@@ -12,10 +19,18 @@ const ALL_ENGINES = [
 ];
 const ZERO_KEY_ENGINE_COUNT = 8;
 const OPTIONAL_KEY_ENV = ['BRAVE_API_KEY', 'TAVILY_API_KEY', 'EXA_API_KEY', 'YDC_API_KEY'];
+const CONTENT_LICENSES = {
+  wikipedia: {
+    license: 'CC BY-SA 4.0',
+    attribution: 'Wikipedia contributors; each result URL links to its article and history.',
+    license_url: 'https://creativecommons.org/licenses/by-sa/4.0/',
+    changes: 'Introductory extracts may be truncated and whitespace-normalized.',
+  },
+};
 const SCENARIOS = {
-  normal: { style: 'normal', snippetMax: 200 },
-  compact: { style: 'compact', snippetMax: 200, maxFullResults: 3 },
-  compact_aggressive: { style: 'compact', snippetMax: 120, maxFullResults: 3 },
+  normal: { style: 'normal', snippetMax: 200, evidenceBudgetChars: 1200 },
+  compact: { style: 'compact', snippetMax: 200, maxFullResults: 3, evidenceBudgetChars: 600 },
+  compact_aggressive: { style: 'compact', snippetMax: 120, maxFullResults: 3, evidenceBudgetChars: 360 },
 };
 
 function option(name) {
@@ -51,20 +66,20 @@ async function capture(fixturePath) {
   process.env.MIN_CONFIDENCE = '0';
   process.env.MIN_SOURCE_COUNT = '1';
 
+  const querySetPath = resolve(
+    ROOT,
+    option('--query-set') || 'benchmarks/queries.json',
+  );
   const [{ searchWithFallback }, packageJson, querySet] = await Promise.all([
     import('../dist/tools/free-search.js'),
     readJson(resolve(ROOT, 'package.json')),
-    readJson(resolve(ROOT, 'benchmarks/queries.json')),
+    readJson(querySetPath),
   ]);
-  const allQueries = Array.isArray(querySet) ? querySet : querySet.queries;
-  const requestedLimit = Number.parseInt(option('--limit') || String(allQueries?.length || 0), 10);
-  const english = allQueries?.filter(item => (item.language || item.lang) !== 'zh') || [];
-  const chinese = allQueries?.filter(item => (item.language || item.lang) === 'zh') || [];
-  const englishLimit = Math.ceil(requestedLimit / 2);
-  const queries = requestedLimit < (allQueries?.length || 0)
-    ? [...english.slice(0, englishLimit), ...chinese.slice(0, requestedLimit - englishLimit)]
-    : allQueries;
-  if (!Array.isArray(queries)) throw new Error('benchmarks/queries.json must contain an array');
+  const requestedEngines = parseEngineSelection(option('--engines'), ALL_ENGINES);
+  const requestedLimit = option('--limit') === undefined
+    ? undefined
+    : Number.parseInt(option('--limit'), 10);
+  const queries = selectBenchmarkQueries(querySet, requestedLimit);
 
   const samples = [];
   const fixture = {
@@ -73,33 +88,59 @@ async function capture(fixturePath) {
     captured_at: new Date().toISOString(),
     package_version: packageJson.version,
     query_set_sha256: sha256(JSON.stringify(queries)),
+    query_set: relative(ROOT, querySetPath).replaceAll('\\', '/'),
+    requested_engines: requestedEngines,
+    content_licenses: Object.fromEntries(
+      requestedEngines
+        .filter(engine => CONTENT_LICENSES[engine])
+        .map(engine => [engine, CONTENT_LICENSES[engine]]),
+    ),
     tokenizer: 'gpt-tokenizer@3.4.0',
-    zero_key_engine_baseline: ZERO_KEY_ENGINE_COUNT,
-    naive_engine_baseline: ZERO_KEY_ENGINE_COUNT + OPTIONAL_KEY_ENV.filter(name => process.env[name]).length,
+    zero_key_engine_baseline: requestedEngines
+      .filter(engine => !['brave', 'tavily', 'exa', 'youcom'].includes(engine))
+      .length,
+    naive_engine_baseline: requestedEngines
+      .filter(engine => {
+        const optionalIndex = ['brave', 'tavily', 'exa', 'youcom'].indexOf(engine);
+        return optionalIndex < 0 || Boolean(process.env[OPTIONAL_KEY_ENV[optionalIndex]]);
+      })
+      .length,
     samples,
   };
   for (let index = 0; index < queries.length; index++) {
     const item = typeof queries[index] === 'string' ? { query: queries[index] } : queries[index];
     const query = item.query || item.q;
     if (!query) throw new Error(`Query ${index + 1} has no query/q field`);
-    const startedAt = Date.now();
+    const startedAt = new Date().toISOString();
+    const startedAtMs = Date.now();
     try {
       const response = await searchWithFallback({
         query,
         count: 10,
-        engines: ALL_ENGINES,
+        engines: requestedEngines,
         waterfall: true,
         minConfidence: 0,
         minSourceCount: 1,
         enrich: false,
         expandQueries: false,
       });
+      const durationMs = Date.now() - startedAtMs;
       samples.push({
         id: item.id || `q${index + 1}`,
         query,
         language: item.language || item.lang || 'unknown',
-        duration_ms: Date.now() - startedAt,
+        category: item.category || item.type || 'unknown',
+        freshness: item.freshness || (item.type === 'news' ? 'dynamic' : 'evergreen'),
+        ...(typeof item.question === 'string' && { question: item.question }),
+        ...(typeof item.reference_answer === 'string'
+          && { reference_answer: item.reference_answer }),
+        duration_ms: durationMs,
         response,
+        trace: buildCaptureTrace(response, {
+          durationMs,
+          requestedEngines,
+          startedAt,
+        }),
       });
       console.log(`[${index + 1}/${queries.length}] ${query} — ${response.results.length} results, ${response.meta.execution?.engine_calls ?? 0} calls`);
     } catch (error) {
@@ -107,7 +148,12 @@ async function capture(fixturePath) {
         id: item.id || `q${index + 1}`,
         query,
         language: item.language || item.lang || 'unknown',
-        duration_ms: Date.now() - startedAt,
+        category: item.category || item.type || 'unknown',
+        freshness: item.freshness || (item.type === 'news' ? 'dynamic' : 'evergreen'),
+        ...(typeof item.question === 'string' && { question: item.question }),
+        ...(typeof item.reference_answer === 'string'
+          && { reference_answer: item.reference_answer }),
+        duration_ms: Date.now() - startedAtMs,
         error: error instanceof Error ? error.message : String(error),
       });
       console.error(`[${index + 1}/${queries.length}] ${query} — failed`);
@@ -138,7 +184,7 @@ async function generateFormatFixture(fixturePath) {
         snippet: `${suffix} ${suffix}`,
         confidence: round(0.94 - resultIndex * 0.035, 3),
         relevance: round(0.91 - resultIndex * 0.04, 3),
-        source_count: sources.length,
+        source_count: countProviderFamilies(sources),
         sources,
       };
     });
@@ -185,7 +231,7 @@ function toScoredResult(result) {
     engines: sources,
     confidence: result.confidence ?? 0,
     relevance,
-    source_count: result.source_count ?? sources.length,
+    source_count: result.source_count ?? countProviderFamilies(sources),
     score: relevance,
   };
 }
@@ -201,7 +247,7 @@ async function replay(fixturePath, outputPath, check) {
   for (const [name, formatOptions] of Object.entries(SCENARIOS)) {
     scenarioRows[name] = successful.map(sample => {
       const scored = sample.response.results.map(toScoredResult);
-      const formatted = formatResults(scored, formatOptions);
+      const formatted = formatResults(scored, { ...formatOptions, query: sample.query });
       const payload = {
         query: sample.query,
         engines: sample.response.engines,

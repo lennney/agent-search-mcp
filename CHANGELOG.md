@@ -9,24 +9,303 @@ tags:
 ---
 # Changelog
 
-## Unreleased
+## v3.2.0 (2026-07-26)
+
+> **Headline: Free by default, paid quality escalation when explicitly enabled,
+> with auditable evidence, budgets, and safer cross-platform operation.**
+>
+> ℹ️ **Pre-release**: `v3.2.0-beta.0` was published on npm (tag: `beta`) on
+> 2026-07-27 for server validation before this stable release. The beta is
+> identical to this stable candidate in features.
+
+### 📢 Why Update
+
+- Zero-key users keep the complete default search path; merely configuring an
+  API key no longer authorizes paid requests.
+- BYOK users can explicitly choose `quality_escalation` or `paid_first`, while
+  `free_only` provides a hard no-spend policy.
+- Search failures, provider families, request budgets, evidence provenance, and
+  routing stop reasons are machine-readable instead of being hidden as empty
+  results.
+- Release verification replays one retained tarball across Windows and Linux
+  with Node 18, 20, and 22. Exact artifact evidence is linked from the release
+  notes. This release makes no live search quality or availability claim.
 
 ### Features
 
+- Added Wiby as a zero-key, official JSON small-Web source. It runs late in the
+  free waterfall, does not retry shared-service failures, and retains the
+  attribution required by Wiby's API terms.
+- Added optional Tencent Web Search API, Bocha, and Serper adapters for users
+  who bring their own credentials. Default `free_first` routing does not call
+  them.
+- Added one provider-routing policy interface shared by parallel and waterfall
+  search. The default `free_first` mode never spends configured optional API
+  credentials; `quality_escalation`, `paid_first`, and `free_only` are explicit
+  alternatives. Default routing selects only the first configured provider in
+  the candidate order; multiple optional providers require explicit selection.
+- Bounded live E2E behind explicit `LIVE_E2E=true` authorization, a maximum of
+  two network operations, a 10-second minimum interval, cleared optional
+  credentials, and a one-attempt search budget.
+
+### Runtime and quality infrastructure
+
+- Made lint warning-free and enforced `--max-warnings 0`. Runtime and adapter
+  diagnostics use the structured stderr logger; human-facing CLI output has a
+  file-scoped lint exception.
+- Replaced permissive third-party JSON casts in Brave, Tavily, and the semantic
+  bridge with defensive `unknown` parsing and bounded result validation.
+- Centralized adapter IDs so MCP schemas, CLI validation, routing, and tests
+  cannot drift as providers are added.
+- Mapped Tencent WSA to the Sogou provider family and Serper to the Google
+  family so adapter overlap cannot inflate independent-source confidence.
+- Removed the implicit all-engine selection from `free_search_advanced`; it
+  now obeys `free_first` and cannot spend because an API key is present.
+- Aligned MCP Registry credentials and spend controls with the engine registry,
+  with a regression test for package name, description, version, and optional
+  provider credentials.
+- Restored the declared Node 18.17 runtime contract by keeping Pino on its 9.x
+  line. Pino 10 pulled `thread-stream` 4, whose package metadata requires
+  Node 20 even though a basic Node 18 runtime smoke could still start.
+- Updated the locked MCP SDK transitive dependency to
+  `@hono/node-server` 1.19.15, the Node 18-compatible security backport for
+  GHSA-frvp-7c67-39w9, without forcing the Node 20-only 2.x line.
+- Added an offline, system-neutral comparison capture importer. External search
+  exports are bounded, license-disclosed, query-set-bound, hashed, and
+  normalized into the existing traced pooling contract without adding a
+  competitor SDK or credential path to the product runtime.
+- Generated the bilingual public engine/tool/control matrix from the runtime
+  registries and bounded configuration metadata. Server registration,
+  `search://capabilities`, and README drift checks now share those sources
+  instead of maintaining separate tool and credential lists.
+- Added a dependency-free bilingual query-classifier experiment and a
+  docs/news/code/general routing benchmark. The candidate changes proposed
+  routes, but remains outside production because no completed quality evidence
+  proves an improvement.
+- Added an opt-in, restart-safe exact-result cache behind a replaceable store
+  interface. Versioned hashed keys bind search policy and freshness; atomic
+  local files fail open and never reuse stale, malformed, empty, or
+  budget-exhausted responses. A portable benchmark gates Linux and Windows on
+  Node 18/20/22 without adding native or vector dependencies.
+- Added a replaceable provider-cooldown store with memory and opt-in local-file
+  adapters. CAPTCHA/rate-limit suspensions survive process restarts without
+  persisting queries or credentials; expired/corrupt state fails open, and
+  cooldown/policy skips now remain visible in `partialFailures`.
+- Added one request-level search budget across actual adapter attempts,
+  end-to-end elapsed time, admitted raw results, and evidence characters.
+  Parallel, waterfall, retry, and query-expansion paths share the same ledger;
+  exhaustion returns observed/limit metadata plus `budget_exhausted` instead of
+  an ambiguous empty success. `fasm doctor` validates budget overrides.
+- Added a local-only, read-only `fasm doctor` command with a versioned JSON
+  report. It diagnoses Node/platform support, zero-key and optional-provider
+  configuration, engine policy, explicit proxies, and the optional semantic
+  bridge while exposing only `present`/`missing`/`invalid` states and
+  configuration provenance—not credential values.
+- Replaced the optional Python/ddgs subprocess path with the project-owned
+  DuckDuckGo Web → HTML → Lite chain. DDG and Sogou now share an explicit,
+  request-local Undici proxy transport with per-engine overrides, credential
+  redaction, cancellation propagation, and no ambient proxy-variable pickup.
+  Development-only scripts are no longer shipped in the npm artifact.
+- Added a native DuckDuckGo Web representation using the page-issued,
+  exact-allowlisted preload URL before HTML/Lite fallback. Added structured
+  adapter errors and immediate provider cooldown for DDG/Sogou bot challenges.
+- Added a privacy-preserving runner-qualification gate that verifies two
+  non-empty configurations, provider-family diversity, and distinct ranking
+  shapes before live capture or AI review.
+- Made the primary `free_search` and `free_search_advanced` result a shared,
+  schema-declared Search Evidence Packet. MCP clients receive canonical
+  `structuredContent`; the text channel is a compact view rather than a
+  duplicate JSON contract.
+- Added completed-qrels calibration for the internal routing relevance floor.
+  Protected pools retain per-system routing signals while blinded review
+  packets omit them; small or label-unbalanced runs emit diagnostics without
+  recommending a production threshold.
+- Made semantic-enabled routing evaluate the transformed display basket at
+  every checkpoint before skipping later free/optional phases or query
+  expansion. Execution metadata now identifies the gate as `pre_semantic` or
+  `post_semantic`.
+- Unified parallel and waterfall result normalization behind one search-evidence
+  interface so domain policy, deduplication, scoring, output eligibility, and
+  the routing quality gate cannot drift between execution modes.
+- Added quality-aware batch and waterfall stopping. Execution metadata now
+  exposes `stop_reason` plus the observed relevance, confidence, result-count,
+  and independent-provider-family gate instead of treating raw result count as
+  sufficient evidence.
+- Added one bounded DuckDuckGo Lite attempt after HTML HTTP 202. HTML and Lite
+  remain one logical provider, share the original deadline/cancellation path,
+  and never increase corroboration.
+- Added deterministic query-aware passage selection and response-level evidence
+  budgets. Full results now expose separate passage, publication, extraction,
+  provenance, relevance, and corroboration signals while compact placeholders
+  retain their source list.
+- Added a review-gated search-quality benchmark with hashed raw traces,
+  per-engine outcomes, graded ranking metrics, citation support,
+  latency/failure dimensions, and slice reporting. Answer-only metrics remain
+  explicitly unmeasured when no synthesized answer exists. Bootstrap fixtures
+  are ineligible for public quality claims.
+- Added dedicated benchmark query-set and engine selection, a real non-empty
+  bilingual reviewer-pipeline capture, and two provenance-blinded reviewer
+  packets. A CI verifier checks hashes, license metadata, candidate coverage,
+  opaque IDs, shuffled rank, and pending-human status. The single-engine pilot
+  remains ineligible for quality claims.
+- Added deterministic multi-system result pooling with canonical URL
+  deduplication, retained per-system ranks and trace hashes, provenance-blinded
+  reviewer packets, mode-aware reviewer validation, and an explicit
+  disagreement/adjudication gate. Human review remains a legacy-compatible
+  option while AI review is the default path.
+- Added completed-adjudication comparison reports that reconstruct each
+  system's original ranking and report nDCG@5, Precision@5, pool-relative
+  Recall@5, reciprocal rank, Success@5, citation support, latency, failure
+  disclosure, and slices without inventing answer-correctness metrics.
+- Added pre-adjudication reviewer reliability evidence: raw agreement,
+  pairwise quadratic-weighted Cohen's kappa for relevance, and pairwise
+  Cohen's kappa for citation support. Undefined no-variance pairs remain
+  explicit instead of being reported as perfect agreement.
+- Added claim-readiness gates that keep completed small pilots
+  ineligible for public quality headlines below 30 adjudicated rows and 30
+  distinct queries, and mark slices ineligible below 10 rows/distinct queries.
+- Added deterministic 2,000-resample paired-bootstrap 95% confidence intervals
+  for per-system retrieval and latency deltas. Public-claim readiness now
+  requires uncertainty reporting for every system pair.
+- Added an auditable AI-as-judge path: two blinded pointwise reviewers from
+  different model families, third-family disagreement adjudication, strict
+  structured output, checkpointed verdict hashes, and explicit
+  `ai-reviewed`/`ai-judged` report labels.
 - Unified all 12 search adapters across MCP, advanced search, CLI, and waterfall routing.
 - Split result signals into `relevance`, normalized `confidence`, and independent `source_count`; retained `score` as a deprecated compatibility alias and mapped legacy `MIN_CONFIDENCE=2/3` values to source count.
+- Added explicit MCP protocol readiness metadata to `/health` and allowed the
+  `2026-07-28` routing and W3C trace headers through HTTP CORS without claiming
+  production wire compatibility.
+- Added an isolated, private Node.js 20+ MCP `2026-07-28` prototype with
+  pinned SDK v2 beta.5 packages, explicit modern negotiation, legacy fallback,
+  secure HTTP defaults, stdio support, and structured `free_search` results.
+- Added a real-HTTP MCP 2026 behavior matrix for CORS/Origin enforcement,
+  Bearer authentication, W3C trace propagation, cancellation, cache hints,
+  and automatic tool-list cache invalidation.
 - Added a capture/replay benchmark with production execution telemetry, frozen fixtures, locked `gpt-tokenizer`, and a CI regression gate. Historical 30-query measurements remain published with their environment scope.
 - Secured HTTP MCP mode with required Bearer authentication and browser Origin allowlisting. Unauthenticated mode now requires explicit `HTTP_ALLOW_UNAUTHENTICATED=true`.
 
+### Removed
+
+- Removed the dedicated `free_search_news` tool and Bing News RSS path before
+  release because bounded live validation could not establish a dependable RSS
+  response. General Web search remains available, but the product no longer
+  advertises an enforceable news time-range capability.
+
+### Fixes
+
+- Restored Node 18 Streamable HTTP by installing Node's built-in Web Crypto
+  implementation only when the runtime does not expose `globalThis.crypto`.
+- Default test runs no longer call live search/extraction providers. The two
+  network E2E cases require the explicit `test:e2e:live` command.
+- Live runner qualification now waits 10 seconds between query groups by
+  default, rejects unsafe sub-second pacing, and never retries failed probes
+  automatically.
+- Runner qualification automation now fails closed with exit code 2 when the
+  network exit is insufficient, while retaining the redacted diagnostic report.
+- Fixed packaged `fasm` startup on Windows by resolving the executable entry
+  against the CLI module, corrected compiled version detection so update checks
+  use the root package version, and bounded waterfall query expansion to one
+  generation instead of recursively re-expanding generated queries.
+- Explicitly requested optional API adapters with missing or blank credentials
+  now return a structured `permission_denied` failure instead of silently
+  producing an empty result set.
+- Preserved Sogou cookies across trusted HTTPS redirects, rejected protocol
+  downgrade, classified `/antispider/` as `bot_challenge`, corrected the DDG
+  rate-limiter key, and added a descriptive Wikipedia API User-Agent.
+
+- Deprecated the non-functional `free_search_advanced.time_range`
+  compatibility field without removing its schema. Requests that provide it
+  now fail before any engine call with a machine-readable
+  `UNSUPPORTED_FILTER` instead of silently returning unfiltered results.
+- Apply include/exclude domain policy before title and URL deduplication, use
+  exact host/subdomain matching, and fail closed for invalid include filters.
+  Excluded or lookalike domains can no longer suppress an allowed same-title
+  result.
+- Count corroboration by independent upstream provider family rather than
+  adapter name. DuckDuckGo/Bing no longer double-count the same result or
+  inflate `source_count`; empty engine arrays now fall back to the result's
+  declared source.
+- Preserve explicitly selected adapters from the same provider family as a
+  sequential failure/low-quality fallback while keeping their corroboration
+  count at one.
+- Align the Slim Guard evidence validator and frozen-fixture fallback with a
+  versioned provider-family contract instead of equating adapter count with
+  `source_count`.
+- Made explicit engine selection authoritative in parallel mode, and made
+  optional API results pass the quality gate before waterfall query expansion.
+- Corrected parallel phase/early-stop metadata, rechecked the completed free
+  basket before optional escalation, and preserved per-result provenance from
+  expanded queries.
+- Made the DDG Lite table parser associate each snippet with its neighboring
+  result row, reject sponsored rows and DOM-equivalent captcha challenges, and
+  mark a combined HTML/Lite failure non-retryable.
+- Rejected zero, fractional, negative, or oversized search counts before they
+  can create a non-progressing waterfall batch.
+- Preserved explicit engine outcomes in the search orchestrator so thrown
+  upstream errors no longer disappear as empty result sets and are reported in
+  `partialFailures` while fallback continues.
+- Propagated MCP cancellation through search orchestration, rate-limit waits,
+  retry backoff, adapter HTTP requests, and content enrichment. Requests with a
+  caller-owned signal bypass in-flight request sharing. The isolated SDK v2
+  entry forwards its handler signal through a separate execution context.
+- Made content enrichment confidence-neutral: extracted text improves snippets
+  but does not count as independent corroboration.
+- Unified parallel and waterfall cache keys and enabled cache reads for
+  waterfall execution.
+- Made waterfall search honor an explicit engine allowlist instead of calling
+  every fixed phase.
+- Replaced empty Wikipedia OpenSearch descriptions with bounded MediaWiki
+  article extracts and route CJK queries to Chinese Wikipedia.
+- Made lexical relevance sensitive to Latin/CJK query-term coverage instead
+  of assigning the same score to every partial match.
+- Corrected `search_with_synthesis` to use normalized 0-1 confidence, keep
+  source-count filtering separate, preserve legacy 2-3 inputs, and report each
+  result's actual source provenance.
+- Corrected stable Streamable HTTP lifecycle handling: stateless SDK v1
+  server/transports are now created per request, notifications no longer
+  collapse into empty HTTP 500 responses, and SDK v2 auto-mode clients can
+  fall back cleanly over HTTP and stdio.
+- Hardened the experimental 2026 HTTP boundary against duplicate
+  `MCP-Protocol-Version`, `Mcp-Method`, `Mcp-Name`, and `Mcp-Param-*` fields
+  before Node combines them. Added real-socket coverage for case-insensitive
+  names, integer canonicalization, missing headers, and malformed Base64.
+- Forwarded W3C trace context from the experimental HTTP request into the
+  search execution boundary while keeping it out of logs.
+
 ### Documentation
 
-- Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
+- Added a fixed-commit source audit of Tavily, Exa, Brave, Firecrawl, SearXNG,
+  DDGS, two recent open search MCPs, Vane, GPT Researcher, Open Deep Research,
+  and Jina DeepResearch. Updated the architecture boundary between deterministic
+  MCP retrieval and the future Search Agent layer.
+- Corrected the competitor table: current Tavily local MCP and Exa hosted MCP
+  have limited no-user-key paths, while Agent Search's distinction is a
+  self-run multi-source router without a single vendor gateway.
+- Recorded the P1 evidence-packet contract and its reproducible 1200/600/360
+  character benchmark scenarios.
+- Documented established search-evaluation methods and an optional,
+  dependency-free Slim Guard evidence handoff contract.
 
-## v3.3.0 (2026-07-24)
+- Added the Agent Search-only core evidence track to both active roadmaps;
+  Slim Guard remains a separate, unchanged product in this implementation.
+- Restored the historical 28.7% / 35.5% token and 75% engine-call measurements in README and promotion drafts with explicit query-set and environment boundaries.
+- Added the MCP ecosystem/2026 readiness plan and the Git-authoritative,
+  Hermes-projection decision for multi-device planning.
+- Documented the experimental 2026 entry, its stable-domain boundary, and the
+  current conformance-suite coverage gap.
+- Added reproducible P2 fallback evidence and an isolated Node 20/22
+  experimental CI matrix.
+- Added reproducible MCP 2026 routing-header evidence and closed the
+  `Mcp-Param-*` canonicalization/duplicate gate.
+- Added a redacted MCP 2026 P2 HTTP capture with exact SDK versions, an actual
+  local runtime record, configured CI targets, and explicit failure responses.
+
+### Semantic capabilities carried into v3.2.0
 
 > **Headline: Semantic dedup + rerank via Model2Vec. <10ms latency. Optional, opt-in.**
 
-### 🆕 Features
+#### 🆕 Features
 
 - **Semantic dedup** (`SEMANTIC_DEDUP=true`): Removes semantically duplicate results across engines using cosine similarity on Model2Vec embeddings. Keeps higher-confidence items. Adds `removedCount` feedback.
 - **Semantic rerank** (`SEMANTIC_RERANK=true`): Reorders results by semantic similarity to the query. Returns top-K most relevant results.
@@ -34,7 +313,7 @@ tags:
 - **Zero dependency by default**: Semantic features are OFF by default. No Python/model2vec required unless explicitly enabled.
 - **Graceful degradation**: If the Python bridge is unavailable (no model2vec installed, process crash, etc.), results pass through unchanged — no broken searches.
 
-### 🔧 Fixes
+#### 🔧 Fixes
 
 - **Restored zero-Python DDG fallback**: The search orchestrator no longer rejects DuckDuckGo before its Node.js HTML fallback can run.
 - **Protected stdio JSON-RPC**: Circuit-breaker transitions now use the stderr logger instead of writing to stdout.
@@ -43,15 +322,15 @@ tags:
 - **CI coverage**: Restored Node.js 18/20/22 runtime coverage, added a Node.js 22 quality gate, disabled matrix fail-fast, and added a Windows build job.
 - **Node.js 18 compatibility**: Pinned Cheerio to its Node 18-compatible release and close idle HTTP connections during shutdown.
 - **Lint compatibility**: Pinned TypeScript to the supported 6.x API until `typescript-eslint` supports TypeScript 7.
-- **Runtime metadata**: MCP initialization, HTTP health, and capabilities now report v3.1.3 / Apache-2.0 consistently with the published package.
+- **Runtime metadata**: MCP initialization, HTTP health, and capabilities report the package version / Apache-2.0 consistently.
 
-### 📚 Documentation
+#### 📚 Documentation
 
 - Replaced volatile competitor pricing claims with a capability-based comparison linked to official repositories.
 - Marked historical benchmark percentages as exploratory until engine-call telemetry and frozen fixtures are implemented.
 - Added a reusable English/Chinese promotion kit and rewrote the Juejin draft around verified capabilities.
 
-### 🔧 Env vars
+#### 🔧 Env vars
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -62,23 +341,23 @@ tags:
 | `RERANK_TOP_K` | `5` | Results to keep after rerank |
 | `RERANK_MODEL` | `minishlab/M2V_base_output` | Model2Vec model for rerank |
 
-### 📊 Stats
+#### 📊 Historical development snapshot
 
 - **Tests**: 498 passing
 - **Files**: 43 test files
 
-## v3.2.0 (2026-07-24)
+### Token controls carried into v3.2.0
 
 > **Headline: Progressive disclosure + confidence filtering. 36-58% fewer tokens in compact mode.**
 
-### 🆕 Features
+#### 🆕 Features
 
 - **Progressive disclosure**: `MAX_FULL_RESULTS` (default 3) — first N results full (title+snippet+confidence), remaining compacted (title+url+`compacted:true`). Agent can expand via `free_extract`. Saves ~36% tokens.
 - **Confidence filtering**: `MIN_CONFIDENCE` (default 0=off) — filter out low-confidence results before formatting. Adds `filtered_count` to meta.
 - **Traceable**: `compacted:true` marker, `compacted_count`, `filtered_count` in meta — Agent knows what's truncated and can recover.
 - **New env vars**: `MAX_FULL_RESULTS` (1-20), `MIN_CONFIDENCE` (0.0-3.0)
 
-### 🔧 Fixes
+#### 🔧 Fixes
 
 - `compact` mode now includes `compacted_count` and `filtered_count` in meta when respective options are active
 

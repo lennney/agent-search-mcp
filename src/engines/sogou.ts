@@ -1,102 +1,19 @@
-import { SearchResult } from '../types.js';
+import * as cheerio from 'cheerio';
 
-const SOGOU_SEARCH_URL = 'https://www.sogou.com/web';
+import { withTimeout } from '../infrastructure/abort.js';
+import { fetchForEngine } from '../infrastructure/engine-http.js';
+import { logger } from '../infrastructure/logger.js';
+import type { EngineSearchOptions, SearchResult } from '../types.js';
+import { EngineAdapterError } from './engine-error.js';
 
-const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
-/**
- * Parse Sogou search results HTML using regex
- */
-function parseSogouHtml(html: string): SearchResult[] {
-  const results: SearchResult[] = [];
-  const seenUrls = new Set<string>();
-
-  // Try to find result blocks
-  // Sogou typically has: <div class="vrwrap"> or <div class="rb"> containing the results
-  const blockRegex = /<div[^>]*(?:class="[^"]*vr(?:wrap|5)[^"]*"|class="[^"]*\brb\b[^"]*"|id="[^"]*result[^"]*")[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gis;
-
-  let blockMatch: RegExpExecArray | null;
-  while ((blockMatch = blockRegex.exec(html)) !== null) {
-    const block = blockMatch[1];
-
-    // Extract title link (h3 or h2 containing a link)
-    const titleLinkRegex = /<h[23][^>]*>.*?<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/i;
-    const titleMatch = block.match(titleLinkRegex);
-
-    if (!titleMatch) continue;
-
-    const rawUrl = titleMatch[1]?.trim() || '';
-    const title = titleMatch[2]?.replace(/<[^>]+>/g, '').trim() || '';
-
-    if (!title || !rawUrl) continue;
-
-    // Resolve the actual URL (Sogou wraps URLs in redirects)
-    let url = rawUrl;
-    try {
-      const parsed = new URL(rawUrl, SOGOU_SEARCH_URL);
-      const target = parsed.searchParams.get('url') || parsed.searchParams.get('u') || parsed.searchParams.get('link');
-      if (target && /^https?:\/\//i.test(target)) {
-        url = target;
-      } else {
-        url = parsed.toString();
-      }
-    } catch {
-      // keep rawUrl
-    }
-
-    if (seenUrls.has(url)) continue;
-    seenUrls.add(url);
-
-    // Extract snippet
-    const descMatch = block.match(/<p[^>]*class="[^"]*str_info[^"]*"[^>]*>([\s\S]*?)<\/p>/i)
-      || block.match(/<div[^>]*class="[^"]*str_info[^"]*"[^>]*>([\s\S]*?)<\/div>/i)
-      || block.match(/class="[^"]*(?:str_info|ft|text-layout)[^"]*"[^>]*>([\s\S]*?)<\//i);
-    const snippet = descMatch?.[1]?.replace(/<[^>]+>/g, '').trim() || '';
-
-    // Extract source
-    const srcMatch = block.match(/<cite[^>]*>([\s\S]*?)<\/cite>/i)
-      || block.match(/class="[^"]*(?:citeurl|g|url)[^"]*"[^>]*>([\s\S]*?)<\//i);
-    let source = srcMatch?.[1]?.replace(/<[^>]+>/g, '').trim() || '';
-    if (!source) {
-      try { source = new URL(url).hostname; } catch { source = ''; }
-    }
-
-    results.push({ title, url, snippet, source, engines: ['sogou'] });
-  }
-
-  // Fallback: broader extraction for different page layouts
-  if (results.length === 0) {
-    const altBlockRegex = /<div[^>]*class="[^"]*vrwrap[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gis;
-    let altBlockMatch: RegExpExecArray | null;
-    while ((altBlockMatch = altBlockRegex.exec(html)) !== null) {
-      const block = altBlockMatch[1];
-      const aMatch = block.match(/<a[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
-      if (!aMatch) continue;
-
-      const rawUrl = aMatch[1]?.trim() || '';
-      const title = aMatch[2]?.replace(/<[^>]+>/g, '').trim() || '';
-      if (!title || !rawUrl || seenUrls.has(rawUrl)) continue;
-      seenUrls.add(rawUrl);
-
-      let url = rawUrl;
-      try {
-        const parsed = new URL(rawUrl, SOGOU_SEARCH_URL);
-        const target = parsed.searchParams.get('url') || parsed.searchParams.get('u');
-        if (target && /^https?:\/\//i.test(target)) url = target;
-      } catch { /* keep rawUrl */ }
-
-      const descMatch = block.match(/(?:str_info|ft)[^>]*>([\s\S]*?)<\//i);
-      const snippet = descMatch?.[1]?.replace(/<[^>]+>/g, '').trim() || '';
-
-      let source = '';
-      try { source = new URL(url).hostname; } catch { /* ignore */ }
-
-      results.push({ title, url, snippet, source, engines: ['sogou'] });
-    }
-  }
-
-  return results;
-}
+const SOGOU_ORIGIN = 'https://www.sogou.com';
+const SOGOU_SEARCH_URL = `${SOGOU_ORIGIN}/web`;
+const MAX_REDIRECTS = 5;
+const CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
+const USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+  + 'AppleWebKit/537.36 (KHTML, like Gecko) '
+  + 'Chrome/136.0.0.0 Safari/537.36';
 
 export const sogouProvider = {
   id: 'sogou' as const,
@@ -105,39 +22,248 @@ export const sogouProvider = {
   languages: ['zh'],
 };
 
-export async function searchSogou(query: string, limit: number = 10): Promise<SearchResult[]> {
+export function parseSogouHtml(html: string): SearchResult[] {
+  if (looksLikeChallengePage(html)) throw sogouChallenge();
+
+  const $ = cheerio.load(html);
+  const results: SearchResult[] = [];
+  const seenUrls = new Set<string>();
+  const selectors = [
+    '#main .vrwrap:not(.special-wrap)',
+    '#main .rb',
+    '#main .result',
+    '#results .vrwrap:not(.special-wrap)',
+    '.results .vrwrap:not(.special-wrap)',
+    '.results .rb',
+  ].join(',');
+
+  $(selectors).each((_, element) => {
+    const card = $(element);
+    const titleLink = card
+      .find('h3 a[href], h2 a[href], .vr-title a[href], .pt a[href]')
+      .first();
+    const url = resolveResultUrl(
+      titleLink.attr('href') ?? '',
+      titleLink.attr('data-url')
+        ?? card.find('[data-url]').first().attr('data-url')
+        ?? '',
+    );
+    const title = normalizeText(titleLink.text());
+    if (!title || !url || seenUrls.has(url)) return;
+
+    const snippet = normalizeText(
+      card
+        .find('.str_info, .ft, .text-layout, .fz-mid, .attribute-centent, p')
+        .first()
+        .text(),
+    );
+    const sourceText = normalizeText(
+      card.find('cite, .citeurl, .g, .url').first().text(),
+    );
+    seenUrls.add(url);
+    results.push({
+      title,
+      url,
+      snippet,
+      source: sourceText || new URL(url).hostname,
+      engines: ['sogou'],
+    });
+  });
+
+  return results;
+}
+
+export async function searchSogou(
+  query: string,
+  limit: number = 10,
+  options?: EngineSearchOptions,
+): Promise<SearchResult[]> {
   try {
     const url = new URL(SOGOU_SEARCH_URL);
     url.searchParams.set('query', query);
     url.searchParams.set('ie', 'utf8');
+    const html = await fetchSogouHtml(url, options?.signal);
+    return parseSogouHtml(html).slice(0, limit);
+  } catch (error) {
+    options?.signal?.throwIfAborted();
+    if (options?.throwOnError) throw error;
+    logger.warn(
+      { err: error instanceof Error ? error.message : String(error) },
+      'Sogou search failed',
+    );
+    return [];
+  }
+}
 
-    const response = await fetch(url.toString(), {
+async function fetchSogouHtml(
+  initialUrl: URL,
+  callerSignal?: AbortSignal,
+): Promise<string> {
+  let currentUrl = initialUrl;
+  const cookies = new Map<string, string>();
+  const signal = withTimeout(callerSignal, 10_000);
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    signal.throwIfAborted();
+    const response = await fetchForEngine('sogou', currentUrl, {
       method: 'GET',
       headers: {
         'User-Agent': USER_AGENT,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Referer': 'https://www.sogou.com/',
+        'Referer': `${SOGOU_ORIGIN}/`,
+        ...(cookies.size > 0 ? { 'Cookie': serializeCookies(cookies) } : {}),
       },
-      redirect: 'follow',
+      redirect: 'manual',
+      signal,
     });
+    mergeResponseCookies(cookies, response.headers);
 
-    if (!response.ok) {
-      throw new Error(`Sogou returned status ${response.status}`);
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (!location) {
+        throw new EngineAdapterError(
+          'upstream_4xx',
+          `Sogou returned HTTP ${response.status} without a redirect target`,
+          {
+            retryable: false,
+            suggestion: 'Use another engine while the Sogou endpoint is checked',
+          },
+        );
+      }
+      const nextUrl = new URL(location, currentUrl);
+      if (isSogouChallengeUrl(nextUrl)) throw sogouChallenge();
+      if (!isAllowedSogouUrl(nextUrl)) {
+        throw new EngineAdapterError(
+          'upstream_4xx',
+          'Sogou redirected outside its trusted origin boundary',
+          {
+            retryable: false,
+            suggestion: 'Use another engine while the Sogou redirect is checked',
+          },
+        );
+      }
+      currentUrl = nextUrl;
+      continue;
     }
 
     const html = await response.text();
-
-    // Check for anti-bot page
-    if (html.toLowerCase().includes('antispider') || html.includes('请输入验证码') || html.includes('访问过于频繁')) {
-      console.warn('Sogou returned an anti-bot challenge page');
-      return [];
+    if (response.status === 403 || looksLikeChallengePage(html)) {
+      throw sogouChallenge();
     }
-
-    const results = parseSogouHtml(html);
-    return results.slice(0, limit);
-  } catch (error) {
-    console.error('Sogou search failed:', error instanceof Error ? error.message : String(error));
-    return [];
+    if (!response.ok) {
+      const serverFailure = response.status >= 500;
+      throw new EngineAdapterError(
+        serverFailure ? 'upstream_5xx' : 'upstream_4xx',
+        `Sogou returned HTTP ${response.status}`,
+        {
+          retryable: serverFailure,
+          suggestion: serverFailure
+            ? 'Retry later or use another engine'
+            : 'Use another engine while the Sogou endpoint is unavailable',
+        },
+      );
+    }
+    return html;
   }
+
+  throw new EngineAdapterError(
+    'upstream_4xx',
+    `Sogou exceeded ${MAX_REDIRECTS} redirects`,
+    {
+      retryable: false,
+      suggestion: 'Use another engine while the Sogou redirect chain is checked',
+    },
+  );
+}
+
+function sogouChallenge(): EngineAdapterError {
+  return new EngineAdapterError(
+    'bot_challenge',
+    'Sogou returned an anti-bot challenge',
+    {
+      retryable: false,
+      cooldownMs: CHALLENGE_COOLDOWN_MS,
+      suggestion: 'Wait for the provider cooldown or use another network runner',
+    },
+  );
+}
+
+function looksLikeChallengePage(html: string): boolean {
+  const normalized = html.toLowerCase();
+  if (normalized.includes('antispider')
+    || normalized.includes('请输入验证码')
+    || normalized.includes('访问过于频繁')) {
+    return true;
+  }
+  return cheerio.load(html)('title')
+    .first()
+    .text()
+    .includes('搜狗搜索验证');
+}
+
+function resolveResultUrl(rawUrl: string, dataUrl: string): string {
+  for (const candidate of [dataUrl, rawUrl]) {
+    if (!candidate.trim()) continue;
+    try {
+      const url = new URL(candidate, SOGOU_SEARCH_URL);
+      const wrappedTarget = url.searchParams.get('url')
+        ?? url.searchParams.get('u')
+        ?? url.searchParams.get('link');
+      if (wrappedTarget) {
+        const target = new URL(wrappedTarget);
+        if (['http:', 'https:'].includes(target.protocol)) {
+          return target.toString();
+        }
+      }
+      if (['http:', 'https:'].includes(url.protocol)) return url.toString();
+    } catch {
+      continue;
+    }
+  }
+  return '';
+}
+
+function normalizeText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function isAllowedSogouUrl(url: URL): boolean {
+  return url.protocol === 'https:'
+    && url.hostname.toLowerCase() === 'www.sogou.com'
+    && url.username === ''
+    && url.password === '';
+}
+
+function isSogouChallengeUrl(url: URL): boolean {
+  return url.hostname.toLowerCase() === 'www.sogou.com'
+    && url.pathname.startsWith('/antispider')
+    && url.username === ''
+    && url.password === '';
+}
+
+function mergeResponseCookies(
+  cookies: Map<string, string>,
+  headers: Headers,
+): void {
+  const values = typeof headers.getSetCookie === 'function'
+    ? headers.getSetCookie()
+    : splitCombinedSetCookie(headers.get('set-cookie'));
+  for (const value of values) {
+    const pair = value.split(';', 1)[0]?.trim();
+    const separator = pair?.indexOf('=') ?? -1;
+    if (!pair || separator <= 0) continue;
+    cookies.set(pair.slice(0, separator), pair.slice(separator + 1));
+  }
+}
+
+function splitCombinedSetCookie(value: string | null): string[] {
+  if (!value) return [];
+  return value.split(/,(?=\s*[^;,=\s]+=[^;,]*)/g);
+}
+
+function serializeCookies(cookies: Map<string, string>): string {
+  return [...cookies]
+    .map(([name, value]) => `${name}=${value}`)
+    .join('; ');
 }

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { EnginePolicy, ToolPolicy } from '../../src/infrastructure/tool-policy.js';
-import type { SearchProvider } from '../../src/types.js';
+import { SEARCH_PROVIDERS, type SearchProvider } from '../../src/types.js';
 
-const ALL_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'brave', 'tavily', 'exa', 'youcom'];
+const ALL_ENGINES: SearchProvider[] = [...SEARCH_PROVIDERS];
 
 describe('EnginePolicy', () => {
   describe('empty/null config', () => {
@@ -84,7 +84,7 @@ describe('EnginePolicy', () => {
     });
 
     it('returns empty array when nothing is allowed', () => {
-      const policy = new EnginePolicy('', 'duckduckgo,sogou,bing,baidu,brave,tavily,exa,youcom');
+      const policy = new EnginePolicy('', SEARCH_PROVIDERS.join(','));
       const result = policy.filterEngines(ALL_ENGINES);
       expect(result).toEqual([]);
     });
@@ -154,16 +154,16 @@ describe('ToolPolicy', () => {
     });
 
     it('returns false for a denied tool', () => {
-      const policy = new ToolPolicy(undefined, ['free_extract', 'free_search_news']);
+      const policy = new ToolPolicy(undefined, ['free_extract', 'fetch_github_readme']);
       expect(policy.isToolEnabled('free_extract')).toBe(false);
-      expect(policy.isToolEnabled('free_search_news')).toBe(false);
+      expect(policy.isToolEnabled('fetch_github_readme')).toBe(false);
     });
 
     it('denied takes priority over allowed', () => {
-      const policy = new ToolPolicy(['free_search', 'free_extract', 'free_search_news'], ['free_extract']);
+      const policy = new ToolPolicy(['free_search', 'free_extract', 'fetch_github_readme'], ['free_extract']);
       expect(policy.isToolEnabled('free_extract')).toBe(false);
       expect(policy.isToolEnabled('free_search')).toBe(true);
-      expect(policy.isToolEnabled('free_search_news')).toBe(true);
+      expect(policy.isToolEnabled('fetch_github_readme')).toBe(true);
     });
 
     it('allows tools not in denied list when no allowlist set', () => {

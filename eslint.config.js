@@ -22,6 +22,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/cli.ts', 'src/infrastructure/version-check.ts'],
+    rules: {
+      // These files implement human-facing CLI stdout/stderr, not MCP stdio.
+      'no-console': 'off',
+    },
+  },
+  {
     files: ['tests/**/*.ts'],
     rules: {
       'no-console': 'off', // tests may use console for diagnostics

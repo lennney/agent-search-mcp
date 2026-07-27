@@ -1,11 +1,18 @@
 #!/usr/bin/env node
-import { readFileSync } from 'fs';
+import { readFileSync, realpathSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { SearchProvider } from './types.js';
+import { dirname, join, resolve } from 'path';
+import {
+  SEARCH_PROVIDERS,
+  type SearchProvider,
+} from './types.js';
 import { searchWithFallback } from './tools/free-search.js';
 import { createHttpServer } from './infrastructure/http.js';
 import { loadConfig } from './infrastructure/config.js';
+import {
+  createDoctorReport,
+  formatDoctorReport,
+} from './infrastructure/doctor.js';
 import { checkForUpdates } from './infrastructure/version-check.js';
 
 // Read package.json version at module load
@@ -13,7 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')).version;
 
 export interface CliArgs {
-  command: 'search' | 'extract' | 'serve' | 'help';
+  command: 'search' | 'extract' | 'serve' | 'doctor' | 'help';
   query?: string;
   url?: string;
   count?: number;
@@ -25,8 +32,8 @@ export interface CliArgs {
   version?: boolean;
 }
 
-const VALID_COMMANDS = ['search', 'extract', 'serve'];
-const VALID_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom'];
+const VALID_COMMANDS = ['search', 'extract', 'serve', 'doctor'];
+const VALID_ENGINES: readonly SearchProvider[] = SEARCH_PROVIDERS;
 
 export function parseArgs(argv: string[]): CliArgs {
   const args = argv.slice(2); // skip node and script path
@@ -92,19 +99,19 @@ Usage:
   fasm search <query> [options]    Search the web
   fasm extract <url> [options]     Extract page content
   fasm serve [options]             Start HTTP server
+  fasm doctor [--json]             Inspect local search readiness
   fasm --help                      Show this help
   fasm --version                   Show version
   fasm update                      Check for updates
 
 Search Options:
   --count <n>          Number of results (1-50, default: 10)
-  --engines <list>     Comma-separated engines (all 12 adapters supported)
+  --engines <list>     Comma-separated engines (all ${SEARCH_PROVIDERS.length} adapters supported)
   --json               Output as JSON
   --proxy <url>        HTTP proxy URL (e.g., http://127.0.0.1:7890)
 
 Extract Options:
   --json               Output as JSON
-  --proxy <url>        HTTP proxy URL
 
 Serve Options:
   --port <n>           HTTP port (default: 3000)
@@ -114,6 +121,7 @@ Examples:
   fasm search "query" --count 5 --engines bing,baidu,youcom
   fasm extract "https://example.com" --json
   fasm serve --port 8080
+  fasm doctor --json
   fasm search "query" --proxy http://127.0.0.1:7890
 `);
 }
@@ -131,13 +139,15 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  // Check for updates in background (non-blocking, cached)
-  checkForUpdates();
+  // Doctor is a local-only diagnostic and must not make an update-check request.
+  if (args.command !== 'doctor') {
+    void checkForUpdates();
+  }
 
-  // Set proxy if provided
-  if (args.proxy) {
-    process.env.HTTP_PROXY = args.proxy;
-    process.env.HTTPS_PROXY = args.proxy;
+  // Search proxy is intentionally scoped to the core engine transport.
+  if (args.command === 'search' && args.proxy) {
+    process.env.USE_PROXY = 'true';
+    process.env.PROXY_URL = args.proxy;
   }
 
   if (args.command === 'search') {
@@ -199,16 +209,30 @@ async function main(): Promise<void> {
     await server.listen();
     console.log(`Server running on http://localhost:${port}`);
     console.log('Press Ctrl+C to stop');
+  } else if (args.command === 'doctor') {
+    const report = createDoctorReport();
+    // CLI stdout is the documented user-facing channel, not MCP stdio.
+    console.log(args.json
+      ? JSON.stringify(report, null, 2)
+      : formatDoctorReport(report));
+    if (report.status !== 'present') process.exitCode = 1;
   }
 }
 
-// Run main only when executed directly (not when imported)
-const isMainModule = process.argv[1] && (
-  process.argv[1].endsWith('/cli.js') || 
-  process.argv[1].endsWith('/cli.ts')
-);
+export function isMainModulePath(
+  entryPath: string | undefined,
+  moduleUrl: string = import.meta.url,
+): boolean {
+  if (!entryPath) return false;
+  const modulePath = fileURLToPath(moduleUrl);
+  try {
+    return realpathSync(entryPath) === realpathSync(modulePath);
+  } catch {
+    return resolve(entryPath) === resolve(modulePath);
+  }
+}
 
-if (isMainModule) {
+if (isMainModulePath(process.argv[1])) {
   main().catch((error) => {
     console.error('Error:', error.message);
     process.exit(1);

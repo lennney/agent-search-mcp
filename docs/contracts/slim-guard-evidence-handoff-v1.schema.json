@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lennney/agent-search-mcp/docs/contracts/slim-guard-evidence-handoff-v1.schema.json",
+  "title": "Agent Search to Slim Guard evidence handoff v1",
+  "type": "object",
+  "required": [
+    "query",
+    "results",
+    "meta"
+  ],
+  "properties": {
+    "query": {
+      "type": "string"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "url",
+          "sources"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "sources": {
+            "type": "array",
+            "description": "Adapter provenance. Adapter names are mapped to upstream provider families by provider-families-v1.json.",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "compacted": {
+            "const": true
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "relevance": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "source_count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of unique upstream provider families represented by sources, using provider-families-v1.json."
+          },
+          "evidence": {
+            "type": "object",
+            "required": [
+              "passage_score",
+              "matched_terms",
+              "published_at",
+              "extraction",
+              "source_chars",
+              "selected_chars"
+            ],
+            "properties": {
+              "passage_score": {
+                "type": "number",
+                "minimum": 0
+              },
+              "matched_terms": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "published_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "extraction": {
+                "enum": [
+                  "search_snippet",
+                  "reader_extracted"
+                ]
+              },
+              "source_chars": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "selected_chars": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "compacted"
+            ]
+          },
+          {
+            "required": [
+              "snippet",
+              "confidence",
+              "relevance",
+              "source_count",
+              "evidence"
+            ],
+            "not": {
+              "required": [
+                "compacted"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "total",
+        "high_confidence",
+        "engines"
+      ],
+      "properties": {
+        "evidence_budget": {
+          "type": "object",
+          "required": [
+            "unit",
+            "limit",
+            "used",
+            "truncated_results"
+          ],
+          "properties": {
+            "unit": {
+              "const": "characters"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "used": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "truncated_results": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "budget": {
+              "type": "object",
+              "required": ["limits", "observed", "exhausted", "exhausted_reasons"],
+              "properties": {
+                "limits": { "$ref": "#/$defs/requestBudgetValues" },
+                "observed": { "$ref": "#/$defs/requestBudgetValues" },
+                "exhausted": { "type": "boolean" },
+                "exhausted_reasons": {
+                  "type": "array",
+                  "items": {
+                    "enum": ["engine_calls", "elapsed_ms", "result_count", "evidence_chars"]
+                  },
+                  "uniqueItems": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "partialFailures": {
+      "type": "array"
+    }
+  },
+  "$defs": {
+    "requestBudgetValues": {
+      "type": "object",
+      "required": ["engine_calls", "elapsed_ms", "result_count", "evidence_chars"],
+      "properties": {
+        "engine_calls": { "type": "integer", "minimum": 0 },
+        "elapsed_ms": { "type": "integer", "minimum": 0 },
+        "result_count": { "type": "integer", "minimum": 0 },
+        "evidence_chars": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

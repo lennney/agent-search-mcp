@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import * as http from 'node:http';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import * as z from 'zod/v4';
+
 import { createHttpServer } from '../../src/infrastructure/http.js';
 
 describe('createHttpServer', () => {
@@ -21,7 +26,12 @@ describe('createHttpServer', () => {
       
       const body = await res.json();
       expect(body.status).toBe('ok');
-      expect(body.version).toBe('3.1.3');
+      expect(body.version).toBe('3.2.0');
+      expect(body.protocol).toEqual({
+        stable: '2025-11-25',
+        target: '2026-07-28',
+        target_status: 'experimental',
+      });
     } finally {
       await server.close();
     }
@@ -54,6 +64,10 @@ it('GET /mcp without transport returns 404', async () => {
         headers: { Origin: 'https://example.com' },
       });
       expect(res.headers.get('access-control-allow-origin')).toBe('https://example.com');
+      expect(res.headers.get('access-control-allow-headers')).toContain('MCP-Protocol-Version');
+      expect(res.headers.get('access-control-allow-headers')).toContain('Mcp-Method');
+      expect(res.headers.get('access-control-allow-headers')).toContain('Mcp-Name');
+      expect(res.headers.get('access-control-allow-headers')).toContain('traceparent');
     } finally {
       await server.close();
     }
@@ -117,6 +131,94 @@ it('GET /mcp without transport returns 404', async () => {
       expect(body.error).toBe('Not found');
     } finally {
       await server.close();
+    }
+  });
+
+  it('uses a fresh stateless server and transport for each MCP HTTP request', async () => {
+    let serverInstances = 0;
+    const server = createHttpServer(() => {
+      serverInstances += 1;
+      const mcpServer = new McpServer(
+        { name: 'http-regression-test', version: '1.0.0' },
+        { capabilities: { tools: {} } },
+      );
+      mcpServer.registerTool(
+        'echo',
+        {
+          inputSchema: z.object({
+            value: z.string(),
+          }),
+        },
+        async ({ value }) => ({
+          content: [{ type: 'text', text: value }],
+        }),
+      );
+      return mcpServer;
+    }, {
+      port: 0,
+      enableCors: false,
+      corsOrigin: '*',
+    });
+    await server.listen();
+
+    const client = new Client({
+      name: 'http-regression-client',
+      version: '1.0.0',
+    });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://127.0.0.1:${server.getPort()}/mcp`),
+    );
+
+    try {
+      await client.connect(transport);
+      expect((await client.listTools()).tools.map(tool => tool.name)).toContain('echo');
+      const result = await client.callTool({
+        name: 'echo',
+        arguments: { value: 'ok' },
+      });
+      expect(result.content).toEqual([
+        { type: 'text', text: 'ok' },
+      ]);
+      expect(serverInstances).toBeGreaterThanOrEqual(4);
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  it('serves MCP HTTP requests when Node does not provide global Web Crypto', async () => {
+    vi.stubGlobal('crypto', undefined);
+    const server = createHttpServer(() => {
+      const mcpServer = new McpServer(
+        { name: 'node-18-http-test', version: '1.0.0' },
+        { capabilities: { tools: {} } },
+      );
+      mcpServer.registerTool('node-18-ready', {}, async () => ({
+        content: [{ type: 'text', text: 'ok' }],
+      }));
+      return mcpServer;
+    }, {
+      port: 0,
+      enableCors: false,
+      corsOrigin: '*',
+    });
+    await server.listen();
+
+    const client = new Client({
+      name: 'node-18-http-client',
+      version: '1.0.0',
+    });
+    const transport = new StreamableHTTPClientTransport(
+      new URL(`http://127.0.0.1:${server.getPort()}/mcp`),
+    );
+
+    try {
+      await client.connect(transport);
+      expect((await client.listTools()).tools.map(tool => tool.name)).toContain('node-18-ready');
+    } finally {
+      await client.close();
+      await server.close();
+      vi.unstubAllGlobals();
     }
   });
 });

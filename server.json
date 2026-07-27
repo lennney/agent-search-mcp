@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.lennney/agent-search-mcp",
-  "description": "MCP web search with 12 adapters, 8 zero-key sources, native Chinese search, aggregation, news, and extraction.",
+  "description": "Free, lightweight MCP search for AI agents — no API keys required, 8 zero-key engines, compact multi-source evidence.",
   "repository": {
     "url": "https://github.com/lennney/agent-search-mcp",
     "source": "github"
   },
-  "version": "3.1.3",
+  "version": "3.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "agent-search-mcp",
-      "version": "3.1.3",
+      "version": "3.2.0",
       "transport": {
         "type": "stdio"
       },
@@ -38,18 +38,46 @@
           "name": "EXA_API_KEY"
         },
         {
-          "description": "Run mode: stdio (default), http, or both",
+          "description": "You.com Search API key (optional, enables You.com engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "YDC_API_KEY"
+        },
+        {
+          "description": "Tencent Web Search API key (optional, enables Tencent WSA engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "TENCENT_WSA_API_KEY"
+        },
+        {
+          "description": "Bocha Web Search API key (optional, enables Bocha engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "BOCHA_API_KEY"
+        },
+        {
+          "description": "Serper API key (optional, enables Google SERP search)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "SERPER_API_KEY"
+        },
+        {
+          "description": "Provider policy: free_first, quality_escalation, paid_first, or free_only",
           "isRequired": false,
           "format": "string",
           "isSecret": false,
-          "name": "MODE"
+          "name": "SEARCH_PROVIDER_MODE"
         },
         {
-          "description": "HTTP port (default: 3000)",
+          "description": "Comma-separated optional-provider preference order",
           "isRequired": false,
-          "format": "number",
+          "format": "string",
           "isSecret": false,
-          "name": "PORT"
+          "name": "PAID_ENGINE_ORDER"
         }
       ]
     }

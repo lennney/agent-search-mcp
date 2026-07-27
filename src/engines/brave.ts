@@ -1,4 +1,26 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type EngineSearchOptions } from '../types.js';
+import { withTimeout } from '../infrastructure/abort.js';
+import {
+  asJsonObject,
+  isWebUrl,
+  readString,
+} from './json-search-api.js';
+
+function parseBraveResult(value: unknown): SearchResult | null {
+  const result = asJsonObject(value);
+  if (!result) return null;
+  const title = readString(result.title);
+  const url = readString(result.url);
+  if (!title || !isWebUrl(url)) return null;
+
+  return {
+    title,
+    url,
+    snippet: readString(result.description),
+    source: 'brave',
+    engines: ['brave'],
+  };
+}
 
 export class BraveProvider {
   id = 'brave';
@@ -6,7 +28,7 @@ export class BraveProvider {
   isFree = false;
   languages = ['en', 'zh'];
 
-  async search(query: string, count: number): Promise<SearchResult[]> {
+  async search(query: string, count: number, options?: EngineSearchOptions): Promise<SearchResult[]> {
     const apiKey = process.env.BRAVE_API_KEY;
     if (!apiKey) return [];
 
@@ -20,19 +42,17 @@ export class BraveProvider {
         'Accept-Encoding': 'gzip',
         'X-Subscription-Token': apiKey,
       },
-      signal: AbortSignal.timeout(5000),
+      signal: withTimeout(options?.signal, 5000),
     });
 
     if (!res.ok) throw new Error(`Brave returned ${res.status}`);
 
-    const data = await res.json();
-    return (data.web?.results || []).map((r: any) => ({
-      title: r.title || '',
-      url: r.url || '',
-      snippet: r.description || '',
-      source: 'brave',
-      engines: ['brave'],
-    }));
+    const data = asJsonObject(await res.json());
+    const web = asJsonObject(data?.web);
+    const results = Array.isArray(web?.results) ? web.results : [];
+    return results
+      .map(parseBraveResult)
+      .filter((result): result is SearchResult => result !== null);
   }
 }
 

@@ -8,19 +8,74 @@ import { BraveProvider } from '../engines/brave.js';
 import { TavilyProvider } from '../engines/tavily.js';
 import { searchExa } from '../engines/exa.js';
 import { searchYouCom } from '../engines/youcom.js';
+import { searchTencentWsa } from '../engines/tencent-wsa.js';
+import { searchBocha } from '../engines/bocha.js';
+import { searchSerper } from '../engines/serper.js';
+import {
+  classifyEngineError,
+  EngineAdapterError,
+  isEngineAdapterError,
+} from '../engines/engine-error.js';
 import { searchWikipedia } from '../engines/wikipedia.js';
 import { searchStartpage } from '../engines/startpage.js';
 import { searchYandex } from '../engines/yandex.js';
 import { searchMojeek } from '../engines/mojeek.js';
+import { searchWiby } from '../engines/wiby.js';
+import {
+  hasEngineCredential,
+  optionalEngineCredentialEnvironment,
+  freeEngines,
+  paidEngines,
+} from '../engines/index.js';
 import { getSecurityNote } from '../infrastructure/security.js';
-// ── Agent instruction: DO NOT TOUCH ───────────────────────────────────
-import type { SearchResult, SearchProvider, EngineError } from '../types.js';
-import { dedupByUrl, dedupByTitle, filterLowQuality, scoreAndRank, formatResults, checkConfidenceBasket, enrichResults, expandQuery, hasChinese, generateChineseVariants, detectLanguage, semanticDedup, semanticRerank, type ScoredResult } from '../aggregation/index.js';
+import {
+  SEARCH_PROVIDERS,
+  type EngineError,
+  type SearchProvider,
+  type SearchResult,
+} from '../types.js';
+import {
+  detectLanguage,
+  enrichResults,
+  createSearchEvidenceEvaluator,
+  expandQuery,
+  filterLowQuality,
+  formatResults,
+  generateChineseVariants,
+  getProviderFamily,
+  hasChinese,
+  semanticDedup,
+  semanticRerank,
+  type ConfidenceBasketResult,
+  type ScoredResult,
+  type SearchEvidenceEvaluation,
+} from '../aggregation/index.js';
 import type { FormatOptions } from '../aggregation/format.js';
-import { SearchCache, logger, HealthTracker, RateLimiter, loadConfig, EnginePolicy, ServerMetrics } from '../infrastructure/index.js';
+import {
+  createSearchToolResult,
+  searchOutputSchema,
+} from './search-output.js';
+import {
+  SearchCache,
+  logger,
+  HealthTracker,
+  RateLimiter,
+  loadConfig,
+  EnginePolicy,
+  ServerMetrics,
+  abortableDelay,
+  SearchRequestBudget,
+  createProviderCooldownStore,
+  createExactCacheStore,
+  createSearchCacheKey,
+  isCacheableSearchResponse,
+  isSearchResponseCacheValue,
+  createSearchProviderPlan,
+  type SearchRequestBudgetSnapshot,
+} from '../infrastructure/index.js';
 
-const FREE_ENGINES: SearchProvider[] = ['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek'];
-const PAID_ENGINES: SearchProvider[] = ['brave', 'tavily', 'exa', 'youcom'];
+const FREE_ENGINES: readonly SearchProvider[] = freeEngines;
+const PAID_ENGINES: readonly SearchProvider[] = paidEngines;
 
 // Engine weights (higher = more trusted)
 const ENGINE_WEIGHTS: Record<string, number> = {
@@ -32,54 +87,48 @@ const ENGINE_WEIGHTS: Record<string, number> = {
   startpage: 0.86,
   yandex: 0.82,
   mojeek: 0.8,
+  wiby: 0.78,
   brave: 0.95,
   tavily: 0.9,
   exa: 0.92,
   youcom: 0.91,
+  tencent_wsa: 0.9,
+  bocha: 0.9,
+  serper: 0.9,
 };
 
 // Infrastructure singletons
-const cache = new SearchCache();
-const healthTracker = new HealthTracker();
+const config = loadConfig();
+const cache = new SearchCache({
+  maxSize: config.searchCacheMaxEntries,
+  defaultTtlMs: config.searchCacheTtlMs,
+  store: createExactCacheStore(
+    config.searchCacheDirectory,
+    config.searchCacheMaxEntries,
+  ),
+  validate: isSearchResponseCacheValue,
+});
+const healthTracker = new HealthTracker(
+  createProviderCooldownStore(config.providerCooldownStorePath),
+);
 const serverMetrics = new ServerMetrics(cache);
 const rateLimiter = new RateLimiter();
-const config = loadConfig();
 const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
 
-// ─── Engine provider mapping (from ddgs pattern) ──────────────────────────
-// DDG uses Bing as backend, so we track providers to avoid duplicate queries
-const PROVIDER_MAP: Record<string, string> = {
-  duckduckgo: 'bing',
-  sogou: 'sogou',
-  bing: 'bing',
-  baidu: 'baidu',
-  wikipedia: 'wikipedia',
-  startpage: 'startpage',
-  yandex: 'yandex',
-  mojeek: 'mojeek',
-  brave: 'brave',
-  tavily: 'tavily',
-  exa: 'exa',
-  youcom: 'youcom',
-};
+function isSemanticRoutingEnabled(): boolean {
+  return config.semanticDedup || config.semanticRerank;
+}
 
-/**
- * Get unique providers from engine list.
- * From ddgs: same provider only searches once.
- */
-function getUniqueProviders(engines: SearchProvider[]): SearchProvider[] {
-  const seenProviders = new Set<string>();
-  const unique: SearchProvider[] = [];
-  
+/** Group adapters by upstream provider while preserving caller preference. */
+function getProviderChains(engines: SearchProvider[]): SearchProvider[][] {
+  const chains = new Map<string, SearchProvider[]>();
   for (const engine of engines) {
-    const provider = PROVIDER_MAP[engine] || engine;
-    if (!seenProviders.has(provider)) {
-      seenProviders.add(provider);
-      unique.push(engine);
-    }
+    const provider = getProviderFamily(engine);
+    const chain = chains.get(provider) ?? [];
+    if (!chain.includes(engine)) chain.push(engine);
+    chains.set(provider, chain);
   }
-  
-  return unique;
+  return [...chains.values()];
 }
 
 /**
@@ -89,74 +138,155 @@ async function searchEngine(
   engine: SearchProvider,
   query: string,
   limit: number,
-  maxRetries: number = 2
-): Promise<SearchResult[]> {
+  maxRetries: number = 2,
+  signal?: AbortSignal,
+  budget?: SearchRequestBudget,
+  callerSignal?: AbortSignal,
+): Promise<EngineOutcome> {
+  signal?.throwIfAborted();
+  if (
+    config.searchProviderMode === 'free_only'
+    && PAID_ENGINES.includes(engine)
+  ) {
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: new EngineAdapterError(
+        'permission_denied',
+        `${engine} is disabled by SEARCH_PROVIDER_MODE=free_only`,
+        {
+          retryable: false,
+          suggestion: 'Choose a zero-key engine or change SEARCH_PROVIDER_MODE',
+        },
+      ),
+    };
+  }
   // Skip engines blocked by policy
   if (!enginePolicy.isAllowed(engine)) {
     logger.info({ engine }, 'Engine blocked by policy');
-    return [];
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: new EngineAdapterError(
+        'permission_denied',
+        `${engine} is blocked by the configured engine policy`,
+        {
+          retryable: false,
+          suggestion: 'Choose an allowed engine or update the engine policy',
+        },
+      ),
+    };
   }
 
   // Skip unhealthy providers
-  if (!healthTracker.isHealthy(engine)) {
-    logger.warn({ engine }, 'Skipping unhealthy provider');
-    return [];
+  const availability = healthTracker.getAvailability(engine);
+  if (!availability.available) {
+    const retryAt = availability.retryAt === null
+      ? 'after provider recovery'
+      : new Date(availability.retryAt).toISOString();
+    logger.warn(
+      { engine, failureType: availability.failureType, retryAt: availability.retryAt },
+      'Skipping unavailable provider',
+    );
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: new EngineAdapterError(
+        availability.failureType,
+        `${engine} is cooling down until ${retryAt}`,
+        {
+          retryable: true,
+          suggestion: 'Use another provider or retry after the cooldown expires',
+        },
+      ),
+    };
   }
 
   // Rate limit before making the request
-  await rateLimiter.waitForSlot(engine);
+  await rateLimiter.waitForSlot(engine, signal);
 
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (budget && !budget.claimEngineCall()) {
+      return { engine, status: 'skipped', results: [] };
+    }
     const startTime = Date.now();
     try {
       let results: SearchResult[];
+      const engineOptions = { signal, throwOnError: true };
       switch (engine) {
         case 'duckduckgo':
-          results = await searchDuckDuckGo(query, limit);
+          results = await searchDuckDuckGo(query, limit, engineOptions);
           break;
         case 'sogou':
-          results = await searchSogou(query, limit);
+          results = await searchSogou(query, limit, engineOptions);
           break;
         case 'bing':
-          results = await searchBing(query, limit);
+          results = await searchBing(query, limit, engineOptions);
           break;
         case 'baidu':
-          results = await searchBaidu(query, limit);
+          results = await searchBaidu(query, limit, engineOptions);
           break;
         case 'wikipedia':
-          results = await searchWikipedia(query, limit);
+          results = await searchWikipedia(query, limit, engineOptions);
           break;
         case 'startpage':
-          results = await searchStartpage(query, limit);
+          results = await searchStartpage(query, limit, engineOptions);
           break;
         case 'yandex':
-          results = await searchYandex(query, limit);
+          results = await searchYandex(query, limit, engineOptions);
           break;
         case 'mojeek':
-          results = await searchMojeek(query, limit);
+          results = await searchMojeek(query, limit, engineOptions);
+          break;
+        case 'wiby':
+          results = await searchWiby(query, limit, engineOptions);
           break;
         case 'brave':
-          results = await new BraveProvider().search(query, limit);
+          results = await new BraveProvider().search(query, limit, engineOptions);
           break;
         case 'tavily':
-          results = await new TavilyProvider().search(query, limit);
+          results = await new TavilyProvider().search(query, limit, engineOptions);
           break;
         case 'exa':
-          results = await searchExa({ query, count: limit, apiKey: process.env.EXA_API_KEY || '' });
+          results = await searchExa({
+            query,
+            count: limit,
+            apiKey: process.env.EXA_API_KEY || '',
+            signal,
+            throwOnError: true,
+          });
           break;
         case 'youcom':
-          results = await searchYouCom(query, limit);
+          results = await searchYouCom(query, limit, engineOptions);
+          break;
+        case 'tencent_wsa':
+          results = await searchTencentWsa(query, limit, engineOptions);
+          break;
+        case 'bocha':
+          results = await searchBocha(query, limit, engineOptions);
+          break;
+        case 'serper':
+          results = await searchSerper(query, limit, engineOptions);
           break;
         default:
-          return [];
+          return { engine, status: 'skipped', results: [] };
       }
+      signal?.throwIfAborted();
       const latency = Date.now() - startTime;
       healthTracker.recordSuccess(engine, latency);
       logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
-      return results;
+      return { engine, status: 'success', results };
     } catch (err) {
+      callerSignal?.throwIfAborted();
+      if (budget?.isBudgetAbort()) {
+        return { engine, status: 'skipped', results: [] };
+      }
+      signal?.throwIfAborted();
       lastError = err instanceof Error ? err : new Error(String(err));
       const latency = Date.now() - startTime;
 
@@ -167,26 +297,59 @@ async function searchEngine(
         // Exponential backoff: 500ms, 1000ms, 2000ms...
         const delay = Math.min(500 * Math.pow(2, attempt), 5000);
         logger.warn({ engine, attempt, delay, err: lastError.message }, 'Retryable error, retrying...');
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await abortableDelay(delay, signal);
         continue;
       }
 
       // Non-retryable or max retries exceeded
-      healthTracker.recordFailure(engine);
+      if (
+        isEngineAdapterError(lastError)
+        && lastError.cooldownMs
+        && lastError.failureType !== 'budget_exhausted'
+      ) {
+        healthTracker.suspend(
+          engine,
+          lastError.cooldownMs,
+          lastError.failureType,
+        );
+      } else {
+        healthTracker.recordFailure(
+          engine,
+          isEngineAdapterError(lastError)
+            && lastError.failureType !== 'budget_exhausted'
+            ? lastError.failureType
+            : 'unknown',
+        );
+      }
       logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
-      return [];
+      return { engine, status: 'failed', results: [], error: lastError };
     }
   }
 
   // All retries exhausted
   logger.error({ engine, lastError: lastError?.message }, 'All retries exhausted');
-  return [];
+  return {
+    engine,
+    status: 'failed',
+    results: [],
+    error: lastError ?? new Error('All retries exhausted'),
+  };
+}
+
+interface EngineOutcome {
+  engine: SearchProvider;
+  status: 'success' | 'skipped' | 'failed';
+  results: SearchResult[];
+  error?: Error;
 }
 
 /**
  * Check if an error is retryable (network, timeout, 5xx).
  */
 function isRetryableError(err: Error): boolean {
+  if ((err as Error & { retryable?: boolean }).retryable === false) {
+    return false;
+  }
   const msg = err.message.toLowerCase();
   
   // Network errors
@@ -208,45 +371,49 @@ function isRetryableError(err: Error): boolean {
   return false;
 }
 
-/**
- * Classify a raw error into a structured EngineError for agent-friendly recovery.
- */
-function classifyEngineError(engine: string, err: Error): EngineError {
-  const msg = err.message.toLowerCase();
-
-  if (msg.includes('timeout') || msg.includes('abort') || msg.includes('etimedout')) {
-    return { engine, type: 'timeout', message: err.message, suggestion: 'Retry with a shorter query or try again later' };
-  }
-  if (msg.includes('401') || msg.includes('403') || msg.includes('unauthorized') || msg.includes('forbidden')) {
-    return { engine, type: 'permission_denied', message: err.message, suggestion: 'Check API key configuration' };
-  }
-  if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) {
-    return { engine, type: 'rate_limited', message: err.message, suggestion: 'Retry in 30s or reduce request rate' };
-  }
-  if (msg.includes('http 4') || msg.includes('400') || msg.includes('404')) {
-    return { engine, type: 'upstream_4xx', message: err.message, suggestion: 'Check query syntax or try a different engine' };
-  }
-  if (msg.includes('http 5') || msg.includes('500') || msg.includes('502') || msg.includes('503')) {
-    return { engine, type: 'upstream_5xx', message: err.message, suggestion: 'Engine may be temporarily unavailable, retry later' };
-  }
-  if (msg.includes('econnrefused') || msg.includes('econnreset') || msg.includes('enotfound') || msg.includes('network')) {
-    return { engine, type: 'unknown', message: err.message, suggestion: 'Network error — check connectivity or try a different engine' };
-  }
-  return { engine, type: 'unknown', message: err.message, suggestion: 'Try a different engine or check the query' };
-}
 function hasApiKey(engine: SearchProvider): boolean {
-  switch (engine) {
-    case 'brave':
-      return !!process.env.BRAVE_API_KEY;
-    case 'tavily':
-      return !!process.env.TAVILY_API_KEY;
-    case 'exa':
-      return !!process.env.EXA_API_KEY;
-    case 'youcom':
-      return !!process.env.YDC_API_KEY;
-    default:
-      return true; // zero-key engines are always eligible
-  }
+  return hasEngineCredential(engine);
+}
+
+function normalizePaidEngineOrder(order: readonly string[]): SearchProvider[] {
+  const paid = new Set(PAID_ENGINES);
+  return [...new Set(order)]
+    .filter((engine): engine is SearchProvider => paid.has(engine as SearchProvider));
+}
+
+function getDefaultProviderPlan(waterfall: boolean) {
+  return createSearchProviderPlan({
+    mode: config.searchProviderMode,
+    freeStages: waterfall
+      ? [
+        WATERFALL_PHASES.phase1a,
+        WATERFALL_PHASES.phase1b,
+        WATERFALL_PHASES.phase1c,
+      ]
+      : [['duckduckgo', 'sogou']],
+    paidEngines: normalizePaidEngineOrder(config.paidEngineOrder),
+    hasCredential: hasApiKey,
+  });
+}
+
+function getMissingCredentialFailures(
+  requestedEngines: SearchProvider[] | undefined,
+): EngineError[] {
+  if (!requestedEngines) return [];
+  return [...new Set(requestedEngines)]
+    .filter(engine => PAID_ENGINES.includes(engine) && !hasApiKey(engine))
+    .map(engine => {
+      const credentialEnvironment =
+        optionalEngineCredentialEnvironment[engine];
+      return {
+        engine,
+        type: 'permission_denied' as const,
+        message: `${engine} credential is not configured`,
+        suggestion: credentialEnvironment
+          ? `Set ${credentialEnvironment} or choose a zero-key engine`
+          : 'Configure the provider credential or choose a zero-key engine',
+      };
+    });
 }
 
 // ─── Shared options & response types ────────────────────────────────────
@@ -267,38 +434,30 @@ export interface SearchWithFallbackOptions {
   enrichMinConfidence?: number;
   /** Disable query-expansion recursion for deterministic benchmark capture. */
   expandQueries?: boolean;
+  /** Internal request cancellation propagated from the MCP request context. */
+  signal?: AbortSignal;
 }
 
-interface FormattedResult {
-  title: string;
-  url: string;
-  snippet?: string;
-  confidence?: number;
-  relevance?: number;
-  source_count?: number;
-  sources?: string[];
-  security?: {
-    injection_detected: boolean;
-    url_safe: boolean;
-    threats: string[];
-    warnings: string[];
-  };
-}
+type FormattedSearchPayload = ReturnType<typeof formatResults>;
 
 interface SearchResponse {
   query: string;
   engines: SearchProvider[];
-  results: FormattedResult[];
-  meta: {
-    total: number;
-    high_confidence: number;
-    engines: string[];
+  results: FormattedSearchPayload['results'];
+  meta: FormattedSearchPayload['meta'] & {
     execution?: {
       mode: 'parallel' | 'waterfall';
       engine_calls: number;
       searched_engines: string[];
       phases_completed: string[];
       early_stop: boolean;
+      stop_reason:
+        | 'quality_gate_satisfied'
+        | 'phases_exhausted'
+        | 'budget_exhausted';
+      budget?: SearchRequestBudgetSnapshot;
+      quality_gate_stage?: 'pre_semantic' | 'post_semantic';
+      quality_gate?: ConfidenceBasketResult;
     };
   };
   security_note: string;
@@ -341,6 +500,102 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
   });
 }
 
+function makeSearchCacheKey(options: SearchWithFallbackOptions): string {
+  const count = options.count ?? 10;
+  const engines = options.engines
+    ?? getDefaultProviderPlan(options.waterfall === true)
+      .flatMap(stage => stage.engines);
+  return createSearchCacheKey({
+    request: {
+      query: options.query,
+      count,
+      engines: [...engines].sort(),
+      language: options.language ?? 'auto',
+      include_domains: [...(options.includeDomains ?? [])].sort(),
+      exclude_domains: [...(options.excludeDomains ?? [])].sort(),
+      min_confidence: options.minConfidence ?? 0,
+      min_source_count: options.minSourceCount ?? 1,
+    },
+    strategy: {
+      mode: options.waterfall ? 'waterfall' : 'parallel',
+      waterfall_min_results: options.waterfallMinResults ?? 3,
+      waterfall_min_confidence: options.waterfallMinConfidence ?? 0.6,
+      expand_queries: options.expandQueries !== false,
+      enrich: options.enrich === true,
+      enrich_max: options.enrichMax ?? null,
+      enrich_min_confidence: options.enrichMinConfidence ?? null,
+      semantic_dedup: config.semanticDedup,
+      dedup_threshold: config.dedupThreshold,
+      dedup_model: config.dedupModel,
+      semantic_rerank: config.semanticRerank,
+      rerank_top_k: config.rerankTopK,
+      rerank_model: config.rerankModel,
+    },
+    output: {
+      style: config.outputStyle,
+      snippet_length: config.snippetLength,
+      max_full_results: config.maxFullResults,
+      evidence_budget_chars: config.evidenceBudgetChars,
+      min_confidence: config.minConfidence,
+      min_source_count: config.minSourceCount,
+    },
+    provider_policy: {
+      allowed_engines: normalizePolicyList(config.ALLOWED_ENGINES),
+      denied_engines: normalizePolicyList(config.DENIED_ENGINES),
+    },
+    freshness: {
+      ttl_ms: config.searchCacheTtlMs,
+    },
+  });
+}
+
+function cloneCachedSearchResponse(cached: SearchResponse): SearchResponse {
+  const stable = { ...cached };
+  delete stable.rate_limits;
+  return {
+    ...stable,
+    meta: {
+      ...cached.meta,
+      ...(cached.meta.execution
+        ? { execution: { ...cached.meta.execution } }
+        : {}),
+    },
+    ...(cached.partialFailures
+      ? { partialFailures: [...cached.partialFailures] }
+      : {}),
+    cache_hit: true,
+  };
+}
+
+function normalizePolicyList(value: string | string[]): string[] {
+  const entries = Array.isArray(value) ? value : value.split(',');
+  return entries.map(entry => entry.trim()).filter(Boolean).sort();
+}
+
+function collectEngineOutcomes(
+  settled: PromiseSettledResult<EngineOutcome>[],
+  engines: SearchProvider[],
+  allResults: SearchResult[],
+  failures: EngineError[],
+  signal?: AbortSignal,
+  budget?: SearchRequestBudget,
+): void {
+  signal?.throwIfAborted();
+  settled.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      const error = result.reason instanceof Error ? result.reason : new Error(String(result.reason));
+      failures.push(classifyEngineError(engines[index], error));
+      return;
+    }
+    allResults.push(...(budget
+      ? budget.admitResults(result.value.results)
+      : result.value.results));
+    if (result.value.status === 'failed' && result.value.error) {
+      failures.push(classifyEngineError(result.value.engine, result.value.error));
+    }
+  });
+}
+
 // ─── Core search logic (fused patterns from ddgs) ──────────────────────
 
 /**
@@ -353,6 +608,14 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
  * 4. Frequency scoring: count how many engines returned each result
  */
 export async function searchWithFallback(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+  options.signal?.throwIfAborted();
+  const requestedCount = options.count ?? 10;
+  if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 50) {
+    throw new RangeError('count must be an integer between 1 and 50');
+  }
+  if (options.signal) {
+    return executeSearch(options);
+  }
   const collapseKey = makeCollapseKey(options);
   
   // Check if same request is already in-flight
@@ -365,23 +628,54 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
   // Start new request and track it
   const searchPromise = executeSearch(options);
   pendingRequests.set(collapseKey, searchPromise);
-  
-  // Clean up when done
-  searchPromise.finally(() => {
+
+  try {
+    return await searchPromise;
+  } finally {
     pendingRequests.delete(collapseKey);
-  });
-  
-  return searchPromise;
+  }
 }
 
 /**
  * Execute the actual search logic (internal).
  */
 async function executeSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
-  if (options.waterfall) {
-    return executeWaterfallSearch(options);
+  const budget = new SearchRequestBudget({
+    engine_calls: config.searchBudgetMaxCalls,
+    elapsed_ms: config.searchBudgetMaxElapsedMs,
+    result_count: config.searchBudgetMaxResults,
+    evidence_chars: config.evidenceBudgetChars,
+  }, options.signal);
+  try {
+    const response = options.waterfall
+      ? await executeWaterfallSearch(options, 0, budget)
+      : await executeParallelSearch(options, budget);
+    const evidence = response.meta.evidence_budget;
+    budget.observeEvidence(
+      evidence?.used ?? 0,
+      (evidence?.truncated_results ?? 0) > 0,
+    );
+    const snapshot = budget.snapshot();
+    if (response.meta.execution) {
+      response.meta.execution.budget = snapshot;
+      if (snapshot.exhausted_reasons.some(reason => reason !== 'evidence_chars')) {
+        response.meta.execution.stop_reason = 'budget_exhausted';
+        response.meta.execution.early_stop = true;
+        response.partialFailures = [
+          ...(response.partialFailures ?? []),
+          {
+            engine: 'request_budget',
+            type: 'budget_exhausted',
+            message: `Search request budget exhausted: ${snapshot.exhausted_reasons.join(', ')}`,
+            suggestion: 'Narrow the query or raise the configured request budget',
+          },
+        ];
+      }
+    }
+    return response;
+  } finally {
+    budget.dispose();
   }
-  return executeParallelSearch(options);
 }
 
 /**
@@ -414,134 +708,283 @@ function calculateAdaptiveConcurrency(engines: SearchProvider[], count: number):
   return baseConcurrency;
 }
 
-async function executeParallelSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+function getEffectiveResultThresholds(
+  requestedMinConfidence: number,
+  requestedMinSourceCount: number,
+): { minConfidence: number; minSourceCount: number } {
+  if (config.outputStyle !== 'compact') {
+    return {
+      minConfidence: requestedMinConfidence,
+      minSourceCount: requestedMinSourceCount,
+    };
+  }
+  return {
+    minConfidence: Math.max(requestedMinConfidence, config.minConfidence),
+    minSourceCount: Math.max(requestedMinSourceCount, config.minSourceCount),
+  };
+}
+
+async function executeParallelSearch(
+  options: SearchWithFallbackOptions,
+  budget: SearchRequestBudget,
+): Promise<SearchResponse> {
+  const semanticRoutingEnabled = isSemanticRoutingEnabled();
   const {
     query,
     count = 10,
-    engines: userEngines = ['duckduckgo', 'sogou'] as SearchProvider[],
+    engines: explicitEngines,
     minConfidence = 0,
     minSourceCount = 1,
     language,
     includeDomains,
     excludeDomains,
   } = options;
+  const defaultPlan = getDefaultProviderPlan(false);
+  const userEngines = explicitEngines
+    ?? defaultPlan.flatMap(stage => stage.engines);
+  const effectiveThresholds = getEffectiveResultThresholds(
+    minConfidence,
+    minSourceCount,
+  );
 
   const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
 
   // Check cache first
-  const cacheKey = cache.makeKey(makeCollapseKey(options), count, userEngines);
+  const cacheKey = makeSearchCacheKey(options);
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
-    return { ...(cached as SearchResponse), cache_hit: true } as SearchResponse;
+    return cloneCachedSearchResponse(cached as SearchResponse);
   }
 
   logger.info({ query, count, engines: userEngines }, 'Starting search');
 
-  // ── Step 1: Provider dedup (from ddgs) ──────────────────────────────
-  // Only search each provider once (e.g., DDG and Bing both use Bing backend)
-  const uniqueEngines = getUniqueProviders(userEngines);
+  // ── Step 1: Provider grouping (from ddgs) ───────────────────────────
+  // Query one adapter per family at a time. Additional explicitly selected
+  // adapters in that family remain a failure fallback, not a second source.
+  const providerChains = getProviderChains(userEngines);
+  const uniqueEngines = providerChains.map(chain => chain[0]);
   logger.info({ engines: uniqueEngines }, 'After provider dedup');
 
   // ── Step 2: Determine which engines to search ───────────────────────
-  // Phase 1: Free engines
-  const freeToSearch = uniqueEngines.filter(e => FREE_ENGINES.includes(e));
-  const allFree = FREE_ENGINES.filter(e => !uniqueEngines.includes(e));
-  const phase1Engines = [...freeToSearch, ...allFree];
-  const paidToSearch = uniqueEngines.filter(
-    e => PAID_ENGINES.includes(e) && hasApiKey(e)
+  // Explicit engine selection is authoritative in both parallel and waterfall
+  // modes. Do not silently fan out to every free adapter.
+  const freeProviderChains = providerChains
+    .map(chain => chain.filter(engine => FREE_ENGINES.includes(engine)))
+    .filter(chain => chain.length > 0);
+  const optionalProviderChains = providerChains
+    .map(chain => chain.filter(
+      engine => PAID_ENGINES.includes(engine) && hasApiKey(engine),
+    ))
+    .filter(chain => chain.length > 0);
+  const paidFirst = explicitEngines === undefined
+    && config.searchProviderMode === 'paid_first'
+    && optionalProviderChains.length > 0;
+  const phase1ProviderChains = paidFirst
+    ? optionalProviderChains
+    : freeProviderChains;
+  const phase2ProviderChains = paidFirst
+    ? freeProviderChains
+    : optionalProviderChains;
+  const phase1Engines = phase1ProviderChains.map(chain => chain[0]);
+  const phase2Engines = phase2ProviderChains.map(chain => chain[0]);
+  const phase1Kind = paidFirst ? 'optional' : 'free';
+  const phase2Kind = paidFirst ? 'free' : 'optional';
+  const providerChainByPrimary = new Map(
+    [...freeProviderChains, ...optionalProviderChains]
+      .map(chain => [chain[0], chain] as const),
   );
 
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
   const BATCH_SIZE = calculateAdaptiveConcurrency(phase1Engines, count);
   const allResults: SearchResult[] = [];
-  const failures: EngineError[] = [];
+  const failures: EngineError[] = getMissingCredentialFailures(userEngines);
   const searchedEngines: string[] = [];
+  let parallelEvaluation: SearchEvidenceEvaluation | undefined;
+  let parallelGate: ConfidenceBasketResult | undefined;
+  let preparedSemanticResults: ScoredResult[] | undefined;
+  let stoppedEarly = false;
+  let freePhaseAttempted = false;
+  let optionalPhaseAttempted = false;
+  const requestedProviderFamilies = new Set(
+    uniqueEngines.map(getProviderFamily),
+  ).size;
+  const requiredProviderFamilies = Math.min(2, Math.max(requestedProviderFamilies, 1));
+  const evidenceEvaluator = createSearchEvidenceEvaluator({
+    query,
+    engineWeights: ENGINE_WEIGHTS,
+    minConfidence: effectiveThresholds.minConfidence,
+    minSourceCount: effectiveThresholds.minSourceCount,
+    includeDomains,
+    excludeDomains,
+    qualityGate: {
+      minResults: Math.min(count, 3),
+      minAvgConfidence: 0.6,
+      minProviderFamilies: requiredProviderFamilies,
+      topK: 5,
+    },
+  });
+  const searchProviderChain = async (
+    primary: SearchProvider,
+    limit: number,
+  ): Promise<EngineOutcome[]> => {
+    const chain = providerChainByPrimary.get(primary) ?? [primary];
+    const outcomes: EngineOutcome[] = [];
+    for (const engine of chain) {
+      searchedEngines.push(engine);
+      if (!budget.canContinue()) break;
+      const outcome = await searchEngine(
+        engine,
+        query,
+        limit,
+        2,
+        budget.signal,
+        budget,
+        options.signal,
+      );
+      outcomes.push(outcome);
+      if (
+        outcome.status === 'success'
+        && filterLowQuality(outcome.results).length > 0
+      ) {
+        break;
+      }
+      logger.info(
+        { engine, providerFamily: getProviderFamily(engine), next: chain[outcomes.length] },
+        'Provider adapter produced no usable results; trying same-family fallback',
+      );
+    }
+    return outcomes;
+  };
+  const collectProviderChainOutcomes = (
+    settled: PromiseSettledResult<EngineOutcome[]>[],
+    primaries: SearchProvider[],
+  ): void => {
+    options.signal?.throwIfAborted();
+    settled.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        const error = result.reason instanceof Error
+          ? result.reason
+          : new Error(String(result.reason));
+        failures.push(classifyEngineError(primaries[index], error));
+        return;
+      }
+      for (const outcome of result.value) {
+        allResults.push(...budget.admitResults(outcome.results));
+        if (outcome.status === 'failed' && outcome.error) {
+          failures.push(classifyEngineError(outcome.engine, outcome.error));
+        }
+      }
+    });
+  };
+  const evaluateParallelEvidence = (): SearchEvidenceEvaluation => {
+    return evidenceEvaluator.evaluate(allResults);
+  };
+  const assessParallelEvidence = async (): Promise<void> => {
+    parallelEvaluation = evaluateParallelEvidence();
+    if (semanticRoutingEnabled) {
+      preparedSemanticResults = await applySemanticProcessing(
+        parallelEvaluation.results,
+        query,
+        options.signal,
+      );
+      parallelGate = evidenceEvaluator.assess(preparedSemanticResults);
+      return;
+    }
+    parallelGate = parallelEvaluation.qualityGate;
+  };
 
   // Batch 1: Free engines
-  logger.info({ engines: phase1Engines }, 'Phase 1: free engines (batch)');
+  logger.info(
+    { engines: phase1Engines, kind: phase1Kind },
+    'Parallel primary phase',
+  );
   
   for (let i = 0; i < phase1Engines.length; i += BATCH_SIZE) {
+    if (!budget.canContinue()) break;
     const batch = phase1Engines.slice(i, i + BATCH_SIZE);
+    if (phase1Kind === 'free') freePhaseAttempted = true;
+    else optionalPhaseAttempted = true;
     const batchResults = await Promise.allSettled(
-      batch.map(async (engine) => {
-        searchedEngines.push(engine);
-        const results = await searchEngine(engine, query, count);
-        return { engine, results };
-      })
+      batch.map(engine => searchProviderChain(engine, count))
     );
 
-    for (let idx = 0; idx < batchResults.length; idx++) {
-      const result = batchResults[idx];
-      if (result.status === 'fulfilled') {
-        allResults.push(...result.value.results);
-      } else {
-        failures.push(
-            classifyEngineError(batch[idx], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
+    collectProviderChainOutcomes(batchResults, batch);
+
+    // Result count is necessary but not sufficient: only stop if the current
+    // display basket also has enough relevant, reliable, independent evidence.
+    if (allResults.length >= count * 1.5) {
+      await assessParallelEvidence();
+      if (parallelGate?.sufficient) {
+        stoppedEarly =
+          i + BATCH_SIZE < phase1Engines.length
+          || phase2Engines.length > 0;
+        logger.info(
+          { count: allResults.length, qualityGate: parallelGate, stoppedEarly },
+          stoppedEarly
+            ? 'Parallel quality gate satisfied; skipping remaining work'
+            : 'Parallel quality gate satisfied at the end of selected work',
+        );
+        break;
       }
     }
+  }
 
-    // Early exit: stop if we have enough results
-    if (allResults.length >= count * 1.5) {
-      logger.info({ count: allResults.length }, 'Early exit: enough results');
-      break;
-    }
+  // Always assess the completed free phase. Otherwise a basket with enough raw
+  // rows to meet `count` but too few to reach the batching threshold could
+  // silently skip an explicitly requested optional provider.
+  if (!parallelEvaluation) {
+    await assessParallelEvidence();
+  }
+  if (
+    !stoppedEarly
+    && allResults.length >= count
+    && parallelGate?.sufficient
+    && phase2Engines.length > 0
+  ) {
+    stoppedEarly = true;
   }
 
   logger.info({ count: allResults.length }, 'Phase 1 results');
 
   // ── Step 4: Fallback to paid engines if not enough ───────────────────
-  if (allResults.length < count) {
-    if (paidToSearch.length > 0) {
-      const remaining = Math.max(count - allResults.length, 1);
-      logger.info({ engines: paidToSearch, remaining }, 'Phase 2: paid engines');
-
-      const phase2Results = await Promise.allSettled(
-        paidToSearch.map(async (engine) => {
-          searchedEngines.push(engine);
-          const results = await searchEngine(engine, query, remaining);
-          return { engine, results };
-        })
+  const qualityGateFailed = !parallelGate?.sufficient;
+  if (budget.canContinue() && (allResults.length < count || qualityGateFailed)) {
+    if (phase2Engines.length > 0) {
+      if (phase2Kind === 'free') freePhaseAttempted = true;
+      else optionalPhaseAttempted = true;
+      const remaining = qualityGateFailed
+        ? count
+        : Math.max(count - allResults.length, 1);
+      logger.info(
+        { engines: phase2Engines, kind: phase2Kind, remaining },
+        'Parallel fallback phase',
       );
 
-      for (let i = 0; i < phase2Results.length; i++) {
-        const result = phase2Results[i];
-        if (result.status === 'fulfilled') {
-          allResults.push(...result.value.results);
-        } else {
-failures.push(
-            classifyEngineError(paidToSearch[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-        }
-      }
+      const phase2Results = await Promise.allSettled(
+        phase2Engines.map(engine => searchProviderChain(engine, remaining))
+      );
+
+      collectProviderChainOutcomes(phase2Results, phase2Engines);
+      await assessParallelEvidence();
 
       logger.info({ got: allResults.length }, 'Phase 2 results');
     } else {
-      logger.info('Phase 2: no paid engines available');
+      logger.info('Parallel fallback phase: no engines available');
     }
   }
 
-  // ── Step 5: Aggregation layer (fused from ddgs + our patterns) ──────
-  
-  // 5a. Filter low-quality results (from ddgs)
-  const filtered = filterLowQuality(allResults);
-  
-  // 5b. URL dedup with frequency counting
-  const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
-  
-  // 5c. Title dedup
-  const titleDeduped = dedupByTitle(urlDeduped);
-  
-  // 5d. Score and rank with frequency bonus
-  const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
-
-  // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
-  const { formatted } = await applyPostProcessing(
-    scored, query, minConfidence, minSourceCount,
-    includeDomains, excludeDomains,
-    options.enrich, options.enrichMax, options.enrichMinConfidence,
+  const semanticResults = semanticRoutingEnabled
+    ? preparedSemanticResults ?? []
+    : parallelEvaluation?.results ?? [];
+  const { formatted } = await finalizeSearchResults(
+    semanticResults,
+    query,
+    options.enrich && budget.canContinue(),
+    options.enrichMax,
+    options.enrichMinConfidence,
+    options.signal,
   );
 
   const response: SearchResponse = {
@@ -554,8 +997,20 @@ failures.push(
         mode: 'parallel',
         engine_calls: searchedEngines.length,
         searched_engines: [...searchedEngines],
-        phases_completed: searchedEngines.length > 0 ? ['free', ...(searchedEngines.some(e => PAID_ENGINES.includes(e as SearchProvider)) ? ['optional'] : [])] : [],
-        early_stop: searchedEngines.length < phase1Engines.length + paidToSearch.length,
+        phases_completed: [
+          ...(phase1Kind === 'free' && freePhaseAttempted ? ['free'] : []),
+          ...(phase1Kind === 'optional' && optionalPhaseAttempted ? ['optional'] : []),
+          ...(phase2Kind === 'free' && freePhaseAttempted && phase1Kind !== 'free' ? ['free'] : []),
+          ...(phase2Kind === 'optional' && optionalPhaseAttempted && phase1Kind !== 'optional' ? ['optional'] : []),
+        ],
+        early_stop: stoppedEarly,
+        stop_reason: stoppedEarly
+          ? 'quality_gate_satisfied'
+          : 'phases_exhausted',
+        quality_gate_stage: semanticRoutingEnabled
+          ? 'post_semantic'
+          : 'pre_semantic',
+        ...(parallelGate ? { quality_gate: parallelGate } : {}),
       },
     },
     security_note: formatted.security_note,
@@ -572,7 +1027,9 @@ failures.push(
   // Don't block the response - write cache in background
   setImmediate(() => {
     try {
-      cache.set(cacheKey, response);
+      if (isCacheableSearchResponse(response)) {
+        cache.set(cacheKey, response);
+      }
       logger.info({ total: response.meta.total }, 'Search complete');
     } catch (err) {
       logger.error({ err }, 'Cache write failed');
@@ -583,24 +1040,16 @@ failures.push(
 }
 
 /**
- * Shared post-processing pipeline for both parallel and waterfall search.
- * Handles semantic dedup/rerank, confidence + domain filtering, enrichment,
- * and final formatting. Used by both executeParallelSearch and
- * executeWaterfallSearch to avoid duplication.
+ * Apply optional semantic dedup/rerank without formatting or enrichment so
+ * routing can assess the exact transformed display basket.
  */
-async function applyPostProcessing(
+async function applySemanticProcessing(
   scored: ScoredResult[],
   query: string,
-  minConfidence: number,
-  minSourceCount: number,
-  includeDomains: string[] | undefined,
-  excludeDomains: string[] | undefined,
-  enrich: boolean | undefined,
-  enrichMax: number | undefined,
-  enrichMinConfidence: number | undefined,
-): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
-  // Semantic dedup (optional)
-  if (config.semanticDedup || config.semanticRerank) {
+  signal?: AbortSignal,
+): Promise<ScoredResult[]> {
+  signal?.throwIfAborted();
+  if (isSemanticRoutingEnabled()) {
     try {
       if (config.semanticDedup) {
         const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
@@ -612,51 +1061,39 @@ async function applyPostProcessing(
         logger.info({ topK: config.rerankTopK, total: scored.length }, 'Semantic rerank applied');
       }
     } catch (err) {
+      signal?.throwIfAborted();
       logger.warn({ err: String(err).slice(0, 120) }, 'Semantic processing failed, continuing with raw results');
     }
   }
+  signal?.throwIfAborted();
+  return scored;
+}
 
-  // Post-search filters
-  if (minConfidence > 0) {
-    scored = scored.filter(r => r.confidence >= minConfidence);
-  }
-  if (minSourceCount > 1) {
-    scored = scored.filter(r => r.source_count >= minSourceCount);
-  }
-
-  if (includeDomains && includeDomains.length > 0) {
-    scored = scored.filter(r => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return includeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return false;
-      }
-    });
-  }
-
-  if (excludeDomains && excludeDomains.length > 0) {
-    scored = scored.filter(r => {
-      try {
-        const hostname = new URL(r.url).hostname;
-        return !excludeDomains.some(d => hostname.includes(d) || hostname.endsWith(d));
-      } catch {
-        return true;
-      }
-    });
-  }
-
+/**
+ * Enrich and format a normalized, optionally semantic-processed basket.
+ */
+async function finalizeSearchResults(
+  scored: ScoredResult[],
+  query: string,
+  enrich: boolean | undefined,
+  enrichMax: number | undefined,
+  enrichMinConfidence: number | undefined,
+  signal?: AbortSignal,
+): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
+  signal?.throwIfAborted();
   // Content enrichment (optional)
   if (enrich) {
     const enriched = await enrichResults(scored, {
       maxEnrich: enrichMax,
       minConfidence: enrichMinConfidence,
+      signal,
     });
     scored = enriched.results;
     if (enriched.enriched > 0) {
       logger.info({ enriched: enriched.enriched, failures: enriched.failures }, "Content enrichment done");
     }
   }
+  signal?.throwIfAborted();
 
   // Format output
   const fmtOptions: FormatOptions = {
@@ -665,6 +1102,8 @@ async function applyPostProcessing(
     maxFullResults: config.maxFullResults,
     minConfidence: config.minConfidence,
     minSourceCount: config.minSourceCount,
+    query,
+    evidenceBudgetChars: config.evidenceBudgetChars,
   };
   const formatted = formatResults(scored, fmtOptions);
 
@@ -674,11 +1113,25 @@ async function applyPostProcessing(
 const WATERFALL_PHASES = {
   phase1a: ["duckduckgo", "sogou"],
   phase1b: ["bing", "baidu"],
-  phase1c: ["wikipedia", "startpage", "yandex", "mojeek"],
-  phase2: ["brave", "tavily", "exa", "youcom"],
+  phase1c: ["wikipedia", "startpage", "yandex", "mojeek", "wiby"],
 } as const;
 
-async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth: number = 0): Promise<SearchResponse> {
+function selectWaterfallPhase(
+  phase: readonly string[],
+  requestedEngines: Set<SearchProvider> | undefined,
+): SearchProvider[] {
+  const engines = phase as readonly SearchProvider[];
+  return requestedEngines === undefined
+    ? [...engines]
+    : engines.filter(engine => requestedEngines.has(engine));
+}
+
+async function executeWaterfallSearch(
+  options: SearchWithFallbackOptions,
+  depth: number = 0,
+  budget: SearchRequestBudget,
+): Promise<SearchResponse> {
+  const semanticRoutingEnabled = isSemanticRoutingEnabled();
   // Guard against infinite recursion from query expansion
   if (depth > 2) {
     logger.warn({ query: options.query, depth }, 'Waterfall recursion depth exceeded, returning empty');
@@ -702,146 +1155,197 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     waterfallMinResults = 3,
     waterfallMinConfidence = 0.6,
   } = options;
+  const effectiveThresholds = getEffectiveResultThresholds(
+    minConfidence,
+    minSourceCount,
+  );
 
   const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
 
+  const cacheKey = makeSearchCacheKey(options);
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    logger.info({ query, count, engines: options.engines }, 'Waterfall cache hit');
+    return cloneCachedSearchResponse(cached as SearchResponse);
+  }
+
   const allResults: SearchResult[] = [];
-  const allFailures: EngineError[] = [];
+  const allFailures: EngineError[] = depth === 0
+    ? getMissingCredentialFailures(options.engines)
+    : [];
   const searchedEngines: string[] = [];
   const phasesCompleted: string[] = [];
+  const requestedEngines = options.engines === undefined
+    ? undefined
+    : new Set(options.engines);
+  const requestedProviderFamilyCount = requestedEngines === undefined
+    ? 2
+    : new Set([...requestedEngines].map(getProviderFamily)).size;
+  const requiredProviderFamilies = Math.min(
+    2,
+    Math.max(requestedProviderFamilyCount, 1),
+  );
+  const paidAvailable = selectWaterfallPhase(
+    normalizePaidEngineOrder(config.paidEngineOrder),
+    requestedEngines,
+  ).filter(hasApiKey);
+  const expansionPlan = (() => {
+    if (options.expandQueries === false) {
+      return { alternatives: [] as string[], source: 'disabled' as const };
+    }
+    if (hasChinese(query)) {
+      const alternatives = generateChineseVariants(query);
+      if (alternatives.length > 0) {
+        return { alternatives, source: 'chinese-optimizer' as const };
+      }
+    }
+    return {
+      alternatives: expandQuery(query),
+      source: 'generic' as const,
+    };
+  })();
+  const explicitFreeStages = [
+    {
+      label: '1a',
+      engines: selectWaterfallPhase(WATERFALL_PHASES.phase1a, requestedEngines),
+    },
+    {
+      label: '1b',
+      engines: selectWaterfallPhase(WATERFALL_PHASES.phase1b, requestedEngines),
+    },
+    {
+      label: '1c',
+      engines: selectWaterfallPhase(WATERFALL_PHASES.phase1c, requestedEngines),
+    },
+  ];
+  const providerStages = requestedEngines === undefined
+    ? (() => {
+      let freeStageIndex = 0;
+      const freeLabels = ['1a', '1b', '1c'];
+      return getDefaultProviderPlan(true).map(stage => ({
+        label: stage.kind === 'optional'
+          ? '2'
+          : freeLabels[freeStageIndex++],
+        engines: stage.engines,
+      }));
+    })()
+    : [
+      ...explicitFreeStages,
+      { label: '2', engines: paidAvailable },
+    ].filter(stage => stage.engines.length > 0);
+
+  let lastBasket: ConfidenceBasketResult | undefined;
+  let stoppedEarly = false;
+  let preparedSemanticResults: ScoredResult[] | undefined;
+
+  const evidenceEvaluator = createSearchEvidenceEvaluator({
+    query,
+    engineWeights: ENGINE_WEIGHTS,
+    minConfidence: effectiveThresholds.minConfidence,
+    minSourceCount: effectiveThresholds.minSourceCount,
+    includeDomains,
+    excludeDomains,
+    qualityGate: {
+      minResults: waterfallMinResults,
+      minAvgConfidence: waterfallMinConfidence,
+      minProviderFamilies: requiredProviderFamilies,
+      topK: 5,
+    },
+  });
+  const evaluateCurrentEvidence = (): SearchEvidenceEvaluation => (
+    evidenceEvaluator.evaluate(allResults)
+  );
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
     phasesCompleted.push(phaseLabel);
     const batchSize = calculateAdaptiveConcurrency(engines, count);
 
     for (let i = 0; i < engines.length; i += batchSize) {
+      if (!budget.canContinue()) break;
       const batch = engines.slice(i, i + batchSize);
       const batchResults = await Promise.allSettled(
         batch.map(async (engine) => {
           searchedEngines.push(engine);
-          const results = await searchEngine(engine, query, count);
-          return { engine, results };
+          return searchEngine(
+            engine,
+            query,
+            count,
+            2,
+            budget.signal,
+            budget,
+            options.signal,
+          );
         })
       );
 
-      for (let idx = 0; idx < batchResults.length; idx++) {
-        const result = batchResults[idx];
-        if (result.status === "fulfilled") {
-          allResults.push(...result.value.results);
-        } else {
-          allFailures.push(
-            classifyEngineError(batch[idx], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-        }
-      }
-    }
-
-    const filtered = filterLowQuality(allResults);
-    const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
-    const titleDeduped = dedupByTitle(urlDeduped);
-    const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
-
-    let basketScored = scored;
-    if (includeDomains && includeDomains.length > 0) {
-      basketScored = basketScored.filter((r) => {
-        try {
-          const hostname = new URL(r.url).hostname;
-          return includeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
-        } catch { return false; }
-      });
-    }
-    if (excludeDomains && excludeDomains.length > 0) {
-      basketScored = basketScored.filter((r) => {
-        try {
-          const hostname = new URL(r.url).hostname;
-          return !excludeDomains.some((d) => hostname.includes(d) || hostname.endsWith(d));
-        } catch { return true; }
-      });
-    }
-
-    const basket = checkConfidenceBasket(basketScored, {
-      minResults: waterfallMinResults,
-      minAvgConfidence: waterfallMinConfidence,
-      topK: 5,
-    });
-
-    logger.info({ phase: phaseLabel, total: allResults.length, basket }, "Waterfall phase complete");
-    return basket.sufficient;
-  }
-
-  let basketFull = await searchBatch([...WATERFALL_PHASES.phase1a] as SearchProvider[], "1a");
-  if (basketFull) {
-    logger.info("Phase 1a satisfied — skipping remaining phases");
-  }
-
-  if (!basketFull) {
-    basketFull = await searchBatch([...WATERFALL_PHASES.phase1b] as SearchProvider[], "1b");
-    if (basketFull) {
-      logger.info("Phase 1b satisfied — skipping remaining phases");
-    }
-  }
-
-  if (!basketFull) {
-    basketFull = await searchBatch([...WATERFALL_PHASES.phase1c] as SearchProvider[], "1c");
-    if (basketFull) {
-      logger.info("Phase 1c satisfied — skipping Phase 2");
-    }
-  }
-
-  if (!basketFull) {
-    const paidAvailable = WATERFALL_PHASES.phase2.filter((e) => hasApiKey(e as SearchProvider));
-    if (paidAvailable.length > 0) {
-      phasesCompleted.push('2');
-      logger.info({ engines: paidAvailable }, "Waterfall Phase 2: paid engines");
-      const paidResults = await Promise.allSettled(
-        paidAvailable.map(async (engine) => {
-          const remaining = Math.max(count - allResults.length, 1);
-          searchedEngines.push(engine);
-          const results = await searchEngine(engine as SearchProvider, query, remaining);
-          return { engine, results };
-        })
+      collectEngineOutcomes(
+        batchResults,
+        batch,
+        allResults,
+        allFailures,
+        options.signal,
+        budget,
       );
-      for (let i = 0; i < paidResults.length; i++) {
-        const result = paidResults[i];
-        if (result.status === "fulfilled") {
-          allResults.push(...result.value.results);
-        } else {
-          allFailures.push(
-            classifyEngineError(paidAvailable[i], result.reason instanceof Error ? result.reason : new Error(result.reason?.message || 'Unknown error'))
-          );
-        }
-      }
+    }
+
+    const evaluation = evaluateCurrentEvidence();
+    if (semanticRoutingEnabled) {
+      preparedSemanticResults = await applySemanticProcessing(
+        evaluation.results,
+        query,
+        options.signal,
+      );
+      lastBasket = evidenceEvaluator.assess(preparedSemanticResults);
     } else {
-      logger.info("Phase 2: no paid engines available");
+      lastBasket = evaluation.qualityGate;
+    }
+
+    logger.info(
+      { phase: phaseLabel, total: allResults.length, basket: lastBasket },
+      "Waterfall phase complete",
+    );
+    return lastBasket.sufficient;
+  }
+
+  let basketFull = false;
+  for (let phaseIndex = 0; phaseIndex < providerStages.length; phaseIndex++) {
+    const phase = providerStages[phaseIndex];
+    if (phase.engines.length === 0) continue;
+    if (!budget.canContinue()) break;
+    basketFull = await searchBatch(phase.engines, phase.label);
+    if (basketFull) {
+      stoppedEarly =
+        providerStages.slice(phaseIndex + 1)
+          .some(candidate => candidate.engines.length > 0)
+        || expansionPlan.alternatives.length > 0;
+      logger.info(
+        { phase: phase.label, stoppedEarly },
+        stoppedEarly
+          ? 'Waterfall basket satisfied; skipping remaining work'
+          : 'Waterfall basket satisfied at the end of selected work',
+      );
+      break;
     }
   }
 
   // ── Phase 3: Query Expansion (if confidence still low) ──────────
-  if (!basketFull && options.expandQueries !== false) {
-    // 3a: Chinese query optimization — try character variants first
-    let alternatives: string[] = [];
-    if (hasChinese(query)) {
-      alternatives = generateChineseVariants(query);
-      if (alternatives.length > 0) {
-        logger.info({ alternatives, source: 'chinese-optimizer' }, 'Phase 3a: Chinese query variants');
-      }
-    }
-    // 3b: Fall back to generic query expansion for non-Chinese or if Chinese
-    //     variants were insufficient (empty or already exhausted)
-    if (alternatives.length === 0) {
-      alternatives = expandQuery(query);
-    }
+  let expansionRan = false;
+  if (!basketFull && budget.canContinue() && options.expandQueries !== false) {
+    const { alternatives, source } = expansionPlan;
     if (alternatives.length > 0) {
+      expansionRan = true;
       phasesCompleted.push('3');
-      logger.info({ alternatives }, "Phase 3: query expansion");
+      logger.info({ alternatives, source }, "Phase 3: query expansion");
       for (const altQuery of alternatives) {
+        if (!budget.canContinue()) break;
         const altSearch = await executeWaterfallSearch({
           ...options,
           query: altQuery,
           waterfall: true,
           enrich: false,
-        }, depth + 1);
+          expandQueries: false,
+        }, depth + 1, budget);
         const altExecution = altSearch.meta.execution;
         if (altExecution) {
           searchedEngines.push(...altExecution.searched_engines);
@@ -853,7 +1357,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
               url: r.url,
               snippet: r.snippet || '',
               source: "expanded",
-              engines: altSearch.meta?.engines || [],
+              // Preserve provenance per result. The response-level engine list
+              // can contain providers that never returned this URL.
+              engines: r.sources || [],
             });
           }
         }
@@ -861,17 +1367,28 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
     }
   }
 
-  // Aggregate and output (same logic as executeParallelSearch)
-  const filtered = filterLowQuality(allResults);
-  const { results: urlDeduped, frequencies } = dedupByUrl(filtered);
-  const titleDeduped = dedupByTitle(urlDeduped);
-  const scored = scoreAndRank(titleDeduped, query, ENGINE_WEIGHTS, frequencies);
-
-  // ── Steps 5e-7: Shared post-processing (semantic + filters + enrich + format)
-  const { formatted } = await applyPostProcessing(
-    scored, query, minConfidence, minSourceCount,
-    includeDomains, excludeDomains,
-    options.enrich, options.enrichMax, options.enrichMinConfidence,
+  // Query expansion may add evidence after the last routing check, so evaluate
+  // once more before producing the response.
+  const finalEvaluation = evaluateCurrentEvidence();
+  const finalScored = semanticRoutingEnabled
+    && preparedSemanticResults
+    && !expansionRan
+    ? preparedSemanticResults
+    : await applySemanticProcessing(
+      finalEvaluation.results,
+      query,
+      options.signal,
+    );
+  lastBasket = semanticRoutingEnabled
+    ? evidenceEvaluator.assess(finalScored)
+    : finalEvaluation.qualityGate;
+  const { formatted } = await finalizeSearchResults(
+    finalScored,
+    query,
+    options.enrich && budget.canContinue(),
+    options.enrichMax,
+    options.enrichMinConfidence,
+    options.signal,
   );
 
   const response = {
@@ -885,7 +1402,14 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
         engine_calls: searchedEngines.length,
         searched_engines: [...searchedEngines],
         phases_completed: phasesCompleted,
-        early_stop: basketFull,
+        early_stop: stoppedEarly,
+        stop_reason: stoppedEarly
+          ? 'quality_gate_satisfied'
+          : 'phases_exhausted',
+        quality_gate_stage: semanticRoutingEnabled
+          ? 'post_semantic'
+          : 'pre_semantic',
+        ...(lastBasket ? { quality_gate: lastBasket } : {}),
       },
     },
     detected_language: detectedLang,
@@ -895,7 +1419,9 @@ async function executeWaterfallSearch(options: SearchWithFallbackOptions, depth:
 
   setImmediate(() => {
     try {
-      cache.set(cache.makeKey(query, count, searchedEngines), response);
+      if (isCacheableSearchResponse(response)) {
+        cache.set(cacheKey, response);
+      }
     } catch (err) {
       logger.error({ err }, "Cache write failed");
     }
@@ -914,46 +1440,43 @@ export function setupFreeSearchTool(server: McpServer): void {
     'free_search',
     {
       description:
-        'Search the web with multi-engine automatic fallback.\n\n' +
+        'Search the web with an explicit adapter set and bounded fallback.\n\n' +
         'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
         'Not recommended for: Filtered or verified-only results — use free_search_advanced. ' +
         'For full page content — use free_extract.\n\n' +
-        'Phase 1: 8 zero-key adapters (DuckDuckGo, Sogou, Bing, Baidu, Wikipedia, Startpage, Yandex, Mojeek).\n' +
-        'Phase 2: Brave + Tavily + Exa + You.com (optional API keys).\n' +
+        'Twelve adapters are selectable; the default request uses DuckDuckGo + Sogou only. ' +
+        'Adapters that share one upstream family are tried sequentially on failure and never double-count as corroboration. ' +
+        'Explicitly requested optional API adapters run only when credentials are present and the free basket is short or below the quality gate.\n' +
         'Results are deduplicated and include separate confidence, relevance, and source-count signals.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
         'Injection detection and SSRF protection active.',
       inputSchema: {
         query: z.string().min(1, 'Search query must not be empty')
-          .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese queries, Sogou and Baidu are used automatically.'),
+          .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese coverage, include Sogou or Baidu in engines.'),
         limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
-        engines: z.array(z.enum(['duckduckgo', 'sogou', 'bing', 'baidu', 'wikipedia', 'startpage', 'yandex', 'mojeek', 'brave', 'tavily', 'exa', 'youcom']))
+        engines: z.array(z.enum(SEARCH_PROVIDERS))
           .min(1)
           .default(['duckduckgo', 'sogou'])
           .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +
-            'Paid engines (brave/tavily/exa) require corresponding env vars. You.com requires YDC_API_KEY ($5/1K queries; free credits at signup). ' +
+            'Optional API engines require their corresponding environment-variable credentials. ' +
             'For Chinese results, include sogou or baidu.'),
       },
+      outputSchema: searchOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ query, limit = 10, engines: userEngines }) => {
+    async ({ query, limit = 10, engines: userEngines }, extra) => {
       const start = Date.now();
       try {
         const results = await searchWithFallback({
           query,
           count: limit,
           engines: userEngines,
+          signal: extra?.signal,
         });
         serverMetrics.recordRequest(Date.now() - start);
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(results, null, 2),
-            },
-          ],
-        };
+        return createSearchToolResult(results);
       } catch (error) {
+        if (extra?.signal.aborted) throw error;
         serverMetrics.recordRequest(Date.now() - start);
         logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Search tool execution failed');
         return {
