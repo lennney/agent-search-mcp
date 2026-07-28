@@ -53,6 +53,39 @@ describe('Baidu engine', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('reports an unexpected 200 HTML shape instead of a successful empty result', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        '<html><head><title>百度一下</title></head><body>changed</body></html>',
+        { status: 200, headers: { 'Content-Type': 'text/html' } },
+      );
+
+      await expect(searchBaidu('test query', 5, { throwOnError: true }))
+        .rejects.toMatchObject({
+          failureType: 'parse_error',
+          retryable: false,
+        });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('keeps a valid zero-result search page as an empty success', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        '<html><head><title>百度一下</title></head><body><div id="content_left"></div></body></html>',
+        { status: 200, headers: { 'Content-Type': 'text/html' } },
+      );
+
+      await expect(searchBaidu('没有匹配结果', 5, { throwOnError: true }))
+        .resolves.toEqual([]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });
 
 describe('parseBaiduHTML snippet extraction', () => {
@@ -143,6 +176,25 @@ describe('parseBaiduHTML snippet extraction', () => {
     expect(results).toHaveLength(1);
     expect(results[0].url).toBe('https://example.com/real');
     expect(results[0].snippet).toBe('Real snippet text here.');
+  });
+
+  it('uses Baidu card landing URLs when result links are redirect URLs', () => {
+    const html = `<html><body>
+<div class="c-container" data-landurl="https://example.com/landing">
+  <h3><a href="https://www.baidu.com/link?url=redirect-token">Landing Result</a></h3>
+  <div class="c-abstract">Landing page snippet.</div>
+</div>
+<div class="c-container" mu="https://example.com/entity">
+  <h3><a href="https://www.baidu.com/link?url=entity-token">Entity Result</a></h3>
+  <div class="c-abstract">Entity page snippet.</div>
+</div>
+</body></html>`;
+
+    const results = parseBaiduHTML(html, 10);
+    expect(results.map(result => result.url)).toEqual([
+      'https://example.com/landing',
+      'https://example.com/entity',
+    ]);
   });
 
   it('respects the limit parameter', () => {

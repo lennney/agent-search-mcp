@@ -15,7 +15,7 @@ if (process.env.LIVE_E2E !== 'true') {
   process.exit(2);
 }
 
-const maxRequests = boundedInteger('LIVE_E2E_MAX_REQUESTS', 2, 1, 2);
+const maxRequests = boundedInteger('LIVE_E2E_MAX_REQUESTS', 5, 1, 5);
 const minIntervalMs = boundedInteger(
   'LIVE_E2E_MIN_INTERVAL_MS',
   10_000,

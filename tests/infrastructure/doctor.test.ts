@@ -64,6 +64,7 @@ describe('search configuration doctor', () => {
       TAVILY_API_KEY: '   ',
       DUCKDUCKGO_PROXY_URL:
         'http://proxy-user:proxy-secret@proxy.example:8080',
+      BAIDU_PROXY_URL: 'http://baidu-proxy.example:8080',
     };
     const report = createDoctorReport({
       environment,
@@ -87,6 +88,11 @@ describe('search configuration doctor', () => {
       .toMatchObject({
         status: 'present',
         provenance: ['environment:DUCKDUCKGO_PROXY_URL'],
+      });
+    expect(report.configuration.find(check => check.id === 'baidu-proxy'))
+      .toMatchObject({
+        status: 'present',
+        provenance: ['environment:BAIDU_PROXY_URL'],
       });
     for (const secret of [
       'brave-secret-value',
@@ -141,6 +147,21 @@ describe('search configuration doctor', () => {
         }),
         expect.objectContaining({
           id: 'sogou-proxy',
+          status: 'invalid',
+          provenance: ['environment:USE_PROXY'],
+        }),
+        expect.objectContaining({
+          id: 'bing-proxy',
+          status: 'invalid',
+          provenance: ['environment:USE_PROXY'],
+        }),
+        expect.objectContaining({
+          id: 'baidu-proxy',
+          status: 'invalid',
+          provenance: ['environment:USE_PROXY'],
+        }),
+        expect.objectContaining({
+          id: 'yandex-proxy',
           status: 'invalid',
           provenance: ['environment:USE_PROXY'],
         }),

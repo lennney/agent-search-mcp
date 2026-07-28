@@ -1,7 +1,16 @@
-import { SearchResult, type EngineSearchOptions } from '../types.js';
-import { decodeHTMLTags } from '../infrastructure/html-utils.js';
-import { withTimeout } from '../infrastructure/abort.js';
+import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
+
 import { logger } from '../infrastructure/logger.js';
+import type { EngineSearchOptions, SearchResult } from '../types.js';
+import {
+  createHtmlParseError,
+  fetchSearchHtml,
+  normalizeHtmlText,
+  resolveHtmlResultUrl,
+} from './html-search.js';
+
+const BAIDU_SEARCH_URL = 'https://www.baidu.com/s';
 
 export const baiduProvider = {
   id: 'baidu' as const,
@@ -10,128 +19,63 @@ export const baiduProvider = {
   languages: ['zh'],
 };
 
-export async function searchBaidu(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
+export async function searchBaidu(
+  query: string,
+  limit: number = 10,
+  options?: EngineSearchOptions,
+): Promise<SearchResult[]> {
   try {
-    const url = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}&rn=${limit}`;
-    const res = await fetch(url, {
+    const url = new URL(BAIDU_SEARCH_URL);
+    url.searchParams.set('wd', query);
+    url.searchParams.set('rn', String(limit));
+    const html = await fetchSearchHtml('baidu', url, {
+      signal: options?.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+          + 'AppleWebKit/537.36 (KHTML, like Gecko) '
+          + 'Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'zh-CN,zh;q=0.9',
       },
-      signal: withTimeout(options?.signal, 10000),
     });
 
-    if (!res.ok) {
-      if (options?.throwOnError) throw new Error(`Baidu HTTP ${res.status}`);
-      logger.warn({ status: res.status }, 'Baidu HTTP error');
-      return [];
+    if (!hasBaiduSearchSurface(html)) {
+      throw createHtmlParseError('baidu');
     }
-
-    const html = await res.text();
     return parseBaiduHTML(html, limit);
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes('timeout')) {
-      logger.warn('Baidu search timed out');
-    } else {
-      logger.warn({ err: msg.slice(0, 200) }, 'Baidu search failed');
-    }
+    logger.warn({ err: msg.slice(0, 200) }, 'Baidu search failed');
     return [];
   }
 }
 
-/**
- * Extract a snippet from a Baidu result block using multiple fallback patterns.
- *
- * Patterns tried in order:
- *   1. <div class="c-abstract"> or <span class="c-abstract"> — classic Baidu snippet
- *   2. <span class="content-right_*"> — new-style Baidu snippet
- *   3. Any <span> containing 20–200 chars of meaningful text
- */
-function extractBaiduSnippet(block: string): string {
-  // Pattern 1: c-abstract div or span (classic Baidu snippet)
-  const abstractMatch = block.match(/<(?:div|span)[^>]*class="[^"]*c-abstract[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span)>/i);
-  if (abstractMatch) {
-    const text = decodeHTMLTags(abstractMatch[1]);
-    if (text) return text;
-  }
-
-  // Pattern 2: content-right_* class (new-style Baidu snippet)
-  const contentRightMatch = block.match(/<(?:div|span)[^>]*class="[^"]*content-right_[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span)>/i);
-  if (contentRightMatch) {
-    const text = decodeHTMLTags(contentRightMatch[1]);
-    if (text) return text;
-  }
-
-  // Pattern 3: any <span> with 20-200 chars of meaningful text
-  const spanRegex = /<span[^>]*>([\s\S]*?)<\/span>/g;
-  let spanMatch: RegExpExecArray | null;
-  while ((spanMatch = spanRegex.exec(block)) !== null) {
-    const text = decodeHTMLTags(spanMatch[1]);
-    if (text.length >= 20 && text.length <= 200) {
-      return text;
-    }
-  }
-
-  return '';
-}
-
-/**
- * Split Baidu HTML into result blocks around <h3><a href="..."> headers.
- * Returns one block per search result, spanning from slightly before the
- * h3 tag to just before the next h3 (or end of HTML).
- */
-function getResultBlocks(html: string): string[] {
-  const h3Regex = /<h3[^>]*><a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a><\/h3>/g;
-  const h3Positions: number[] = [];
-
-  let match: RegExpExecArray | null;
-  while ((match = h3Regex.exec(html)) !== null) {
-    h3Positions.push(match.index);
-  }
-
-  if (h3Positions.length === 0) return [];
-
-  const blocks: string[] = [];
-  for (let i = 0; i < h3Positions.length; i++) {
-    const start = h3Positions[i];
-    const end = i + 1 < h3Positions.length ? h3Positions[i + 1] : html.length;
-    blocks.push(html.slice(start, end));
-  }
-
-  return blocks;
-}
-
-/**
- * Parse Baidu search result HTML into structured SearchResult objects.
- *
- * Uses a block-based approach: the HTML is split at <h3> result headers,
- * then each block is processed for title, URL, and snippet independently.
- * Snippet extraction tries three fallback patterns (c-abstract,
- * content-right_*, and generic spans).
- */
 export function parseBaiduHTML(html: string, limit: number = 10): SearchResult[] {
+  const $ = cheerio.load(html);
   const results: SearchResult[] = [];
-  const blocks = getResultBlocks(html);
+  const seenUrls = new Set<string>();
+  const cards = $('#content_left .c-container, #content_left .result, .c-container, .result');
 
-  if (blocks.length === 0) return results;
+  cards.each((_, element) => {
+    if (results.length >= limit) return;
 
-  for (const block of blocks) {
-    if (results.length >= limit) break;
+    const card = $(element);
+    const titleLink = card.find('h3 a[href], h2 a[href], a[href]').first();
+    const rawUrl = card.attr('data-landurl')
+      ?? card.attr('mu')
+      ?? titleLink.attr('href')
+      ?? '';
+    const url = resolveHtmlResultUrl(
+      rawUrl,
+      BAIDU_SEARCH_URL,
+    );
+    const title = normalizeHtmlText(titleLink.text());
+    if (!title || !isExternalBaiduUrl(url) || seenUrls.has(url)) return;
 
-    const h3Match = block.match(/<h3[^>]*><a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a><\/h3>/);
-    if (!h3Match) continue;
-
-    const url = h3Match[1];
-    const title = decodeHTMLTags(h3Match[2]);
-
-    if (!url || !title || url.includes('baidu.com')) continue;
-
-    const snippet = extractBaiduSnippet(block);
-
+    const snippet = extractBaiduSnippet(card);
+    seenUrls.add(url);
     results.push({
       title,
       url,
@@ -139,7 +83,39 @@ export function parseBaiduHTML(html: string, limit: number = 10): SearchResult[]
       source: 'baidu',
       engines: ['baidu'],
     });
-  }
+  });
 
   return results;
+}
+
+function extractBaiduSnippet(card: cheerio.Cheerio<AnyNode>): string {
+  const knownSnippet = card
+    .find('.c-abstract, [class*="content-right_"], .c-color-text, .f13')
+    .first();
+  const knownText = normalizeHtmlText(knownSnippet.text());
+  if (knownText) return knownText;
+
+  let fallback = '';
+  card.find('span').each((_, element) => {
+    if (fallback) return;
+    const text = normalizeHtmlText(card.find(element).text());
+    if (text.length >= 20 && text.length <= 200) fallback = text;
+  });
+  return fallback;
+}
+
+function hasBaiduSearchSurface(html: string): boolean {
+  const $ = cheerio.load(html);
+  return $('#content_left').length > 0
+    || $('.c-container, .result').length > 0;
+}
+
+function isExternalBaiduUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return hostname !== 'baidu.com' && !hostname.endsWith('.baidu.com');
+  } catch {
+    return false;
+  }
 }

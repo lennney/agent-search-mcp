@@ -66,6 +66,27 @@ describe('engine HTTP transport', () => {
     );
   });
 
+  it('routes Baidu through its explicit engine proxy without using ambient proxies', async () => {
+    let observedConnectTarget = '';
+    const proxy = await listen(createTunnelProxy((request, socket) => {
+      observedConnectTarget = request.url ?? '';
+      respondThroughTunnel(socket, 200, 'baidu-proxied');
+    }));
+    servers.push(proxy.server);
+    vi.stubEnv('BAIDU_PROXY_URL', `http://127.0.0.1:${proxy.port}`);
+    vi.stubEnv('HTTPS_PROXY', 'http://ambient-proxy.invalid:8080');
+    global.fetch = vi.fn(async () => new Response('ambient')) as typeof fetch;
+
+    const response = await fetchForEngine(
+      'baidu',
+      'http://www.baidu.com/s?wd=test',
+    );
+
+    expect(await response.text()).toBe('baidu-proxied');
+    expect(observedConnectTarget).toBe('www.baidu.com:80');
+    expect(global.fetch).toHaveBeenCalledTimes(0);
+  });
+
   it('uses the existing USE_PROXY and PROXY_URL contract', async () => {
     const proxy = await listen(createTunnelProxy((_request, socket) => {
       respondThroughTunnel(socket, 204);

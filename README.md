@@ -192,7 +192,7 @@ settings cover the common deployment choices:
 | Choose spend policy | `SEARCH_PROVIDER_MODE`, `PAID_ENGINE_ORDER` |
 | Reduce response tokens | `OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS` |
 | Restrict tools or engines | `ENABLED_TOOLS`, `DISABLED_TOOLS`, `ALLOWED_ENGINES`, `DENIED_ENGINES` |
-| Use an explicit proxy | `DUCKDUCKGO_PROXY_URL`, `SOGOU_PROXY_URL`, or `USE_PROXY=true` with `PROXY_URL` |
+| Use an explicit proxy | `DUCKDUCKGO_PROXY_URL`, `SOGOU_PROXY_URL`, `BING_PROXY_URL`, `BAIDU_PROXY_URL`, or `YANDEX_PROXY_URL`; alternatively `USE_PROXY=true` with `PROXY_URL` |
 | Persist the exact-result cache | `SEARCH_CACHE_DIRECTORY`, `SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES` |
 | Enable optional semantic processing | `SEMANTIC_DEDUP`, `SEMANTIC_RERANK`, `DEDUP_THRESHOLD`, `RERANK_TOP_K` |
 
