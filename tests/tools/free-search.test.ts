@@ -452,6 +452,28 @@ describe('searchWithFallback — parallel', () => {
     ]));
   });
 
+  it('returns results and reports a Bing parser failure as a partial failure', async () => {
+    (searchBing as any).mockRejectedValue(new EngineAdapterError(
+      'parse_error',
+      'Bing result card markup changed',
+      {
+        retryable: false,
+        suggestion: 'Use another engine while the Bing parser is updated',
+      },
+    ));
+
+    const result = await searchWithFallback({
+      query: 'bing parser drift',
+      count: 3,
+      engines: ['bing', 'sogou'],
+    });
+
+    expect(result.results.length).toBeGreaterThan(0);
+    expect(result.partialFailures).toEqual(expect.arrayContaining([
+      expect.objectContaining({ engine: 'bing', type: 'parse_error' }),
+    ]));
+  });
+
   it('preserves a zero-key anti-bot challenge as its own failure type', async () => {
     (searchSogou as any).mockRejectedValue(new EngineAdapterError(
       'bot_challenge',
@@ -1023,6 +1045,40 @@ describe('searchWithFallback — waterfall', () => {
         process.env.EXA_API_KEY = previousApiKey;
       }
     }
+  });
+
+  it('returns results and reports a Bing parser failure in waterfall mode', async () => {
+    (searchBing as any).mockRejectedValue(new EngineAdapterError(
+      'parse_error',
+      'Bing result card markup changed',
+      {
+        retryable: false,
+        suggestion: 'Use another engine while the Bing parser is updated',
+      },
+    ));
+    (checkConfidenceBasket as any).mockReturnValueOnce({
+      sufficient: false,
+      basketConfidence: 0,
+      basketRelevance: 0,
+      relevantResultsCount: 0,
+      relevanceThreshold: 0.35,
+      providerFamilyCount: 1,
+      topResultsCount: 3,
+      analyzedCount: 3,
+    });
+
+    const result = await searchWithFallback({
+      query: 'bing parser drift waterfall',
+      count: 3,
+      engines: ['sogou', 'bing'],
+      waterfall: true,
+      expandQueries: false,
+    });
+
+    expect(result.results.length).toBeGreaterThan(0);
+    expect(result.partialFailures).toEqual(expect.arrayContaining([
+      expect.objectContaining({ engine: 'bing', type: 'parse_error' }),
+    ]));
   });
 
   it('marks a waterfall early stop when a quality gate skips selected later phases', async () => {

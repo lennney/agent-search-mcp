@@ -14,6 +14,7 @@ describe('Baidu engine', () => {
     try {
       global.fetch = async () => ({
         ok: true,
+        url: 'https://www.baidu.com/s?wd=test+query',
         text: async () => '<html><body>test</body></html>',
       }) as Response;
 
@@ -44,6 +45,7 @@ describe('Baidu engine', () => {
       global.fetch = async () => ({
         ok: false,
         status: 500,
+        url: 'https://www.baidu.com/s?wd=test+query',
         text: async () => 'Server Error',
       }) as Response;
 
@@ -67,6 +69,50 @@ describe('Baidu engine', () => {
           failureType: 'parse_error',
           retryable: false,
         });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('reports known outer-container with unknown card drift as parse_error', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        `<html><body>
+          <div id="content_left">
+            <article class="new-result-card">
+              <h3><a href="https://example.com/drift">Drifted result</a></h3>
+            </article>
+          </div>
+        </body></html>`,
+        { status: 200, headers: { 'Content-Type': 'text/html' } },
+      );
+
+      await expect(searchBaidu('test query', 5, { throwOnError: true }))
+        .rejects.toMatchObject({
+          failureType: 'parse_error',
+          retryable: false,
+        });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('returns an empty array by default for known outer-container with unknown card drift', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        `<html><body>
+          <div id="content_left">
+            <article class="new-result-card">
+              <h3><a href="https://example.com/drift">Drifted result</a></h3>
+            </article>
+          </div>
+        </body></html>`,
+        { status: 200, headers: { 'Content-Type': 'text/html' } },
+      );
+
+      await expect(searchBaidu('test query', 5)).resolves.toEqual([]);
     } finally {
       global.fetch = originalFetch;
     }

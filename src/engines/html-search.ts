@@ -35,11 +35,11 @@ export async function fetchSearchHtml(
   });
   const html = await response.text();
 
-  if (!response.ok) {
-    throw createHttpError(engine, response, html);
-  }
   if (looksLikeBotChallenge(html) || looksLikeBotChallengeUrl(response.url)) {
     throw createBotChallenge(engine);
+  }
+  if (!response.ok) {
+    throw createHttpError(engine, response, html);
   }
   return html;
 }
@@ -101,6 +101,7 @@ function looksLikeBotChallenge(html: string): boolean {
   if (titleMarkers.some(marker => titleAndMeta.includes(marker))) return true;
 
   return [
+    'captcha',
     'verify you are human',
     'unusual traffic',
     'robot check',

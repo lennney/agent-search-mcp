@@ -37,10 +37,11 @@ export async function searchYandex(
       },
     });
 
-    if (!hasYandexSearchSurface(html)) {
+    const results = parseYandexHTML(html, limit);
+    if (!hasYandexSearchSurface(html) || (hasYandexResultCards(html) && results.length === 0)) {
       throw createHtmlParseError('yandex');
     }
-    return parseYandexHTML(html, limit);
+    return results;
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
@@ -90,7 +91,15 @@ export function parseYandexHTML(html: string, limit: number = 10): SearchResult[
 
 function hasYandexSearchSurface(html: string): boolean {
   const $ = cheerio.load(html);
-  return $('.serp-list, li.serp-item, .serp-item, #search-result').length > 0;
+  const resultContainer = $('.serp-list, #search-result').first();
+  return hasYandexResultCards(html)
+    || (resultContainer.length > 0
+      && resultContainer.children().length === 0
+      && normalizeHtmlText(resultContainer.text()) === '');
+}
+
+function hasYandexResultCards(html: string): boolean {
+  return cheerio.load(html)('li.serp-item, .serp-item').length > 0;
 }
 
 function isExternalYandexUrl(url: string): boolean {

@@ -38,10 +38,11 @@ export async function searchBing(
       },
     });
 
-    if (!hasBingSearchSurface(html)) {
+    const results = parseBingHTML(html, limit);
+    if (!hasBingSearchSurface(html) || (hasBingResultCards(html) && results.length === 0)) {
       throw createHtmlParseError('bing');
     }
-    return parseBingHTML(html, limit);
+    return results;
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
@@ -85,8 +86,15 @@ export function parseBingHTML(html: string, limit: number = 10): SearchResult[] 
 }
 function hasBingSearchSurface(html: string): boolean {
   const $ = cheerio.load(html);
-  return $('#b_results').length > 0
-    || $('li.b_algo').length > 0;
+  const resultContainer = $('#b_results').first();
+  return $('li.b_algo').length > 0
+    || (resultContainer.length > 0
+      && resultContainer.children().length === 0
+      && normalizeHtmlText(resultContainer.text()) === '');
+}
+
+function hasBingResultCards(html: string): boolean {
+  return cheerio.load(html)('li.b_algo').length > 0;
 }
 
 function isExternalBingUrl(url: string): boolean {

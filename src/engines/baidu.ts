@@ -39,10 +39,11 @@ export async function searchBaidu(
       },
     });
 
-    if (!hasBaiduSearchSurface(html)) {
+    const results = parseBaiduHTML(html, limit);
+    if (!hasBaiduSearchSurface(html) || (hasBaiduResultCards(html) && results.length === 0)) {
       throw createHtmlParseError('baidu');
     }
-    return parseBaiduHTML(html, limit);
+    return results;
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
@@ -106,8 +107,17 @@ function extractBaiduSnippet(card: cheerio.Cheerio<AnyNode>): string {
 
 function hasBaiduSearchSurface(html: string): boolean {
   const $ = cheerio.load(html);
-  return $('#content_left').length > 0
-    || $('.c-container, .result').length > 0;
+  const resultContainer = $('#content_left').first();
+  return hasBaiduResultCards(html)
+    || (resultContainer.length > 0
+      && resultContainer.children().length === 0
+      && normalizeHtmlText(resultContainer.text()) === '');
+}
+
+function hasBaiduResultCards(html: string): boolean {
+  return cheerio.load(html)(
+    '#content_left .c-container, #content_left .result, .c-container, .result',
+  ).length > 0;
 }
 
 function isExternalBaiduUrl(url: string): boolean {

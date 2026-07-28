@@ -19,6 +19,7 @@ describe('Yandex engine', () => {
     try {
       global.fetch = async () => ({
         ok: true,
+        url: 'https://yandex.com/search/?text=test+query',
         text: async () => '<html><body>test</body></html>',
       }) as Response;
 
@@ -49,6 +50,7 @@ describe('Yandex engine', () => {
       global.fetch = async () => ({
         ok: false,
         status: 500,
+        url: 'https://yandex.com/search/?text=test+query',
         text: async () => 'Server Error',
       }) as Response;
 
@@ -112,6 +114,50 @@ describe('Yandex engine', () => {
           failureType: 'parse_error',
           retryable: false,
         });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('reports known outer-container with unknown card drift as parse_error', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        `<html><body>
+          <ul class="serp-list">
+            <li class="new-result-card">
+              <h2><a href="https://example.com/drift">Drifted result</a></h2>
+            </li>
+          </ul>
+        </body></html>`,
+        { status: 200, headers: { 'Content-Type': 'text/html' } },
+      );
+
+      await expect(searchYandex('test query', 5, { throwOnError: true }))
+        .rejects.toMatchObject({
+          failureType: 'parse_error',
+          retryable: false,
+        });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('returns an empty array by default for known outer-container with unknown card drift', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        `<html><body>
+          <ul class="serp-list">
+            <li class="new-result-card">
+              <h2><a href="https://example.com/drift">Drifted result</a></h2>
+            </li>
+          </ul>
+        </body></html>`,
+        { status: 200, headers: { 'Content-Type': 'text/html' } },
+      );
+
+      await expect(searchYandex('test query', 5)).resolves.toEqual([]);
     } finally {
       global.fetch = originalFetch;
     }
