@@ -44,9 +44,10 @@ tags:
   credentials; `quality_escalation`, `paid_first`, and `free_only` are explicit
   alternatives. Default routing selects only the first configured provider in
   the candidate order; multiple optional providers require explicit selection.
-- Bounded live E2E behind explicit `LIVE_E2E=true` authorization, a maximum of
-  two network operations, a 10-second minimum interval, cleared optional
-  credentials, and a one-attempt search budget.
+- Bounded live E2E behind explicit `LIVE_E2E=true` authorization, selectable
+  DDG/Bing/Baidu/Yandex search scenarios, a maximum of five network operations,
+  a 10-second minimum interval, cleared optional credentials, and a one-attempt
+  search budget. Challenge responses stop subsequent probes.
 
 ### Runtime and quality infrastructure
 
@@ -106,6 +107,10 @@ tags:
   request-local Undici proxy transport with per-engine overrides, credential
   redaction, cancellation propagation, and no ambient proxy-variable pickup.
   Development-only scripts are no longer shipped in the npm artifact.
+- Hardened the Bing, Baidu, and Yandex zero-key HTML adapters with the shared
+  request-local transport, Cheerio result parsing, explicit per-engine proxy
+  settings, and structured `parse_error`/challenge handling for unexpected
+  successful HTML pages. Valid zero-result pages remain valid empty results.
 - Added a native DuckDuckGo Web representation using the page-issued,
   exact-allowlisted preload URL before HTML/Lite fallback. Added structured
   adapter errors and immediate provider cooldown for DDG/Sogou bot challenges.

@@ -48,6 +48,9 @@ tags:
   Lite 只在 HTML HTTP 202 后、同一 deadline 内尝试一次。
 - DDG/Sogou 共享 request-local Undici 代理 transport；只读取显式引擎配置或
   `USE_PROXY=true` + `PROXY_URL`，不读取 ambient proxy，也不泄露凭证。
+- Bing/Baidu/Yandex 现复用同一 request-local transport，并支持
+  `BING_PROXY_URL`、`BAIDU_PROXY_URL`、`YANDEX_PROXY_URL`；HTML 200 响应若无
+  已识别搜索面会返回 `parse_error`，合法空结果仍保持为空成功。
 - DDG/Sogou 反爬统一返回 `bot_challenge` 并进入有界冷却。
 - `ProviderCooldownStore` 和 `SearchCache` 都以小型 store interface 解耦；
   内存是默认实现，本地持久化必须显式启用并对损坏/过期数据 fail open。
@@ -89,9 +92,21 @@ tags:
   HTTP 202 challenge；不要从该出口继续探测或捕获质量 fixture。
 - 不使用指纹轮换、挑战规避或高频重试来获取 DDG/Sogou 结果。
 
+### 2026-07-28 live E2E
+
+- `tests/e2e/basic-search.e2e.ts` 现在覆盖 DDG、Bing、Baidu、Yandex 的
+  独立搜索场景；`LIVE_E2E_ENGINES` 可选择引擎，challenge 会停止后续探测。
+- 受控运行显示上游状态随出口/时段变化：一次运行中 Bing、Baidu 非空通过，Yandex
+  被最终 URL `showcaptchafast` 识别为 `bot_challenge`；最终 commit 的复核中 Bing
+  通过、Baidu 返回 `bot_challenge`，Yandex 按规则未继续探测。
+- 这证明了 MCP stdio 到这些适配器的真实链路和 challenge 保留行为，不证明 Baidu/Yandex
+  的稳定可用性，也不构成多引擎搜索质量声明。复现示例：
+  `LIVE_E2E=true LIVE_E2E_ENGINES=bing,baidu,yandex LIVE_E2E_MAX_REQUESTS=3`
+  后运行 `npm run test:e2e:live`；PowerShell 需要使用 `$env:` 设置变量。
+
 ## 当前验证
 
-- 默认离线门禁：73 个测试文件，742 passed，2 个联网 E2E 按设计 skipped。
+- 默认离线门禁：73 个测试文件，754 passed，5 个 live E2E 按设计 skipped。
 - TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
   quality benchmark：通过；bootstrap 仍不具备质量声明资格。
 - Lint：0 errors、0 warnings；`npm run lint` 通过 `--max-warnings 0`

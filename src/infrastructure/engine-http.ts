@@ -6,7 +6,12 @@ import {
   type RequestInit as UndiciRequestInit,
 } from 'undici';
 
-export type ProxyAwareEngine = 'duckduckgo' | 'sogou';
+export type ProxyAwareEngine =
+  | 'duckduckgo'
+  | 'sogou'
+  | 'bing'
+  | 'baidu'
+  | 'yandex';
 export type ProxyConfigurationStatus = 'present' | 'missing' | 'invalid';
 
 export interface EngineProxyInspection {
@@ -17,6 +22,9 @@ export interface EngineProxyInspection {
 const ENGINE_PROXY_ENV: Record<ProxyAwareEngine, string> = {
   duckduckgo: 'DUCKDUCKGO_PROXY_URL',
   sogou: 'SOGOU_PROXY_URL',
+  bing: 'BING_PROXY_URL',
+  baidu: 'BAIDU_PROXY_URL',
+  yandex: 'YANDEX_PROXY_URL',
 };
 const DEFAULT_PROXY_URL = 'http://127.0.0.1:7890';
 const proxyAgents = new Map<string, ProxyAgent>();

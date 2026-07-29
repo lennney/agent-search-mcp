@@ -1,7 +1,15 @@
-import { SearchResult, type EngineSearchOptions } from '../types.js';
-import { decodeHTMLTags } from '../infrastructure/html-utils.js';
-import { withTimeout } from '../infrastructure/abort.js';
+import * as cheerio from 'cheerio';
+
 import { logger } from '../infrastructure/logger.js';
+import type { EngineSearchOptions, SearchResult } from '../types.js';
+import {
+  createHtmlParseError,
+  fetchSearchHtml,
+  normalizeHtmlText,
+  resolveHtmlResultUrl,
+} from './html-search.js';
+
+const YANDEX_SEARCH_URL = 'https://yandex.com/search/';
 
 export const yandexProvider = {
   id: 'yandex' as const,
@@ -10,56 +18,65 @@ export const yandexProvider = {
   languages: ['ru', 'en', 'auto'],
 };
 
-export async function searchYandex(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
+export async function searchYandex(
+  query: string,
+  limit: number = 10,
+  options?: EngineSearchOptions,
+): Promise<SearchResult[]> {
   try {
-    const url = `https://yandex.com/search/?text=${encodeURIComponent(query)}`;
-    const res = await fetch(url, {
+    const url = new URL(YANDEX_SEARCH_URL);
+    url.searchParams.set('text', query);
+    const html = await fetchSearchHtml('yandex', url, {
+      signal: options?.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+          + 'AppleWebKit/537.36 (KHTML, like Gecko) '
+          + 'Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      signal: withTimeout(options?.signal, 10000),
     });
 
-    if (!res.ok) {
-      if (options?.throwOnError) throw new Error(`Yandex HTTP ${res.status}`);
-      logger.warn({ status: res.status }, 'Yandex HTTP error');
-      return [];
+    const results = parseYandexHTML(html, limit);
+    if (!hasYandexSearchSurface(html) || (hasYandexResultCards(html) && results.length === 0)) {
+      throw createHtmlParseError('yandex');
     }
-
-    const html = await res.text();
-    return parseYandexHTML(html, limit);
+    return results;
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
     const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes('abort') || msg.includes('timeout')) {
-      logger.warn('Yandex search timed out');
-    } else {
-      logger.warn({ err: msg.slice(0, 200) }, 'Yandex search failed');
-    }
+    logger.warn({ err: msg.slice(0, 200) }, 'Yandex search failed');
     return [];
   }
 }
 
-function parseYandexHTML(html: string, limit: number): SearchResult[] {
+export function parseYandexHTML(html: string, limit: number = 10): SearchResult[] {
+  const $ = cheerio.load(html);
   const results: SearchResult[] = [];
+  const seenUrls = new Set<string>();
 
-  const blockRegex = /<li[^>]*class="[^"]*serp-item[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
-  let match;
+  $('li.serp-item, .serp-item').each((_, element) => {
+    if (results.length >= limit) return;
 
-  while ((match = blockRegex.exec(html)) !== null && results.length < limit) {
-    const block = match[1];
-    const titleMatch = block.match(/<h2[^>]*>[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
-    if (!titleMatch) continue;
+    const card = $(element);
+    const titleLink = card
+      .find('h2 a[href], h3 a[href], a.organic__url[href], a[href]')
+      .first();
+    const url = resolveHtmlResultUrl(
+      titleLink.attr('href') ?? '',
+      YANDEX_SEARCH_URL,
+    );
+    const title = normalizeHtmlText(titleLink.text());
+    if (!title || !isExternalYandexUrl(url) || seenUrls.has(url)) return;
 
-    const url = titleMatch[1];
-    const title = decodeHTMLTags(titleMatch[2]);
-    if (!url || !title || url.includes('yandex')) continue;
-
-    const snippetMatch = block.match(/<div[^>]*class="[^"]*text-container[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-    const snippet = snippetMatch ? decodeHTMLTags(snippetMatch[1]) : '';
-
+    const snippet = normalizeHtmlText(
+      card
+        .find('.text-container, .OrganicTextContentSpan, .TextContainer, p')
+        .first()
+        .text(),
+    );
+    seenUrls.add(url);
     results.push({
       title,
       url,
@@ -67,7 +84,30 @@ function parseYandexHTML(html: string, limit: number): SearchResult[] {
       source: 'yandex',
       engines: ['yandex'],
     });
-  }
+  });
 
   return results;
+}
+
+function hasYandexSearchSurface(html: string): boolean {
+  const $ = cheerio.load(html);
+  const resultContainer = $('.serp-list, #search-result').first();
+  return hasYandexResultCards(html)
+    || (resultContainer.length > 0
+      && resultContainer.children().length === 0
+      && normalizeHtmlText(resultContainer.text()) === '');
+}
+
+function hasYandexResultCards(html: string): boolean {
+  return cheerio.load(html)('li.serp-item, .serp-item').length > 0;
+}
+
+function isExternalYandexUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return hostname !== 'yandex.com' && !hostname.endsWith('.yandex.com');
+  } catch {
+    return false;
+  }
 }

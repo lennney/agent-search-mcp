@@ -148,6 +148,8 @@ semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
 运行状态只在首次需要时创建，并缓存到进程生命周期:
 
 - **代理连接池**: DDG/Sogou 首次代理请求时按脱敏配置创建
+- **HTML 引擎 transport**: Bing/Baidu/Yandex 复用同一 request-local 代理 seam；
+  每个引擎可通过显式环境变量覆盖
 - **引擎健康状态**: 首次失败后缓存降级结果
 - **Rate limiter**: 首次调用时创建，后续复用
 
@@ -161,6 +163,10 @@ family。Web 表示只接受
 DDG/Sogou 的 CAPTCHA、202 challenge 和 `/antispider/` 会转换为结构化
 `bot_challenge`。健康控制面立即暂停该 provider 一小时；到期后才允许新探测，
 避免在已知受限的网络出口上继续消耗延迟和上游配额。
+
+Bing、Baidu 和 Yandex 的 HTML adapter 使用 Cheerio 解析结果卡片。HTTP 200
+但没有已识别搜索面会转换为 `parse_error`；有搜索面但没有结果仍是合法空结果，
+避免把结构变更伪装成成功。它们继续复用编排层的限速、重试、健康和冷却策略。
 
 ### 5. 运行控制面不占默认工具槽位
 

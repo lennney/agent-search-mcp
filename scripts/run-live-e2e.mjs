@@ -15,7 +15,10 @@ if (process.env.LIVE_E2E !== 'true') {
   process.exit(2);
 }
 
-const maxRequests = boundedInteger('LIVE_E2E_MAX_REQUESTS', 2, 1, 2);
+const LIVE_ENGINE_NAMES = ['duckduckgo', 'bing', 'baidu', 'yandex'];
+validateEngineSelection(process.env.LIVE_E2E_ENGINES);
+
+const maxRequests = boundedInteger('LIVE_E2E_MAX_REQUESTS', 5, 1, 5);
 const minIntervalMs = boundedInteger(
   'LIVE_E2E_MIN_INTERVAL_MS',
   10_000,
@@ -44,6 +47,17 @@ function boundedInteger(name, fallback, minimum, maximum) {
     );
   }
   return parsed;
+}
+
+function validateEngineSelection(rawValue) {
+  if (rawValue === undefined) return;
+  const engines = rawValue.split(',').map(engine => engine.trim());
+  if (engines.length === 0 || engines.some(engine => !LIVE_ENGINE_NAMES.includes(engine))) {
+    console.error(
+      `LIVE_E2E_ENGINES must contain one or more supported engines: ${LIVE_ENGINE_NAMES.join(', ')}`,
+    );
+    process.exit(2);
+  }
 }
 
 function run(command, args, environment = {}) {

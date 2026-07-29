@@ -48,6 +48,9 @@ export interface DoctorReport {
       | 'zero-key-search'
       | 'duckduckgo-proxy'
       | 'sogou-proxy'
+      | 'bing-proxy'
+      | 'baidu-proxy'
+      | 'yandex-proxy'
       | 'semantic-flags'
       | 'request-budget'
       | 'provider-cooldown-store'
@@ -113,6 +116,21 @@ export function createDoctorReport(
     {
       id: 'sogou-proxy',
       ...inspectEngineProxyConfiguration('sogou', environment),
+      required: false,
+    },
+    {
+      id: 'bing-proxy',
+      ...inspectEngineProxyConfiguration('bing', environment),
+      required: false,
+    },
+    {
+      id: 'baidu-proxy',
+      ...inspectEngineProxyConfiguration('baidu', environment),
+      required: false,
+    },
+    {
+      id: 'yandex-proxy',
+      ...inspectEngineProxyConfiguration('yandex', environment),
       required: false,
     },
     {

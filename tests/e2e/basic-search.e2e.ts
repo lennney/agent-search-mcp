@@ -1,9 +1,14 @@
-import { describe, it, expect, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll, afterAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface, Interface } from 'readline';
+import { createLiveProbeBudget } from './live-probe-budget.js';
+import {
+  hasSuccessfulProviderProbe,
+  shouldStopAfterLiveOutcome,
+} from './live-probe-outcome.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = process.env.E2E_SERVER_PATH
@@ -18,22 +23,45 @@ const EXPECTED_SERVER_VERSION = process.env.E2E_EXPECTED_SERVER_VERSION || '3.2.
 // with a clear message rather than a suite-level failure.
 const E2E_SKIP = !existsSync(SERVER_PATH);
 const LIVE_NETWORK_E2E = process.env.RUN_LIVE_NETWORK_E2E === 'true';
-const liveNetworkIt = LIVE_NETWORK_E2E ? it : it.skip;
+type LiveSearchEngine = 'duckduckgo' | 'bing' | 'baidu' | 'yandex';
+const DEFAULT_LIVE_E2E_ENGINES: readonly LiveSearchEngine[] = [
+  'duckduckgo',
+  'bing',
+  'baidu',
+  'yandex',
+];
+const LIVE_E2E_ENGINES = new Set<LiveSearchEngine>(
+  (process.env.LIVE_E2E_ENGINES ?? DEFAULT_LIVE_E2E_ENGINES.join(','))
+    .split(',')
+    .map(engine => engine.trim())
+    .filter((engine): engine is LiveSearchEngine =>
+      DEFAULT_LIVE_E2E_ENGINES.includes(engine as LiveSearchEngine)),
+);
 const LIVE_REQUEST_LIMIT = Number.parseInt(
-  process.env.LIVE_E2E_MAX_REQUESTS || '2',
+  process.env.LIVE_E2E_MAX_REQUESTS || '5',
   10,
 );
-const liveExtractIt = LIVE_NETWORK_E2E && LIVE_REQUEST_LIMIT >= 2 ? it : it.skip;
+const LIVE_E2E_INCLUDE_EXTRACT = process.env.LIVE_E2E_INCLUDE_EXTRACT !== 'false';
+const liveNetworkIt = LIVE_NETWORK_E2E && LIVE_E2E_ENGINES.has('duckduckgo') ? it : it.skip;
+const liveExtractIt = LIVE_NETWORK_E2E
+  && LIVE_E2E_INCLUDE_EXTRACT
+  && LIVE_REQUEST_LIMIT > LIVE_E2E_ENGINES.size
+  ? it
+  : it.skip;
 const LIVE_MIN_INTERVAL_MS = Number.parseInt(
   process.env.LIVE_E2E_MIN_INTERVAL_MS || '10000',
   10,
 );
-let liveRequests = 0;
 let lastLiveRequestAt = 0;
+let liveProbeStopReason: string | undefined;
+let liveProviderSuccesses = 0;
+const liveProbeBudget = createLiveProbeBudget(LIVE_REQUEST_LIMIT);
 
-async function claimLiveRequest(): Promise<void> {
-  if (liveRequests >= LIVE_REQUEST_LIMIT) {
-    throw new Error(`Live E2E request limit exceeded: ${LIVE_REQUEST_LIMIT}`);
+async function claimLiveRequest(skip?: (reason?: string) => void): Promise<boolean> {
+  if (!liveProbeBudget.claim()) {
+    const reason = `Live probe budget exhausted at ${LIVE_REQUEST_LIMIT} requests`;
+    if (skip) skip(reason);
+    return false;
   }
   const waitMs = Math.max(
     LIVE_MIN_INTERVAL_MS - (Date.now() - lastLiveRequestAt),
@@ -42,8 +70,8 @@ async function claimLiveRequest(): Promise<void> {
   if (lastLiveRequestAt > 0 && waitMs > 0) {
     await new Promise(resolve => setTimeout(resolve, waitMs));
   }
-  liveRequests += 1;
   lastLiveRequestAt = Date.now();
+  return true;
 }
 
 beforeAll(() => {
@@ -204,6 +232,12 @@ function waitForStartup(ms: number = 500): Promise<void> {
     } catch { /* ignore */ }
   });
 
+  afterAll(() => {
+    if (LIVE_NETWORK_E2E && !E2E_SKIP && liveProviderSuccesses === 0) {
+      throw new Error('No successful live provider probe');
+    }
+  });
+
   // ─── Helper: perform MCP handshake ───
   async function initialize(p: ChildProcess, r: ReturnType<typeof createMessageReader>) {
     // Send initialize
@@ -227,6 +261,39 @@ function waitForStartup(ms: number = 500): Promise<void> {
       jsonrpc: '2.0',
       method: 'notifications/initialized',
     });
+  }
+
+  function skipIfLiveProbesStopped(skip: (reason?: string) => void): boolean {
+    if (!liveProbeStopReason) return false;
+    skip(`Live probes stopped after ${liveProbeStopReason}`);
+    return true;
+  }
+
+  function assertLiveEngineResults(
+    response: JsonRpcResponse,
+    engine: LiveSearchEngine,
+    skip: (reason?: string) => void,
+  ): boolean {
+    expect(response).toHaveProperty('result');
+    expect(response).not.toHaveProperty('error');
+
+    const result = response.result as Record<string, unknown>;
+    const structuredContent = result.structuredContent as Record<string, unknown>;
+    const failures = Array.isArray(structuredContent.partialFailures)
+      ? structuredContent.partialFailures as Array<Record<string, unknown>>
+      : [];
+    const providerOutcome = { ...structuredContent, engine, kind: 'provider_probe' };
+    if (shouldStopAfterLiveOutcome(providerOutcome)) {
+      const challenge = failures.find(failure => failure.type === 'bot_challenge');
+      liveProbeStopReason = `${engine} returned bot_challenge: ${String(challenge?.message ?? 'challenge')}`;
+      skip(`Live probes stopped after ${liveProbeStopReason}`);
+      return false;
+    }
+
+    expect(structuredContent.results).toEqual(expect.any(Array));
+    expect((structuredContent.results as unknown[]).length).toBeGreaterThan(0);
+    if (hasSuccessfulProviderProbe(providerOutcome)) liveProviderSuccesses += 1;
+    return true;
   }
 
   it('responds to initialize with server info', async () => {
@@ -293,11 +360,11 @@ function waitForStartup(ms: number = 500): Promise<void> {
     }));
   }, 20000);
 
-  liveNetworkIt('calls free_search and returns results', async () => {
-    await claimLiveRequest();
+  liveNetworkIt('calls free_search and returns results', async ({ skip }) => {
+    if (skipIfLiveProbesStopped(skip) || !(await claimLiveRequest(skip))) return;
     proc = spawnServer();
-    // The bounded live smoke selects DDG explicitly and permits one adapter
-    // attempt. It does not fan out across the free-provider set.
+    // Each bounded live smoke selects one adapter explicitly and permits one
+    // adapter attempt. It does not fan out across the free-provider set.
     reader = createMessageReader(proc, 50000);
     await waitForStartup(500);
 
@@ -318,6 +385,7 @@ function waitForStartup(ms: number = 500): Promise<void> {
     });
 
     const response = await reader.readMessage();
+    if (!assertLiveEngineResults(response as JsonRpcResponse, 'duckduckgo', skip)) return;
     expect(response).toHaveProperty('jsonrpc', '2.0');
     expect(response).toHaveProperty('id', 3);
     expect(response).toHaveProperty('result');
@@ -346,8 +414,83 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect((textContent as Record<string, unknown>).text).toBeTruthy();
   }, 60000);
 
-  liveExtractIt('calls free_extract and returns content', async () => {
-    await claimLiveRequest();
+  it.runIf(LIVE_NETWORK_E2E && LIVE_E2E_ENGINES.has('bing'))('calls free_search through Bing and returns results', async ({ skip }) => {
+    if (skipIfLiveProbesStopped(skip) || !(await claimLiveRequest(skip))) return;
+    proc = spawnServer();
+    reader = createMessageReader(proc, 50000);
+    await waitForStartup(500);
+
+    await initialize(proc, reader);
+
+    sendMessage(proc, {
+      jsonrpc: '2.0',
+      id: 5,
+      method: 'tools/call',
+      params: {
+        name: 'free_search',
+        arguments: {
+          query: 'OpenAI',
+          count: 3,
+          engines: ['bing'],
+        },
+      },
+    });
+
+    if (!assertLiveEngineResults(await reader.readMessage() as JsonRpcResponse, 'bing', skip)) return;
+  }, 60000);
+
+  it.runIf(LIVE_NETWORK_E2E && LIVE_E2E_ENGINES.has('baidu'))('calls free_search through Baidu and returns results', async ({ skip }) => {
+    if (skipIfLiveProbesStopped(skip) || !(await claimLiveRequest(skip))) return;
+    proc = spawnServer();
+    reader = createMessageReader(proc, 50000);
+    await waitForStartup(500);
+
+    await initialize(proc, reader);
+
+    sendMessage(proc, {
+      jsonrpc: '2.0',
+      id: 6,
+      method: 'tools/call',
+      params: {
+        name: 'free_search',
+        arguments: {
+          query: '人工智能',
+          count: 3,
+          engines: ['baidu'],
+        },
+      },
+    });
+
+    if (!assertLiveEngineResults(await reader.readMessage() as JsonRpcResponse, 'baidu', skip)) return;
+  }, 60000);
+
+  it.runIf(LIVE_NETWORK_E2E && LIVE_E2E_ENGINES.has('yandex'))('calls free_search through Yandex and returns results', async ({ skip }) => {
+    if (skipIfLiveProbesStopped(skip) || !(await claimLiveRequest(skip))) return;
+    proc = spawnServer();
+    reader = createMessageReader(proc, 50000);
+    await waitForStartup(500);
+
+    await initialize(proc, reader);
+
+    sendMessage(proc, {
+      jsonrpc: '2.0',
+      id: 7,
+      method: 'tools/call',
+      params: {
+        name: 'free_search',
+        arguments: {
+          query: 'OpenAI',
+          count: 3,
+          engines: ['yandex'],
+        },
+      },
+    });
+
+    if (!assertLiveEngineResults(await reader.readMessage() as JsonRpcResponse, 'yandex', skip)) return;
+  }, 60000);
+
+  liveExtractIt('calls free_extract and returns content', async ({ skip }) => {
+    if (skipIfLiveProbesStopped(skip) || !(await claimLiveRequest(skip))) return;
     proc = spawnServer();
     reader = createMessageReader(proc, 20000);
     await waitForStartup(500);
