@@ -26,9 +26,12 @@ describe('shared HTML search transport', () => {
   it.each([
     'captcha - Search',
     'access denied - Search',
+    'unusual traffic - Search',
   ])('does not classify a query-derived title %j as bot_challenge', async (title) => {
     vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
-      `<html><head><title>${title}</title></head><body>
+      `<html><head><title>${title}</title>
+        <meta name="description" content="${title}">
+      </head><body>
         <ol id="b_results"><li class="b_algo">
           <h2><a href="https://example.com/result">Normal result</a></h2>
           <p>Normal result content.</p>

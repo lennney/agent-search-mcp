@@ -22,6 +22,43 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
 const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 30_000;
 const MAX_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
+const TITLE_CHALLENGE_MARKERS = [
+  'verify you are human',
+  'please confirm that you are not a robot',
+  'are you not a robot',
+  'robot check',
+];
+const BODY_CHALLENGE_MARKERS = [
+  'verify you are human',
+  'access denied: verify',
+  'please solve the captcha',
+  'please enter the captcha',
+  'captcha challenge',
+  'checking your browser before redirecting',
+  'detected unusual traffic',
+  'unusual traffic from',
+  'security verification',
+  '安全验证',
+  '验证码',
+  '访问异常',
+  '请输入验证码',
+  '反爬',
+  'я не робот',
+  'проверка безопасности',
+];
+const STANDALONE_CHALLENGE_MARKERS = [
+  'captcha',
+  'access denied',
+  'smartcaptcha',
+  'security verification',
+  '安全验证',
+  '验证码',
+  '访问异常',
+  '请输入验证码',
+  '反爬',
+  'я не робот',
+  'проверка безопасности',
+];
 
 /** Fetch an HTML search page through the shared, explicitly configured transport. */
 export async function fetchSearchHtml(
@@ -79,46 +116,27 @@ function looksLikeBotChallenge(html: string): boolean {
   const metaDescription = normalizeHtmlText(
     $('meta[name="description"]').first().attr('content') ?? '',
   );
-  const leadingText = normalizeHtmlText($('body').first().text()).slice(0, 800);
+  const body = $('body').first();
+  body.find('script, style, noscript').remove();
+  const visibleBodyText = normalizeHtmlText(body.text()).toLowerCase();
+  const hasKnownSearchSurface = $('li.b_algo, #b_results, .c-container, .result, li.serp-item, .serp-item, .serp-list, #search-result').length > 0;
   const titleAndMeta = `${title} ${metaDescription}`.toLowerCase();
-  const leadingChallengeText = leadingText.toLowerCase();
-  const titleMarkers = [
-    'captcha',
-    'verify you are human',
-    'unusual traffic',
-    'access denied',
-    'robot check',
-    'smartcaptcha',
-    'security verification',
-    '安全验证',
-    '验证码',
-    '访问异常',
-    '请输入验证码',
-    '反爬',
-    'я не робот',
-    'проверка безопасности',
-  ];
-  if (titleMarkers.some(marker => titleAndMeta.includes(marker))) return true;
+  if (!hasKnownSearchSurface
+    && TITLE_CHALLENGE_MARKERS.some(marker => titleAndMeta.includes(marker))) {
+    return true;
+  }
+  if (!hasKnownSearchSurface
+    && BODY_CHALLENGE_MARKERS.some(marker => visibleBodyText.includes(marker))) {
+    return true;
+  }
 
-  return [
-    'captcha',
-    'verify you are human',
-    'unusual traffic',
-    'robot check',
-    'smartcaptcha',
-    'security verification',
-    'checking your browser before redirecting',
-    '安全验证',
-    '验证码',
-    '访问异常',
-    '请输入验证码',
-    '反爬',
-    'я не робот',
-    'проверка безопасности',
-  ].some(marker => leadingChallengeText.includes(marker));
+  return !hasKnownSearchSurface
+    && visibleBodyText.length <= 160
+    && STANDALONE_CHALLENGE_MARKERS.some(marker => visibleBodyText === marker);
 }
 
 function looksLikeBotChallengeUrl(url: string): boolean {
+  if (!url) return false;
   const normalized = url.toLowerCase();
   return normalized.includes('/showcaptcha')
     || normalized.includes('/captcha')
