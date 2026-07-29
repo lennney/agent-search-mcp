@@ -24,6 +24,43 @@ afterEach(() => {
 
 describe('shared HTML search transport', () => {
   it.each([
+    'captcha - Search',
+    'access denied - Search',
+  ])('does not classify a query-derived title %j as bot_challenge', async (title) => {
+    vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
+      `<html><head><title>${title}</title></head><body>
+        <ol id="b_results"><li class="b_algo">
+          <h2><a href="https://example.com/result">Normal result</a></h2>
+          <p>Normal result content.</p>
+        </li></ol>
+      </body></html>`,
+      200,
+      'https://www.bing.com/search?q=captcha',
+    )));
+
+    await expect(fetchSearchHtml('bing', 'https://www.bing.com/search?q=captcha'))
+      .resolves.toContain('Normal result');
+  });
+
+  it('ignores challenge markers in scripts, styles, and ordinary result text', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
+      `<html><head><title>OpenAI - Search</title>
+        <style>.captcha { display: none }</style></head><body>
+        <script>const captchaConfig = false;</script>
+        <ol id="b_results"><li class="b_algo">
+          <h2><a href="https://example.com/result">Normal result</a></h2>
+          <p>This result explains captcha and access denied messages.</p>
+        </li></ol>
+      </body></html>`,
+      200,
+      'https://www.bing.com/search?q=OpenAI',
+    )));
+
+    await expect(fetchSearchHtml('bing', 'https://www.bing.com/search?q=OpenAI'))
+      .resolves.toContain('Normal result');
+  });
+
+  it.each([
     [200, '<html><head><title>Verify you are human</title></head></html>'],
     [403, '<html><body>Access denied: verify you are human</body></html>'],
     [429, '<html><body>Too many requests. Please solve the captcha.</body></html>'],
