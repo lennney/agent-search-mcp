@@ -23,20 +23,35 @@ const CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
 const DEFAULT_RATE_LIMIT_COOLDOWN_MS = 30_000;
 const MAX_RATE_LIMIT_COOLDOWN_MS = 5 * 60_000;
 const TITLE_CHALLENGE_MARKERS = [
+  'captcha',
   'verify you are human',
+  'unusual traffic',
+  'access denied',
   'please confirm that you are not a robot',
   'are you not a robot',
   'robot check',
+  'smartcaptcha',
+  'security verification',
+  '安全验证',
+  '验证码',
+  '访问异常',
+  '请输入验证码',
+  '反爬',
+  'я не робот',
+  'проверка безопасности',
 ];
 const BODY_CHALLENGE_MARKERS = [
+  'captcha',
   'verify you are human',
+  'unusual traffic',
   'access denied: verify',
+  'access denied',
   'please solve the captcha',
   'please enter the captcha',
   'captcha challenge',
+  'robot check',
+  'smartcaptcha',
   'checking your browser before redirecting',
-  'detected unusual traffic',
-  'unusual traffic from',
   'security verification',
   '安全验证',
   '验证码',
@@ -59,6 +74,11 @@ const STANDALONE_CHALLENGE_MARKERS = [
   'я не робот',
   'проверка безопасности',
 ];
+const SEARCH_SURFACE_SELECTORS: Record<HtmlSearchEngine, string> = {
+  bing: '#b_results, li.b_algo',
+  baidu: '#content_left, .c-container, .result',
+  yandex: '.serp-list, #search-result, .serp-item',
+};
 
 /** Fetch an HTML search page through the shared, explicitly configured transport. */
 export async function fetchSearchHtml(
@@ -72,7 +92,7 @@ export async function fetchSearchHtml(
   });
   const html = await response.text();
 
-  if (looksLikeBotChallenge(html) || looksLikeBotChallengeUrl(response.url)) {
+  if (looksLikeBotChallenge(engine, html) || looksLikeBotChallengeUrl(response.url)) {
     throw createBotChallenge(engine);
   }
   if (!response.ok) {
@@ -110,7 +130,7 @@ export function resolveHtmlResultUrl(rawUrl: string, baseUrl: string | URL): str
 }
 
 /** Detect common anti-bot interstitials without treating result snippets as challenges. */
-function looksLikeBotChallenge(html: string): boolean {
+function looksLikeBotChallenge(engine: HtmlSearchEngine, html: string): boolean {
   const $ = cheerio.load(html);
   const title = normalizeHtmlText($('title').first().text());
   const metaDescription = normalizeHtmlText(
@@ -119,7 +139,7 @@ function looksLikeBotChallenge(html: string): boolean {
   const body = $('body').first();
   body.find('script, style, noscript').remove();
   const visibleBodyText = normalizeHtmlText(body.text()).toLowerCase();
-  const hasKnownSearchSurface = $('li.b_algo, #b_results, .c-container, .result, li.serp-item, .serp-item, .serp-list, #search-result').length > 0;
+  const hasKnownSearchSurface = $(SEARCH_SURFACE_SELECTORS[engine]).length > 0;
   const titleAndMeta = `${title} ${metaDescription}`.toLowerCase();
   if (!hasKnownSearchSurface
     && TITLE_CHALLENGE_MARKERS.some(marker => titleAndMeta.includes(marker))) {
@@ -160,7 +180,7 @@ function createHttpError(
   response: Response,
   html: string,
 ): EngineAdapterError {
-  if (looksLikeBotChallenge(html)) return createBotChallenge(engine);
+  if (looksLikeBotChallenge(engine, html)) return createBotChallenge(engine);
 
   if (response.status === 429) {
     return new EngineAdapterError(

@@ -45,11 +45,84 @@ describe('shared HTML search transport', () => {
       .resolves.toContain('Normal result');
   });
 
-  it('ignores challenge markers in scripts, styles, and ordinary result text', async () => {
+  it.each([
+    'SmartCaptcha',
+    'Security verification',
+    'Unusual traffic',
+  ])('preserves a title-only challenge marker %j', async (title) => {
+    vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
+      `<html><head><title>${title}</title></head><body></body></html>`,
+      200,
+      'https://www.bing.com/search?q=test',
+    )));
+
+    await expect(fetchSearchHtml('bing', 'https://www.bing.com/search?q=test'))
+      .rejects.toMatchObject({ failureType: 'bot_challenge' });
+  });
+
+  it.each([
+    'Robot check',
+    'Unusual traffic',
+    'Security verification',
+  ])('preserves a body-only challenge marker %j', async (body) => {
+    vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
+      `<html><body>${body}</body></html>`,
+      200,
+      'https://www.bing.com/search?q=test',
+    )));
+
+    await expect(fetchSearchHtml('bing', 'https://www.bing.com/search?q=test'))
+      .rejects.toMatchObject({ failureType: 'bot_challenge' });
+  });
+
+  it.each([
+    'verify you are human',
+    'please confirm that you are not a robot',
+    'are you not a robot',
+    'robot check',
+  ])('does not classify a title-only query term %j as bot_challenge', async (marker) => {
+    vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
+      `<html><head><title>Search: ${marker}</title></head><body>
+        <ol id="b_results"><li class="b_algo">
+          <h2><a href="https://example.com/result">Normal result</a></h2>
+        </li></ol>
+      </body></html>`,
+      200,
+      'https://www.bing.com/search?q=robot',
+    )));
+
+    await expect(fetchSearchHtml('bing', 'https://www.bing.com/search?q=robot'))
+      .resolves.toContain('Normal result');
+  });
+
+  it.each([
+    'verify you are human',
+    'please confirm that you are not a robot',
+    'are you not a robot',
+    'robot check',
+  ])('does not classify a meta-only query term %j as bot_challenge', async (marker) => {
+    vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
+      `<html><head><title>Search results</title>
+        <meta name="description" content="${marker}">
+      </head><body>
+        <ol id="b_results"><li class="b_algo">
+          <h2><a href="https://example.com/result">Normal result</a></h2>
+        </li></ol>
+      </body></html>`,
+      200,
+      'https://www.bing.com/search?q=robot',
+    )));
+
+    await expect(fetchSearchHtml('bing', 'https://www.bing.com/search?q=robot'))
+      .resolves.toContain('Normal result');
+  });
+
+  it('ignores challenge markers in scripts, styles, noscript, and ordinary result text', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => mockResponse(
       `<html><head><title>OpenAI - Search</title>
         <style>.captcha { display: none }</style></head><body>
         <script>const captchaConfig = false;</script>
+        <noscript>Please solve the captcha to continue.</noscript>
         <ol id="b_results"><li class="b_algo">
           <h2><a href="https://example.com/result">Normal result</a></h2>
           <p>This result explains captcha and access denied messages.</p>
