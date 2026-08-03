@@ -11,6 +11,7 @@ import { searchYouCom } from '../engines/youcom.js';
 import { searchTencentWsa } from '../engines/tencent-wsa.js';
 import { searchBocha } from '../engines/bocha.js';
 import { searchSerper } from '../engines/serper.js';
+import { searchSerpBase } from '../engines/serpbase.js';
 import {
   classifyEngineError,
   EngineAdapterError,
@@ -95,6 +96,7 @@ const ENGINE_WEIGHTS: Record<string, number> = {
   tencent_wsa: 0.9,
   bocha: 0.9,
   serper: 0.9,
+  serpbase: 0.9,
 };
 
 // Infrastructure singletons
@@ -272,6 +274,9 @@ async function searchEngine(
           break;
         case 'serper':
           results = await searchSerper(query, limit, engineOptions);
+          break;
+        case 'serpbase':
+          results = await searchSerpBase(query, limit, engineOptions);
           break;
         default:
           return { engine, status: 'skipped', results: [] };

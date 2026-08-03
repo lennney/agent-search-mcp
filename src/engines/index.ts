@@ -19,6 +19,7 @@ export {
 } from './tencent-wsa.js';
 export { searchBocha, bochaProvider } from './bocha.js';
 export { searchSerper, serperProvider } from './serper.js';
+export { searchSerpBase, serpbaseProvider } from './serpbase.js';
 
 interface LocalizedText {
   en: string;
@@ -51,6 +52,7 @@ export const engines: Record<SearchProvider, EngineCapability> = {
   tencent_wsa: { id: 'tencent_wsa', name: 'Tencent Web Search API', isFree: false, languages: ['zh'], credentialEnvironment: 'TENCENT_WSA_API_KEY', strengths: { en: 'Optional official Chinese Web Search', zh: '可选官方中文联网搜索' } },
   bocha: { id: 'bocha', name: 'Bocha Web Search', isFree: false, languages: ['zh', 'en'], credentialEnvironment: 'BOCHA_API_KEY', strengths: { en: 'Optional Chinese-first AI Search', zh: '可选中文优先 AI 搜索' } },
   serper: { id: 'serper', name: 'Serper Google Search', isFree: false, languages: ['en', 'zh', 'auto'], credentialEnvironment: 'SERPER_API_KEY', strengths: { en: 'Optional Google SERP Search', zh: '可选 Google SERP 搜索' } },
+  serpbase: { id: 'serpbase', name: 'SerpBase Google Search', isFree: false, languages: ['en', 'zh', 'auto'], credentialEnvironment: 'SERPBASE_API_KEY', strengths: { en: 'Optional Google Search (API, no scraping)', zh: '可选 Google 搜索（API，无需爬虫）' } },
 };
 
 /** Free engines that always work without API keys */

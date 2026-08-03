@@ -20,6 +20,7 @@ export const PROVIDER_FAMILIES: Readonly<Record<string, string>> = {
   tencent_wsa: 'sogou',
   bocha: 'bocha',
   serper: 'google',
+  serpbase: 'google',
 };
 
 export function getProviderFamily(engine: string): string {

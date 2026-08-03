@@ -34,6 +34,7 @@ export const SEARCH_PROVIDERS = [
   'tencent_wsa',
   'bocha',
   'serper',
+  'serpbase',
 ] as const;
 
 export type SearchProvider = typeof SEARCH_PROVIDERS[number];
