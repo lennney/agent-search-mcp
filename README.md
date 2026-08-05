@@ -1,5 +1,7 @@
 # Agent Search MCP: Free Web Search for AI Agents
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.lennney%2Fagent-search-mcp.svg)](https://mcptoplist.com/server/io.github.lennney%2Fagent-search-mcp)
+
 **A lightweight, free-first MCP web search router with compact multi-source evidence.**
 
 Agent Search MCP is an open-source, self-hosted MCP server and CLI. It starts
