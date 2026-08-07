@@ -459,6 +459,29 @@ describe('searchWithFallback — parallel', () => {
     expect(infrastructureState.cacheSet).not.toHaveBeenCalled();
   });
 
+  it('allows a controlled benchmark run to disable adapter retries', async () => {
+    (searchDuckDuckGo as any).mockRejectedValue(new Error('network timeout'));
+
+    const response = await searchWithFallback({
+      query: 'bounded benchmark request',
+      engines: ['duckduckgo'],
+      providerMaxRetries: 0,
+    });
+
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(1);
+    expect(response.partialFailures).toContainEqual(expect.objectContaining({
+      engine: 'duckduckgo',
+    }));
+  });
+
+  it('rejects an invalid adapter retry override before dispatch', async () => {
+    await expect(searchWithFallback({
+      query: 'invalid retry override',
+      providerMaxRetries: -1,
+    })).rejects.toThrow(/providerMaxRetries/);
+    expect(searchDuckDuckGo).not.toHaveBeenCalled();
+  });
+
   it('passes the query and configured evidence budget into formatting', async () => {
     await searchWithFallback({ query: 'evidence selection' });
 

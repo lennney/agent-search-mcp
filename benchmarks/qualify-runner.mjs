@@ -14,6 +14,7 @@ import {
   observeSearchResponse,
   qualificationQueryDelayMs,
   runnerQualificationExitCode,
+  terminalQualificationFailure,
 } from './lib/runner-qualification.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -48,6 +49,7 @@ try {
   const { searchWithFallback } = await import('../dist/tools/free-search.js');
 
   const samples = [];
+  let stopReason = null;
   for (const [queryIndex, item] of queries.entries()) {
     const normalized = typeof item === 'string' ? { query: item } : item;
     const query = normalized.query || normalized.q;
@@ -55,7 +57,7 @@ try {
       throw new Error(`Query ${queryIndex + 1} has no query/q field`);
     }
     const observations = [];
-    for (const system of systems) {
+    for (const [systemIndex, system] of systems.entries()) {
       const startedAt = Date.now();
       try {
         const response = await searchWithFallback({
@@ -67,11 +69,30 @@ try {
           minSourceCount: 1,
           enrich: false,
           expandQueries: false,
+          providerMaxRetries: 0,
         });
-        observations.push({
+        const observation = {
           system_id: system.system_id,
           ...observeSearchResponse(response, Date.now() - startedAt),
-        });
+        };
+        observations.push(observation);
+        stopReason = terminalQualificationFailure(observation);
+        if (stopReason) {
+          for (const skipped of systems.slice(systemIndex + 1)) {
+            observations.push({
+              system_id: skipped.system_id,
+              status: 'failed',
+              duration_ms: 0,
+              result_count: 0,
+              result_ids: [],
+              provider_families: [],
+              searched_engines: [],
+              partial_failures: [],
+              error_type: 'AbortedAfterTerminalFailure',
+            });
+          }
+          break;
+        }
       } catch (error) {
         observations.push({
           system_id: system.system_id,
@@ -83,6 +104,7 @@ try {
       id: normalized.id || `q${queryIndex + 1}`,
       systems: observations,
     });
+    if (stopReason) break;
     if (queryIndex < queries.length - 1) await delay(queryDelayMs);
   }
 
@@ -98,6 +120,8 @@ try {
   });
   const output = {
     ...report,
+    capture_status: stopReason ? 'aborted' : 'complete',
+    ...(stopReason && { stop_reason: stopReason }),
     observed_at: new Date().toISOString(),
     query_set: relative(ROOT, querySetPath).replaceAll('\\', '/'),
     privacy: {
@@ -120,7 +144,7 @@ try {
     `Runner qualification ${report.readiness.status}: `
     + `${report.readiness.qualified_queries}/${report.readiness.observed_queries} queries`,
   );
-  process.exitCode = runnerQualificationExitCode(report);
+  process.exitCode = stopReason ? 2 : runnerQualificationExitCode(report);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;

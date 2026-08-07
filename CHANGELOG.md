@@ -11,6 +11,13 @@ tags:
 
 ## Unreleased
 
+- fix: Aligned the Open-WebSearch 2.1.9 competitive profile with its annotated
+  tag commit and packaged engine registry, preserved subprocess timeouts as
+  timeout samples, and made qualification stop after challenge/rate-limit
+  evidence instead of issuing later probes.
+- test: Added a cache-partitioned internal zero-retry override for controlled
+  benchmark and qualification runs while leaving the MCP retry default and
+  tool input schemas unchanged.
 - test: Completed a two-call bilingual Wikipedia runtime smoke with explicit
   `en/us-en` and `zh/cn-zh` contexts, Top-3, zero retries, conservative pacing,
   and no retained result text; this remains availability evidence, not a

@@ -25,15 +25,15 @@ export const COMPETITIVE_SYSTEMS = Object.freeze([
       engines: Object.freeze([
         'bing',
         'baidu',
+        'linuxdo',
         'csdn',
         'duckduckgo',
         'exa',
         'brave',
         'juejin',
         'startpage',
-        'sogou',
       ]),
-      source_commit: '3f36330dfba873d66c52116d8c8334aaf65137f4',
+      source_commit: '84695b392ca03ffc68fbd406f1d7937b7151e4b6',
       request_only: true,
       playwright: false,
       proxy: false,
@@ -136,6 +136,8 @@ export async function runCompetitiveCapturePlan(plan, adapters = {}) {
       outcome = {
         failure_type: /(?:unpinned|no driver configured|configuration)/iu.test(errorText)
           ? 'configuration_mismatch'
+          : /(?:driver )?timed out|timeout/iu.test(errorText)
+          ? 'timeout'
           : /bot[_ -]?challenge/iu.test(errorText)
           ? 'bot_challenge'
           : isTerminalCaptureFailure(error) ? 'rate_limited' : 'upstream_error',

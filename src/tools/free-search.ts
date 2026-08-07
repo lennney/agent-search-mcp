@@ -333,6 +333,8 @@ export interface SearchWithFallbackOptions {
   enrichMinConfidence?: number;
   /** Disable query-expansion recursion for deterministic benchmark capture. */
   expandQueries?: boolean;
+  /** Override adapter retries for controlled internal runs; MCP callers use the default. */
+  providerMaxRetries?: number;
   /** Internal request cancellation propagated from the MCP request context. */
   signal?: AbortSignal;
 }
@@ -397,6 +399,7 @@ function makeCollapseKey(options: ResolvedSearchWithFallbackOptions): string {
     requestContext, includeDomains = [], excludeDomains = [], waterfall = false,
     waterfallMinResults = 3, waterfallMinConfidence = 0.6,
     enrich = false, enrichMax, enrichMinConfidence, expandQueries = true,
+    providerMaxRetries = 2,
   } = options;
   return JSON.stringify({
     query,
@@ -415,6 +418,7 @@ function makeCollapseKey(options: ResolvedSearchWithFallbackOptions): string {
     enrichMax,
     enrichMinConfidence,
     expandQueries,
+    providerMaxRetries,
   });
 }
 
@@ -441,6 +445,8 @@ function makeSearchCacheKey(
     },
     strategy: {
       mode: options.waterfall ? 'waterfall' : 'parallel',
+      ...(options.providerMaxRetries !== 2
+        && { provider_max_retries: options.providerMaxRetries }),
       waterfall_min_results: options.waterfallMinResults ?? 3,
       waterfall_min_confidence: options.waterfallMinConfidence ?? 0.6,
       expand_queries: options.expandQueries !== false,
@@ -539,8 +545,15 @@ export async function searchWithFallback(
   if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 50) {
     throw new RangeError('count must be an integer between 1 and 50');
   }
+  const providerMaxRetries = options.providerMaxRetries ?? 2;
+  if (!Number.isInteger(providerMaxRetries)
+    || providerMaxRetries < 0
+    || providerMaxRetries > 5) {
+    throw new RangeError('providerMaxRetries must be an integer between 0 and 5');
+  }
   const resolvedOptions: ResolvedSearchWithFallbackOptions = {
     ...options,
+    providerMaxRetries,
     requestContext: resolveSearchRequestContext(options.query, options.language),
   };
   if (options.signal) {
@@ -788,7 +801,7 @@ async function executeParallelSearch(
         query,
         limit,
         requestContext,
-        2,
+        options.providerMaxRetries,
         budget.signal,
         budget,
         options.signal,
@@ -1234,7 +1247,7 @@ async function executeWaterfallSearch(
             query,
             count,
             requestContext,
-            2,
+            options.providerMaxRetries,
             budget.signal,
             budget,
             options.signal,

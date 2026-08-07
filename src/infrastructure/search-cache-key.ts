@@ -18,6 +18,8 @@ export interface SearchCacheKeyInput {
   };
   strategy: {
     mode: 'parallel' | 'waterfall';
+    /** Omitted for the production-default retry policy. */
+    provider_max_retries?: number;
     waterfall_min_results: number;
     waterfall_min_confidence: number;
     expand_queries: boolean;

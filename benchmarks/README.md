@@ -87,6 +87,9 @@ still writing the privacy-preserving diagnostic report. Capture/review
 automation must stop on that non-zero exit.
 The probe waits 10 seconds between query groups by default and accepts only
 `1000..60000` milliseconds. It never retries a failed query automatically.
+Each adapter invocation also uses a zero-retry override. A `bot_challenge` or
+rate-limit observation fills the uncalled systems with local aborted markers,
+writes an `aborted` privacy-preserving report, and stops further network probes.
 
 External comparison systems stay outside the product runtime. Export their
 already-captured results as `external-search-results` JSON, disclose the
@@ -165,7 +168,10 @@ installation and driver implementation remain outside this repository.
 The formal Agent Search profile is derived from the runtime engine registry
 and fixes `free_only`, all nine zero-key adapters, waterfall routing, Top-5,
 no enrichment, no query expansion, a 10-second inter-call delay, and no retry.
-External profiles pin Open-WebSearch `2.1.9` and DDGS `9.14.4`. A
+External profiles pin Open-WebSearch `2.1.9` at its annotated tag commit
+`84695b392ca03ffc68fbd406f1d7937b7151e4b6` and DDGS `9.14.4`. The pinned
+Open-WebSearch build uses its nine packaged executors: Bing, Baidu, Linux.do,
+CSDN, DuckDuckGo, Exa, Brave, Juejin, and Startpage. A
 `bot_challenge` or `rate_limited` result checkpoints and aborts the round;
 timeouts and empty results remain ordinary samples. Formal pooling adds
 `--require-complete` and accepts only complete capture-contract-v2 inputs;

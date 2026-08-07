@@ -63,6 +63,7 @@ describe('createSearchCacheKey', () => {
     ['language', (value: SearchCacheKeyInput) => { value.request.language = 'zh'; }],
     ['region', (value: SearchCacheKeyInput) => { value.request.region = 'cn-zh'; }],
     ['strategy', (value: SearchCacheKeyInput) => { value.strategy.mode = 'waterfall'; }],
+    ['retry override', (value: SearchCacheKeyInput) => { value.strategy.provider_max_retries = 0; }],
     ['filters', (value: SearchCacheKeyInput) => { value.request.include_domains = ['openai.com']; }],
     ['provider policy', (value: SearchCacheKeyInput) => { value.provider_policy.denied_engines = ['sogou']; }],
     ['evidence format', (value: SearchCacheKeyInput) => { value.output.evidence_budget_chars = 2400; }],

@@ -42,9 +42,10 @@ describe('competitive capture controller', () => {
         version: '2.1.9',
         options: expect.objectContaining({
           engines: [
-            'bing', 'baidu', 'csdn', 'duckduckgo', 'exa',
-            'brave', 'juejin', 'startpage', 'sogou',
+            'bing', 'baidu', 'linuxdo', 'csdn', 'duckduckgo',
+            'exa', 'brave', 'juejin', 'startpage',
           ],
+          source_commit: '84695b392ca03ffc68fbd406f1d7937b7151e4b6',
         }),
       }),
       expect.objectContaining({ id: 'ddgs-9.14.4', version: '9.14.4' }),
@@ -74,6 +75,26 @@ describe('competitive capture controller', () => {
       stop_reason: 'bot_challenge',
     });
     expect(checkpoints).toHaveLength(2);
+  });
+
+  it('classifies a subprocess timeout as an ordinary timeout sample', async () => {
+    const plan = buildCompetitiveCapturePlan(queries.slice(0, 1));
+    const checkpoints: unknown[] = [];
+
+    const state = await runCompetitiveCapturePlan(plan, {
+      invoke: vi.fn().mockRejectedValue(new Error('Driver timed out for test-system')),
+      sleep: vi.fn().mockResolvedValue(undefined),
+      onCheckpoint: checkpoint => checkpoints.push(checkpoint),
+    });
+
+    expect(state).toMatchObject({
+      capture_status: 'complete',
+      completed_sample_count: 3,
+      samples: [expect.objectContaining({
+        outcome: { failure_type: 'timeout' },
+      }), expect.any(Object), expect.any(Object)],
+    });
+    expect(checkpoints).toHaveLength(4);
   });
 
   it('requires raw competitive artifacts to stay outside the repository', () => {

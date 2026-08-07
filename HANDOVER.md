@@ -362,3 +362,18 @@ tags:
   3 条 snippet 均非空，域名为 `developer.mozilla.org` 和 `jamdesk.com`，耗时 3,383 ms；没有
   challenge、429、timeout 或其他失败。该单点观察只证明当前时点的 DDG 路径可用，不替代
   10-query runner qualification，也不改变正式 capture 仍需受控 runner 的门禁。
+- 仓库外驱动预检发现原 manifest 把 Open-WebSearch `2.1.9` 错绑到后续 `2.1.11` 的
+  commit `3f36330`，并声明了该版本尚未打包的 Sogou。现已按 `v2.1.9` annotated tag 的
+  peeled commit `84695b392ca03ffc68fbd406f1d7937b7151e4b6` 对齐；九个实际 executor 为 Bing、
+  Baidu、Linux.do、CSDN、DuckDuckGo、Exa、Brave、Juejin 和 Startpage。
+- 三个驱动已在仓库外的 `D:\object\active\agent-search-competitive-runner` 准备完成：
+  Open-WebSearch 精确安装 `2.1.9`，DDGS 基础包精确安装 `9.14.4`，Agent Search 驱动读取
+  当前 repository build。三个 self-test 均通过，未执行搜索请求；外部目录不进入 npm 包。
+- 正式 Agent Search 驱动使用新增的内部 `providerMaxRetries: 0`，默认 MCP 输入和生产重试
+  行为不变；非默认重试策略进入 pending/exact cache partition。qualification 同样显式零重试，
+  challenge/限流后用本地 aborted marker 补齐未调用系统并停止后续网络探测。
+- capture 控制器现在把 subprocess timeout 保留为普通 `timeout` 样本，不再误分类为
+  `upstream_error`。完整离线门禁为 84 个测试文件（836 通过、2 跳过），build、lint、
+  query-set validator 和更新后的 competitive dry-run 均通过。
+- 本轮仍未运行 10-query qualification 或 90-sample capture，也没有生成结果 artifact；下一步
+  是在受控 runner 上先执行 qualification，只有 `ready` 才能启动正式 capture。

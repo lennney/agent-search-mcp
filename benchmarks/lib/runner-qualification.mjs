@@ -73,6 +73,19 @@ export function observeSearchFailure(error, durationMs) {
   };
 }
 
+export function terminalQualificationFailure(observation) {
+  if (!isRecord(observation) || !Array.isArray(observation.partial_failures)) {
+    return null;
+  }
+  const failure = observation.partial_failures.find(item => (
+    item?.type === 'bot_challenge'
+    || item?.type === 'rate_limited'
+    || item?.type === 'rate_limit'
+  ));
+  if (!failure) return null;
+  return failure.type === 'bot_challenge' ? 'bot_challenge' : 'rate_limited';
+}
+
 export function evaluateRunnerQualification(input, options = {}) {
   if (!isRecord(input)
     || !SHA256.test(input.query_set_sha256)
