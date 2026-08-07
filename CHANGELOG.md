@@ -25,6 +25,10 @@ tags:
   bilingual routing queries with non-empty DDG and Wikipedia results, no
   failures, and a private report containing hashes and operational metadata
   only; this is a runner gate, not a quality claim.
+- test: Preserved a private 1/90 formal-capture checkpoint after the full
+  nine-adapter Agent Search profile returned a bot challenge, without calling
+  either comparison system or retrying the challenged exit. This invalidates
+  the narrower DDG/Wikipedia qualification as a formal-profile gate.
 - test: Completed a two-call bilingual Wikipedia runtime smoke with explicit
   `en/us-en` and `zh/cn-zh` contexts, Top-3, zero retries, conservative pacing,
   and no retained result text; this remains availability evidence, not a

@@ -386,3 +386,11 @@ tags:
 - 正式 capture 启动前的最终 provenance 审计发现原始导出只记录版本字符串和配置，不能绑定
   外部 driver bytes。控制器现要求每个系统提供 implementation revision，并在 checkpoint 与
   raw export 中记录 driver SHA-256 和 configuration SHA-256；缺失任一证据时在联网前拒绝执行。
+- qualification 通过后按既有授权启动正式 P1.3 capture。第 1/90 个样本
+  `agent-search-free-waterfall` 返回 `bot_challenge`，控制器立即写 checkpoint 并终止；没有调用
+  Open-WebSearch 或 DDGS，也没有生成三个系统的 raw exports。私有 checkpoint 位于
+  `D:\object\active\agent-search-competitive-runner\artifacts\competitive-capture-2026-08-08-qualified\competitive-capture.checkpoint.json`。
+  checkpoint 的三个 implementation revision、driver SHA-256 和 configuration SHA-256 均完整。
+- 这次中止证明仅用 DDG/Wikipedia 两个配置完成 10/10 qualification，不能代表正式 Agent Search
+  全九 adapter waterfall。当前出口不得重试；下一轮 qualification 必须覆盖正式全九 adapter
+  profile，或由等价的 profile hash 门禁证明一致，再进入 90-sample capture。
