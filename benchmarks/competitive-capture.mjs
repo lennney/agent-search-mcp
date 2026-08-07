@@ -8,6 +8,7 @@ import {
 } from './lib/competitive-capture.mjs';
 import {
   assertPrivateOutputRoot,
+  createCompetitiveDriverEvidence,
   createSubprocessCompetitiveInvoker,
 } from './lib/competitive-driver.mjs';
 import { validateCompetitiveQuerySet } from './lib/competitive-query-set.mjs';
@@ -47,11 +48,24 @@ try {
     );
     const drivers = mappedOptions('--driver');
     const licenses = mappedOptions('--content-license');
+    const revisions = mappedOptions('--implementation-revision');
     for (const system of plan.systems) {
-      if (!drivers.has(system.id) || !licenses.has(system.id)) {
-        throw new Error(`--execute requires a driver and content license for ${system.id}`);
+      if (!drivers.has(system.id) || !licenses.has(system.id) || !revisions.has(system.id)) {
+        throw new Error(
+          `--execute requires a driver, content license, and implementation revision for ${system.id}`,
+        );
       }
     }
+    const runtimeEvidence = Object.fromEntries(await Promise.all(
+      plan.systems.map(async system => [
+        system.id,
+        createCompetitiveDriverEvidence(
+          system,
+          revisions.get(system.id),
+          await readFile(resolve(drivers.get(system.id))),
+        ),
+      ]),
+    ));
     await mkdir(outputRoot, { recursive: true });
     const capturedAt = new Date().toISOString();
     const checkpointPath = join(outputRoot, 'competitive-capture.checkpoint.json');
@@ -61,6 +75,7 @@ try {
         ...checkpoint,
         captured_at: capturedAt,
         query_set_sha256: validation.query_set_sha256,
+        runtime_evidence: runtimeEvidence,
       }),
     });
     if (state.capture_status !== 'complete') {
@@ -79,7 +94,10 @@ try {
           captured_at: capturedAt,
           system: { id: system.id, version: system.version },
           result_limit: plan.result_limit,
-          configuration: system.options,
+          configuration: {
+            ...system.options,
+            runtime_evidence: runtimeEvidence[system.id],
+          },
           content_licenses: {
             [system.id]: { license: licenses.get(system.id) },
           },

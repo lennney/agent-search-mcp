@@ -383,3 +383,6 @@ tags:
   脱敏复核确认报告不含 query/title/URL/snippet/body 字段，也不含查询原文。
 - qualification 不是质量结论。90-sample 正式 capture 和竞品驱动真实调用尚未启动；下一步
   可按已批准的 P1.3 合同开始正式 capture。
+- 正式 capture 启动前的最终 provenance 审计发现原始导出只记录版本字符串和配置，不能绑定
+  外部 driver bytes。控制器现要求每个系统提供 implementation revision，并在 checkpoint 与
+  raw export 中记录 driver SHA-256 和 configuration SHA-256；缺失任一证据时在联网前拒绝执行。

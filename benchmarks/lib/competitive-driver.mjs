@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 const MAX_DRIVER_OUTPUT_CHARACTERS = 5_000_000;
@@ -18,6 +19,28 @@ function fail(message) {
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function createCompetitiveDriverEvidence(system, revision, driverSource) {
+  if (!isRecord(system)
+    || typeof system.id !== 'string'
+    || typeof system.version !== 'string'
+    || !isRecord(system.options)
+    || typeof revision !== 'string'
+    || revision.length < 1
+    || revision.length > 1_000
+    || !/^[\x21-\x7e]+$/u.test(revision)
+    || !(typeof driverSource === 'string' || driverSource instanceof Uint8Array)) {
+    fail('system, printable implementation revision, and driver source are required');
+  }
+  return {
+    system_version: system.version,
+    implementation_revision: revision,
+    driver_sha256: createHash('sha256').update(driverSource).digest('hex'),
+    configuration_sha256: createHash('sha256')
+      .update(JSON.stringify(system.options))
+      .digest('hex'),
+  };
 }
 
 export function assertPrivateOutputRoot(outputRoot, repositoryRoot) {

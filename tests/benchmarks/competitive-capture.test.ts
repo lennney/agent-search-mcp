@@ -10,6 +10,7 @@ import {
 } from '../../benchmarks/lib/competitive-capture.mjs';
 import {
   assertPrivateOutputRoot,
+  createCompetitiveDriverEvidence,
   createSubprocessCompetitiveInvoker,
   validateDriverResponse,
 } from '../../benchmarks/lib/competitive-driver.mjs';
@@ -176,5 +177,21 @@ describe('competitive capture controller', () => {
         url: `https://example.com/${index}`,
       })),
     })).toThrow(/result limit/);
+  });
+
+  it('hashes the exact driver, configuration, and implementation revision', () => {
+    const system = buildCompetitiveCapturePlan(queries.slice(0, 1)).systems[0];
+    const evidence = createCompetitiveDriverEvidence(
+      system,
+      'git:292b23a1d064017648c5d1548f222f4518ec2cf1',
+      'driver source',
+    );
+
+    expect(evidence).toMatchObject({
+      system_version: 'repository-build',
+      implementation_revision: 'git:292b23a1d064017648c5d1548f222f4518ec2cf1',
+      driver_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      configuration_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
   });
 });

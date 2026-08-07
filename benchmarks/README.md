@@ -158,12 +158,15 @@ launch, competitor install, or artifact write. It prints the fixed
 three-system manifest and 90-call Latin-square schedule.
 
 On a separately approved clean runner, `--execute` requires one executable
-driver and one result-content license disclosure per system plus an absolute
+driver, one result-content license disclosure, and one printable
+`--implementation-revision system-id=value` per system plus an absolute
 `--output-root` outside the repository. Drivers receive one bounded JSON
 request on stdin and return one pinned-version JSON result on stdout. The
 controller never invokes a shell, does not forward API keys or proxy variables,
 does not retry, and writes a private checkpoint after every call. Competitor
 installation and driver implementation remain outside this repository.
+The checkpoint and each raw export retain the declared implementation revision,
+the exact driver SHA-256, and the system-configuration SHA-256.
 
 The formal Agent Search profile is derived from the runtime engine registry
 and fixes `free_only`, all nine zero-key adapters, waterfall routing, Top-5,

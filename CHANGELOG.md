@@ -15,6 +15,9 @@ tags:
   tag commit and packaged engine registry, preserved subprocess timeouts as
   timeout samples, and made qualification stop after challenge/rate-limit
   evidence instead of issuing later probes.
+- fix: Required formal competitive captures to bind each system to a declared
+  implementation revision plus exact driver and configuration SHA-256 values
+  in checkpoints and private raw exports.
 - test: Added a cache-partitioned internal zero-retry override for controlled
   benchmark and qualification runs while leaving the MCP retry default and
   tool input schemas unchanged.
