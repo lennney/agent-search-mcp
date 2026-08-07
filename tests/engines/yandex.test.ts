@@ -1,57 +1,85 @@
-import { describe, it, expect } from 'vitest';
-import { searchYandex, yandexProvider } from '../../src/engines/yandex.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  parseYandexHTML,
+  searchYandex,
+  yandexProvider,
+} from '../../src/engines/yandex.js';
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('Yandex engine', () => {
   it('has correct provider metadata', () => {
     expect(yandexProvider.id).toBe('yandex');
     expect(yandexProvider.name).toBe('Yandex');
     expect(yandexProvider.isFree).toBe(true);
-    expect(yandexProvider.languages).toContain('ru');
-    expect(yandexProvider.languages).toContain('en');
+    expect(yandexProvider.languages).toEqual(expect.arrayContaining(['ru', 'en']));
   });
 
-  it('searchYandex returns array', async () => {
-    const originalFetch = global.fetch;
-    try {
-      global.fetch = async () => ({
-        ok: true,
-        text: async () => '<html><body>test</body></html>',
-      }) as Response;
+  it('parses DOM result cards and rejects internal result links', () => {
+    const results = parseYandexHTML(`
+      <ul class="serp-list">
+        <li class="serp-item">
+          <h2><a href="https://example.com/yandex">Yandex result</a></h2>
+          <div class="text-container">A   useful Yandex snippet.</div>
+        </li>
+        <li class="serp-item">
+          <h2><a href="https://passport.yandex.com/login">Internal</a></h2>
+        </li>
+      </ul>
+    `, 5);
 
-      const results = await searchYandex('test query', 5);
-      expect(Array.isArray(results)).toBe(true);
-    } finally {
-      global.fetch = originalFetch;
-    }
+    expect(results).toEqual([{
+      title: 'Yandex result',
+      url: 'https://example.com/yandex',
+      snippet: 'A useful Yandex snippet.',
+      source: 'yandex',
+      engines: ['yandex'],
+    }]);
   });
 
-  it('searchYandex returns empty array on fetch error', async () => {
-    const originalFetch = global.fetch;
-    try {
-      global.fetch = async () => {
-        throw new Error('Network error');
-      };
+  it('keeps a recognized empty search surface as an empty success', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '<html><body><ul class="serp-list"></ul></body></html>',
+      { status: 200 },
+    )));
 
-      const results = await searchYandex('test query', 5);
-      expect(results).toEqual([]);
-    } finally {
-      global.fetch = originalFetch;
-    }
+    await expect(searchYandex('no matching result', 5, { throwOnError: true }))
+      .resolves.toEqual([]);
   });
 
-  it('searchYandex returns empty array on HTTP error', async () => {
-    const originalFetch = global.fetch;
-    try {
-      global.fetch = async () => ({
-        ok: false,
-        status: 500,
-        text: async () => 'Server Error',
-      }) as Response;
+  it('reports changed successful HTML instead of a successful empty result', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '<html><head><title>Yandex Search</title></head><body>changed</body></html>',
+      { status: 200 },
+    )));
 
-      const results = await searchYandex('test query', 5);
-      expect(results).toEqual([]);
-    } finally {
-      global.fetch = originalFetch;
-    }
+    await expect(searchYandex('test query', 5, { throwOnError: true }))
+      .rejects.toMatchObject({
+        failureType: 'parse_error',
+        retryable: false,
+      });
+  });
+
+  it('reports result-card parser drift as parse_error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(`
+      <html><body><ul class="serp-list">
+        <li class="serp-item"><div class="changed-title">No known link</div></li>
+      </ul></body></html>
+    `, { status: 200 })));
+
+    await expect(searchYandex('test query', 5, { throwOnError: true }))
+      .rejects.toMatchObject({ failureType: 'parse_error' });
+  });
+
+  it('soft-fails typed adapter errors for direct callers', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      '<html><head><title>SmartCaptcha</title></head><body>robot check</body></html>',
+      { status: 200 },
+    )));
+
+    await expect(searchYandex('test query', 5)).resolves.toEqual([]);
   });
 });

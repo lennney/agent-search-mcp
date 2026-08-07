@@ -1,11 +1,12 @@
-# Agent Search MCP: Free Web Search for AI Agents
+# Agent Search MCP: Free Web Search with Inspectable Evidence
 
 **A lightweight, free-first MCP web search router with compact multi-source evidence.**
 
-Agent Search MCP is an open-source, self-hosted MCP server and CLI. It starts
-without an API key, searches English and Chinese sources, keeps optional paid
-providers behind an explicit policy, and caps provider calls, search time,
-result count, and evidence size.
+Agent Search MCP is an open-source, self-hosted MCP server and CLI. It gives AI
+agents a free Tavily alternative or a local search path. The default path starts
+without an API key and searches English and Chinese sources. Request policy
+keeps optional paid providers explicit. Shared budgets cap provider calls,
+search time, admitted results, and evidence size.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -14,7 +15,7 @@ result count, and evidence size.
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
-[中文文档](README_zh.md) · [Benchmarks](./benchmarks/) · [Architecture](./docs/architecture.md) · [CHANGELOG](./CHANGELOG.md)
+[中文文档](README_zh.md) · [Product page](https://take-a-deep-breath0.com/en/agent-search-mcp) · [Benchmarks](./benchmarks/) · [Architecture](./docs/architecture.md) · [CHANGELOG](./CHANGELOG.md)
 
 ---
 
@@ -46,6 +47,36 @@ including Claude Desktop, Cursor, VS Code, and Windsurf:
 Claude Code and Codex can register the same `npx -y agent-search-mcp` stdio
 command through their MCP settings.
 
+### Add the optional Agent Skill
+
+After connecting the MCP server, Agent Skills-compatible clients can install
+the repository-owned routing guide:
+
+```bash
+npx skills add lennney/agent-search-mcp --skill agent-search
+```
+
+Invoke it with a request such as `Use $agent-search to verify this claim with
+official sources.` The [Agent Search Skill](./skills/agent-search/SKILL.md)
+chooses one of four bounded paths: quick discovery, stricter verification,
+Chinese-source search, or extraction of a selected URL. It checks that the
+needed MCP tool exists and asks before any install or configuration change.
+Installing the Skill does not start or configure the MCP server.
+
+### Example: inspect a bounded search result
+
+After building the local package, run a CLI query without adding a provider key:
+
+```bash
+npm run build
+fasm search "MCP server without an API key" --json
+```
+
+The response contract keeps result evidence, `meta.execution`, and
+`partialFailures` separate. A provider timeout or challenge remains visible to
+the agent instead of being converted into an unexplained empty result. This is
+a contract example, not a live availability or search-quality benchmark.
+
 After a global install, check the local runtime without making a search request:
 
 ```bash
@@ -63,6 +94,32 @@ fasm doctor
 | Multi-source evidence | Results retain provenance, relevance, provider-family count, and partial failures |
 | Chinese web search | Sogou and Baidu handle Chinese queries without a translation layer |
 | Lightweight self-hosting | Pure Node.js runtime with stdio, Streamable HTTP, and CLI access |
+
+### Inspect the search evidence
+
+Each JSON response includes one Search Evidence Packet. It answers the routing
+questions an agent needs before it uses a result:
+
+| Question | Response field |
+|---|---|
+| Which adapters ran? | `meta.execution.searched_engines` |
+| Why did the router stop? | `meta.execution.stop_reason` and `meta.execution.quality_gate` |
+| Did the request hit a work limit? | `meta.execution.budget` |
+| Was evidence truncated? | `meta.evidence_budget` |
+| Did an upstream provider fail? | `partialFailures` |
+| Do multiple adapters represent independent sources? | `results[].source_count` counts provider families, not adapter names |
+
+Run the one-minute offline contract demo:
+
+```bash
+npm run demo:evidence
+npm run demo:evidence -- --json
+```
+
+It replays three synthetic scenarios through the production evidence scorer,
+formatter, and MCP output helper: same-family adapter overlap, visible fallback
+failure, and a bounded quality-gate stop. It makes no live availability or
+search-quality claim and performs no network request.
 
 The default `free_first` policy never spends a configured API credential.
 `free_only` blocks paid providers. `quality_escalation` can call one configured
@@ -107,11 +164,11 @@ confidence, and provider-family gates. It stops after the evidence passes those
 gates and exposes the decision in `meta.execution`. Provider failures stay
 visible in `partialFailures`, so an empty result cannot hide an upstream error.
 
-The [source-level product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md)
-explains where Agent Search MCP differs from Tavily, Exa, Brave Search,
-Firecrawl, and MCP Web Hound. It compares routing, evidence, local operation,
-paid-provider boundaries, and Chinese search without volatile pricing or
-popularity claims.
+The [competitive landscape (2026-08-07)](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md)
+maps the crowded baseline and the product gaps. It records source dates and
+fixed commits for facts that can change. The earlier
+[source-level product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md)
+contains the architecture-specific evidence.
 
 ---
 
@@ -150,6 +207,12 @@ The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapte
 | `fetch_csdn_article` | Fetch a CSDN article | Chinese technical articles |
 | `fetch_juejin_article` | Fetch a Juejin article | Chinese developer articles |
 | `search_with_synthesis` | Search evidence with an LLM synthesis hint | Agent-authored answers from cited evidence |
+
+`search_with_synthesis` uses the same canonical `structuredContent` evidence
+packet as the primary search tools and adds `prompt_hint`; its text content is
+only a compact compatibility view. Execution metadata distinguishes scheduled
+adapters from retry-inclusive adapter attempts. `http_requests` is `null` until
+all adapter transports can report it without false precision.
 
 ### Capability controls
 
@@ -234,6 +297,7 @@ credential or proxy values.
 | Document | Contents |
 |---|---|
 | [System architecture](./docs/architecture.md) | Routing, evidence, provider families, and configuration |
+| [Competitive landscape](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md) | Current competitors, baseline expectations, and product gaps |
 | [Product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md) | Source-level review of Agent search products |
 | [Benchmarks](./benchmarks/) | Token fixture, live-run scope, and quality evaluation method |
 | [v3.2.0 release notes](./docs/releases/v3.2.0.md) | Provider policy, budgets, and migration notes |

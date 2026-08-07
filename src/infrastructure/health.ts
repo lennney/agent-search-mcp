@@ -1,4 +1,4 @@
-import { SearchCache } from './cache.js';
+import type { SearchCacheStats } from './cache.js';
 import { logger } from './logger.js';
 import {
   MemoryProviderCooldownStore,
@@ -38,13 +38,17 @@ export interface ServerMetricsData {
  * Uses only built-in Node.js modules (node:process).
  * Integrates with SearchCache for cache telemetry.
  */
+export interface CacheMetricsSource {
+  stats(): SearchCacheStats;
+}
+
 export class ServerMetrics {
   private readonly startTime = Date.now();
   private requestCount = 0;
   private totalLatency = 0;
-  private readonly cache?: SearchCache;
+  private readonly cache?: CacheMetricsSource;
 
-  constructor(cache?: SearchCache) {
+  constructor(cache?: CacheMetricsSource) {
     this.cache = cache;
   }
 
@@ -147,9 +151,12 @@ export class HealthTracker {
   recordSuccess(provider: string, latency: number): void {
     const h = this.getOrCreate(provider);
     const hadSuspension = h.suspendedUntil !== null;
+    const hadSuccessfulSample = h.lastSuccess !== null;
     h.lastSuccess = Date.now();
     h.errorCount = Math.max(0, h.errorCount - 1);
-    h.avgLatency = (h.avgLatency + latency) / 2;
+    h.avgLatency = hadSuccessfulSample
+      ? (h.avgLatency + latency) / 2
+      : latency;
     h.suspendedUntil = null;
     h.suspensionFailureType = null;
     h.lastFailureType = null;

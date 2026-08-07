@@ -1,13 +1,9 @@
-import { SearchProvider, SearchProviderInfo, SearchResult } from '../types.js';
+import { SearchProvider, SearchResult } from '../types.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const exaProvider: SearchProviderInfo = {
-  id: 'exa',
-  name: 'Exa Search',
-  isFree: false,
-  languages: ['en', 'zh'],
-};
+export const exaProvider = providerCatalog.exa;
 
 interface ExaSearchResult {
   title: string;

@@ -199,6 +199,7 @@ import {
   semanticDedup,
   semanticRerank,
 } from '../../src/aggregation/index.js';
+import { SEARCH_PROVIDERS } from '../../src/types.js';
 
 function makeResults(count: number, source: string) {
   return Array.from({ length: count }, (_, i) => ({
@@ -391,6 +392,59 @@ describe('searchWithFallback — parallel', () => {
     expect(infrastructureState.cacheSet).not.toHaveBeenCalled();
   });
 
+  it('does not report request-budget failure when results exactly fill the limit', async () => {
+    infrastructureState.config.searchBudgetMaxResults = 3;
+    (searchWikipedia as any).mockResolvedValue(makeResults(3, 'wikipedia'));
+    (formatResults as any).mockImplementationOnce((results: any[]) => ({
+      results: results.map(result => ({
+        title: result.title,
+        url: result.url,
+        snippet: result.snippet,
+        confidence: result.confidence,
+        relevance: result.relevance,
+        source_count: result.source_count,
+        sources: result.engines,
+      })),
+      meta: {
+        total: 3,
+        high_confidence: 3,
+        engines: ['wikipedia'],
+        evidence_budget: {
+          unit: 'characters',
+          limit: 1200,
+          used: 551,
+          truncated_results: 2,
+        },
+      },
+      security_note: '',
+    }));
+
+    const response = await searchWithFallback({
+      query: 'exact result limit',
+      engines: ['wikipedia'],
+      count: 3,
+    });
+
+    expect(response.meta.execution?.budget).toMatchObject({
+      observed: { result_count: 3 },
+      exhausted: false,
+      exhausted_reasons: [],
+    });
+    expect(response.meta.execution?.stop_reason).not.toBe('budget_exhausted');
+    expect(response.meta.evidence_budget).toEqual({
+      unit: 'characters',
+      limit: 1200,
+      used: 551,
+      truncated_results: 2,
+    });
+    expect(response.partialFailures ?? []).not.toContainEqual(
+      expect.objectContaining({
+        engine: 'request_budget',
+        type: 'budget_exhausted',
+      }),
+    );
+  });
+
   it('does not cache an empty all-provider failure response', async () => {
     const failure = new EngineAdapterError(
       'upstream_5xx',
@@ -547,6 +601,11 @@ describe('searchWithFallback — parallel', () => {
     expect(result.partialFailures).toEqual(expect.arrayContaining([
       expect.objectContaining({ engine: 'duckduckgo' }),
     ]));
+    expect(result.meta.execution).toMatchObject({
+      scheduled_adapters: 2,
+      adapter_attempts: 2,
+      http_requests: null,
+    });
   });
 
   it('tries a same-family fallback when the preferred adapter returns only low-quality rows', async () => {
@@ -945,6 +1004,10 @@ describe('searchWithFallback — waterfall', () => {
     const res = await searchWithFallback({ query: 'wf', waterfall: true });
     expect(res).toBeDefined();
     expect(res.query).toBe('wf');
+    expect(res.meta.execution?.scheduled_adapters).toBeGreaterThanOrEqual(2);
+    expect(res.meta.execution?.adapter_attempts)
+      .toBe(res.meta.execution?.budget?.observed.engine_calls);
+    expect(res.meta.execution?.http_requests).toBeNull();
   });
 
   it('runs the paid stage before free stages in paid_first waterfall mode', async () => {
@@ -1224,12 +1287,51 @@ describe('searchWithFallback — waterfall', () => {
   });
 });
 
+vi.mock('../../src/infrastructure/search-runtime.js', async () => {
+  const { searchProvider } = await import('../../src/engines/runtime-registry.js');
+  const runtime = {
+    config: infrastructureState.config,
+    cache: {
+      get: infrastructureState.cacheGet,
+      set: infrastructureState.cacheSet,
+      stats: vi.fn(() => ({ hits: 0, misses: 0, size: 0, maxSize: 1_000 })),
+    },
+    healthTracker: {
+      isHealthy: vi.fn(() => true),
+      getAvailability: infrastructureState.getAvailability,
+      getHealth: vi.fn(() => []),
+      recordSuccess: vi.fn(),
+      recordFailure: infrastructureState.recordFailure,
+      suspend: infrastructureState.suspend,
+    },
+    serverMetrics: {
+      getMetrics: vi.fn(),
+      recordRequest: vi.fn(),
+    },
+    rateLimiter: {
+      waitForSlot: vi.fn(async () => undefined),
+      getAllRateLimits: vi.fn(() => ({})),
+    },
+    enginePolicy: {
+      isAllowed: vi.fn(() => true),
+    },
+    searchProvider,
+  };
+  return {
+    getDefaultSearchRuntime: vi.fn(() => runtime),
+  };
+});
+
 describe('setupFreeSearchTool', () => {
   it('registers free_search tool', () => {
     const server = { registerTool: vi.fn() } as any;
     setupFreeSearchTool(server);
     expect(server.registerTool).toHaveBeenCalledOnce();
     expect(server.registerTool.mock.calls[0][0]).toBe('free_search');
+    expect(server.registerTool.mock.calls[0][1].description)
+      .toContain(`${SEARCH_PROVIDERS.length} adapters are selectable`);
+    expect(server.registerTool.mock.calls[0][1].description)
+      .not.toContain('Twelve adapters');
     expect(server.registerTool.mock.calls[0][1].outputSchema)
       .toEqual(expect.objectContaining({
         query: expect.anything(),

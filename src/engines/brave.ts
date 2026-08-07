@@ -5,6 +5,7 @@ import {
   isWebUrl,
   readString,
 } from './json-search-api.js';
+import { providerCatalog } from './provider-catalog.js';
 
 function parseBraveResult(value: unknown): SearchResult | null {
   const result = asJsonObject(value);
@@ -23,10 +24,10 @@ function parseBraveResult(value: unknown): SearchResult | null {
 }
 
 export class BraveProvider {
-  id = 'brave';
-  name = 'Brave Search';
-  isFree = false;
-  languages = ['en', 'zh'];
+  readonly id = providerCatalog.brave.id;
+  readonly name = providerCatalog.brave.name;
+  readonly isFree = providerCatalog.brave.isFree;
+  readonly languages = providerCatalog.brave.languages;
 
   async search(query: string, count: number, options?: EngineSearchOptions): Promise<SearchResult[]> {
     const apiKey = process.env.BRAVE_API_KEY;

@@ -1,8 +1,8 @@
 import type {
   EngineSearchOptions,
-  SearchProviderInfo,
   SearchResult,
 } from '../types.js';
+import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { EngineAdapterError } from './engine-error.js';
 import {
   asJsonObject,
@@ -10,13 +10,9 @@ import {
   isWebUrl,
   readString,
 } from './json-search-api.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const wibyProvider: SearchProviderInfo = {
-  id: 'wiby',
-  name: 'Wiby',
-  isFree: true,
-  languages: ['en'],
-};
+export const wibyProvider = providerCatalog.wiby;
 
 function parseWibyResult(value: unknown): SearchResult | null {
   const item = asJsonObject(value);
@@ -26,9 +22,9 @@ function parseWibyResult(value: unknown): SearchResult | null {
   if (!title || !isWebUrl(url)) return null;
 
   return {
-    title,
+    title: decodeHTMLTags(title),
     url,
-    snippet: readString(item.Snippet ?? item.snippet),
+    snippet: decodeHTMLTags(readString(item.Snippet ?? item.snippet)),
     source: 'wiby.me',
     engines: ['wiby'],
   };

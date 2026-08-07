@@ -30,6 +30,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify offline evidence demo
+        run: node benchmarks/evidence-demo.mjs
+
       - name: Test
         run: npm test
 
@@ -59,6 +62,9 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit
+
+      - name: Verify distribution metadata
+        run: npm run distribution:check
 
       - name: Verify frozen benchmark fixture
         run: npm run benchmark:verify
@@ -93,6 +99,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Verify offline evidence demo
+        run: node benchmarks/evidence-demo.mjs
 
       - name: Verify persistent exact-cache prototype
         run: node benchmarks/exact-cache.mjs --check

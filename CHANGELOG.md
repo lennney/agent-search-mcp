@@ -9,6 +9,79 @@ tags:
 ---
 # Changelog
 
+## Unreleased
+
+- refactor: Replaced import-time search infrastructure singletons with one
+  injectable, lazily defaulted `SearchRuntime`; stdio/HTTP tool servers and
+  health resources now share the process-owned cache, cooldown, rate-limit,
+  metrics, policy, configuration, and provider-dispatch state.
+- test: Scoped pending-request collapsing by runtime and added offline coverage
+  proving identical queries cannot cross runtime boundaries and `free_only`
+  rejects a paid adapter before dispatch.
+- feat: Made `search_with_synthesis` return the canonical Search Evidence
+  Packet and output schema with an added `prompt_hint`; added explicit adapter
+  scheduling/attempt telemetry while leaving uninstrumented HTTP request count
+  as `null` instead of reporting false precision.
+- test: Added a synthetic URL canonicalization calibration set and a
+  query-preserving v2 candidate, while pinning production deduplication to v1
+  until pooled-qrels calibration authorizes a cache/evidence contract change;
+  refreshed the deterministic format/Token baseline for the intentional
+  canonical-warning and evidence-metadata output changes.
+- refactor: Replaced dispersed provider identity, metadata, credential,
+  family, weight, waterfall-phase, and invocation facts with a static provider
+  catalog plus a runtime executor registry; the orchestrator no longer imports
+  individual adapters or maintains an invocation switch.
+- refactor: Added a shared HTML search transport and failure-classification
+  seam for Bing and Yandex while keeping provider-specific DOM parsers;
+  strict orchestration now preserves HTTP, challenge, parser-drift, timeout,
+  and cancellation failures without changing direct adapter soft-failure.
+- fix: Decoded Wiby HTML entities at the adapter boundary, rendered one
+  canonical prompt-injection warning instead of duplicating it during passage
+  formatting, and kept the first provider latency sample at its observed value.
+- docs: Added a full source-level design audit with adopted, proposed, deferred,
+  and rejected competitor patterns plus a proposed Provider Runtime Registry
+  ADR; corrected provider-family and waterfall-policy documentation drift.
+- fix: Switched Baidu's single-page request to structured JSON with same-response
+  HTML compatibility, classified verification pages and exact CAPTCHA redirects
+  as `bot_challenge`, and stopped internal redirects before any second provider
+  request.
+- fix: Made the Wikipedia adapter preserve MediaWiki's query-matched search
+  passage after stripping highlight markup, with article extracts retained as
+  a fallback, so downstream relevance scoring receives the evidence that made
+  the page match.
+- fix: Stopped exact Top-N completion and ordinary snippet truncation from
+  being promoted to `request_budget` failures; genuinely rejected results and
+  fully consumed evidence budgets remain machine-readable exhaustion reasons.
+- feat: Added a package-shipped `agent-search` Agent Skill with bounded quick,
+  verification, Chinese-source, and URL-extraction routes, explicit tool
+  availability checks, and approval gates before setup changes.
+- test: Added a zero-network Search Evidence Packet demo that replays synthetic
+  same-family deduplication, visible fallback failure, bounded quality-gate
+  stopping, and compact MCP text output through production helpers.
+- test: Added an offline-only 30-query bilingual, three-system comparison
+  suite with a preregistered evergreen query contract, registry-derived
+  Agent Search profile, deterministic Latin-square dry run, Top-5 capture
+  completeness gate, and full synthetic pooled-report acceptance.
+- test: Added resumable pointwise AI review and disagreement adjudication with
+  three pinned model-family profiles, fixed Structured Outputs limits,
+  per-stage budget checks, pricing/token evidence, and drift-safe checkpoints.
+- test: Gave the subprocess-based npm package manifest assertion an explicit
+  timeout so it remains stable under the full parallel Vitest workload.
+- fix: Derived the `free_search` adapter count from the selectable provider
+  schema so tool metadata cannot retain a stale inventory.
+- docs: Aligned the local npm/Registry description source with the current
+  free-first, zero-key English/Chinese search positioning.
+- docs: Added an inspectable-evidence table, corrected the bounded CLI example
+  to request JSON, and linked the current competitive landscape in both READMEs.
+- docs: Added explicit free Tavily alternative and self-hosted AI-agent search
+  intent language, product-page links, and a bounded CLI contract example to
+  both README files.
+- docs: Updated the npm dist-tag note after verifying `latest=3.2.0` and
+  `beta=3.2.0-beta.0` from the public npm API.
+- docs: Recorded that the GitHub repository homepage still needs the website
+  canonical product URL; no external setting was changed while GitHub was
+  logged out.
+
 ## v3.2.0 (2026-07-26)
 
 > **Headline: Free by default, paid quality escalation when explicitly enabled,
@@ -194,6 +267,8 @@ tags:
 
 ### Fixes
 
+- Block npm publication from a dirty Git worktree and verify the complete
+  generated tarball file list against a reviewed manifest after the clean build.
 - Restored Node 18 Streamable HTTP by installing Node's built-in Web Crypto
   implementation only when the runtime does not expose `globalThis.crypto`.
 - Default test runs no longer call live search/extraction providers. The two

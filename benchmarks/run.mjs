@@ -2,23 +2,26 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { encode } from 'gpt-tokenizer';
 
 import {
+  deriveCaptureRegistry,
   parseEngineSelection,
+  parseIntegerOption,
   selectBenchmarkQueries,
 } from './lib/capture-options.mjs';
+import {
+  COMPETITIVE_CAPTURE_CONTRACT_VERSION,
+  COMPETITIVE_DELAY_MS,
+  COMPETITIVE_RESULT_LIMIT,
+  captureConfigurationSha256,
+  isTerminalCaptureFailure,
+} from './lib/capture-contract.mjs';
 import { countProviderFamilies } from './lib/evidence-handoff.mjs';
 import { buildCaptureTrace } from './lib/quality-metrics.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const ALL_ENGINES = [
-  'duckduckgo', 'sogou', 'bing', 'baidu',
-  'wikipedia', 'startpage', 'yandex', 'mojeek',
-  'brave', 'tavily', 'exa', 'youcom',
-];
-const ZERO_KEY_ENGINE_COUNT = 8;
-const OPTIONAL_KEY_ENV = ['BRAVE_API_KEY', 'TAVILY_API_KEY', 'EXA_API_KEY', 'YDC_API_KEY'];
 const CONTENT_LICENSES = {
   wikipedia: {
     license: 'CC BY-SA 4.0',
@@ -66,22 +69,58 @@ async function capture(fixturePath) {
   process.env.MIN_CONFIDENCE = '0';
   process.env.MIN_SOURCE_COUNT = '1';
 
+  const competitiveProfile = option('--profile') === 'competitive';
+  if (competitiveProfile) process.env.SEARCH_PROVIDER_MODE = 'free_only';
   const querySetPath = resolve(
     ROOT,
     option('--query-set') || 'benchmarks/queries.json',
   );
-  const [{ searchWithFallback }, packageJson, querySet] = await Promise.all([
+  const [{ searchWithFallback }, { engines }, packageJson, querySet] = await Promise.all([
     import('../dist/tools/free-search.js'),
+    import('../dist/engines/index.js'),
     readJson(resolve(ROOT, 'package.json')),
     readJson(querySetPath),
   ]);
-  const requestedEngines = parseEngineSelection(option('--engines'), ALL_ENGINES);
+  const registry = deriveCaptureRegistry(engines);
+  const requestedEngines = parseEngineSelection(
+    option('--engines'),
+    competitiveProfile ? registry.freeEngines : registry.allEngines,
+  );
+  const resultLimit = parseIntegerOption(option('--result-limit'), {
+    name: '--result-limit',
+    defaultValue: competitiveProfile ? COMPETITIVE_RESULT_LIMIT : 10,
+    minimum: 1,
+    maximum: 50,
+  });
+  const delayMs = parseIntegerOption(option('--delay-ms'), {
+    name: '--delay-ms',
+    defaultValue: competitiveProfile ? COMPETITIVE_DELAY_MS : 0,
+    minimum: 0,
+    maximum: 3_600_000,
+  });
+  if (competitiveProfile && resultLimit !== COMPETITIVE_RESULT_LIMIT) {
+    throw new Error('The competitive profile requires --result-limit 5');
+  }
+  if (competitiveProfile && delayMs < COMPETITIVE_DELAY_MS) {
+    throw new Error('The competitive profile requires --delay-ms of at least 10000');
+  }
   const requestedLimit = option('--limit') === undefined
     ? undefined
     : Number.parseInt(option('--limit'), 10);
   const queries = selectBenchmarkQueries(querySet, requestedLimit);
 
   const samples = [];
+  const captureConfiguration = {
+    profile: competitiveProfile ? 'competitive' : 'standard',
+    provider_mode: competitiveProfile ? 'free_only' : process.env.SEARCH_PROVIDER_MODE ?? 'default',
+    requested_engines: requestedEngines,
+    routing: 'waterfall',
+    result_limit: resultLimit,
+    enrichment: false,
+    query_expansion: false,
+    delay_ms: delayMs,
+    retry_limit: 0,
+  };
   const fixture = {
     schema_version: 1,
     kind: 'live-capture',
@@ -90,6 +129,17 @@ async function capture(fixturePath) {
     query_set_sha256: sha256(JSON.stringify(queries)),
     query_set: relative(ROOT, querySetPath).replaceAll('\\', '/'),
     requested_engines: requestedEngines,
+    capture_contract_version: COMPETITIVE_CAPTURE_CONTRACT_VERSION,
+    capture_status: 'incomplete',
+    expected_sample_count: queries.length,
+    completed_sample_count: 0,
+    result_limit: resultLimit,
+    capture_configuration: captureConfiguration,
+    capture_configuration_sha256: captureConfigurationSha256(captureConfiguration),
+    system_version_sha256: sha256(JSON.stringify({
+      package: packageJson.name,
+      version: packageJson.version,
+    })),
     content_licenses: Object.fromEntries(
       requestedEngines
         .filter(engine => CONTENT_LICENSES[engine])
@@ -97,13 +147,11 @@ async function capture(fixturePath) {
     ),
     tokenizer: 'gpt-tokenizer@3.4.0',
     zero_key_engine_baseline: requestedEngines
-      .filter(engine => !['brave', 'tavily', 'exa', 'youcom'].includes(engine))
+      .filter(engine => registry.freeEngines.includes(engine))
       .length,
     naive_engine_baseline: requestedEngines
-      .filter(engine => {
-        const optionalIndex = ['brave', 'tavily', 'exa', 'youcom'].indexOf(engine);
-        return optionalIndex < 0 || Boolean(process.env[OPTIONAL_KEY_ENV[optionalIndex]]);
-      })
+      .filter(engine => registry.freeEngines.includes(engine)
+        || Boolean(process.env[registry.optionalCredentialEnvironment[engine]]))
       .length,
     samples,
   };
@@ -113,10 +161,11 @@ async function capture(fixturePath) {
     if (!query) throw new Error(`Query ${index + 1} has no query/q field`);
     const startedAt = new Date().toISOString();
     const startedAtMs = Date.now();
+    let terminalFailure = null;
     try {
       const response = await searchWithFallback({
         query,
-        count: 10,
+        count: resultLimit,
         engines: requestedEngines,
         waterfall: true,
         minConfidence: 0,
@@ -142,6 +191,7 @@ async function capture(fixturePath) {
           startedAt,
         }),
       });
+      terminalFailure = (response.partialFailures ?? []).find(isTerminalCaptureFailure) ?? null;
       console.log(`[${index + 1}/${queries.length}] ${query} — ${response.results.length} results, ${response.meta.execution?.engine_calls ?? 0} calls`);
     } catch (error) {
       samples.push({
@@ -157,14 +207,31 @@ async function capture(fixturePath) {
         error: error instanceof Error ? error.message : String(error),
       });
       console.error(`[${index + 1}/${queries.length}] ${query} — failed`);
+      if (isTerminalCaptureFailure(error)) terminalFailure = error;
+    }
+    fixture.completed_sample_count = samples.length;
+    if (terminalFailure) {
+      fixture.capture_status = 'aborted';
+      fixture.stop_reason = terminalFailure.type
+        ?? terminalFailure.failureType
+        ?? terminalFailure.failure_type
+        ?? 'terminal_failure';
     }
     // Checkpoint after every query so an interrupted live run remains inspectable.
     await writeJson(fixturePath, fixture);
+    if (terminalFailure) {
+      throw new Error(`Capture stopped after ${fixture.stop_reason}; checkpoint retained`);
+    }
+    if (delayMs > 0 && index < queries.length - 1) await delay(delayMs);
   }
+  fixture.capture_status = 'complete';
+  await writeJson(fixturePath, fixture);
   console.log(`Captured ${samples.length} samples to ${fixturePath}`);
 }
 
 async function generateFormatFixture(fixturePath) {
+  const { engines } = await import('../dist/engines/index.js');
+  const registry = deriveCaptureRegistry(engines);
   const querySet = await readJson(resolve(ROOT, 'benchmarks/queries.json'));
   const selected = [
     ...querySet.filter(item => item.lang === 'en').slice(0, 5),
@@ -195,7 +262,7 @@ async function generateFormatFixture(fixturePath) {
       duration_ms: 0,
       response: {
         query: item.q,
-        engines: ALL_ENGINES.slice(0, ZERO_KEY_ENGINE_COUNT),
+        engines: registry.freeEngines,
         results,
         meta: {
           total: results.length,
@@ -213,8 +280,8 @@ async function generateFormatFixture(fixturePath) {
     package_version: (await readJson(resolve(ROOT, 'package.json'))).version,
     query_set_sha256: sha256(JSON.stringify(selected)),
     tokenizer: 'gpt-tokenizer@3.4.0',
-    zero_key_engine_baseline: ZERO_KEY_ENGINE_COUNT,
-    naive_engine_baseline: ZERO_KEY_ENGINE_COUNT,
+    zero_key_engine_baseline: registry.freeEngines.length,
+    naive_engine_baseline: registry.freeEngines.length,
     samples,
   });
   console.log(`Generated deterministic format fixture at ${fixturePath}`);

@@ -1,22 +1,20 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { withTimeout } from '../infrastructure/abort.js';
+import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { logger } from '../infrastructure/logger.js';
 import { EngineAdapterError } from './engine-error.js';
+import { providerCatalog } from './provider-catalog.js';
 
 const WIKIMEDIA_USER_AGENT =
   'agent-search-mcp/3.x (https://github.com/lennney/agent-search-mcp)';
 
-export const wikipediaProvider = {
-  id: 'wikipedia' as const,
-  name: 'Wikipedia',
-  isFree: true,
-  languages: ['en', 'zh', 'ja', 'de', 'fr', 'es', 'auto'],
-};
+export const wikipediaProvider = providerCatalog.wikipedia;
 
 interface WikipediaPage {
   index?: number;
   title?: string;
   extract?: string;
+  snippet?: string;
   fullurl?: string;
 }
 
@@ -37,6 +35,7 @@ export async function searchWikipedia(query: string, limit: number = 10, options
       gsrsearch: query,
       gsrlimit: String(maxLimit),
       gsrnamespace: '0',
+      gsrprop: 'snippet',
       prop: 'extracts|info',
       exintro: '1',
       explaintext: '1',
@@ -83,21 +82,30 @@ export async function searchWikipedia(query: string, limit: number = 10, options
     return pages
       .filter((page): page is WikipediaPage & {
         title: string;
-        extract: string;
         fullurl: string;
       } =>
         typeof page.title === 'string'
-        && typeof page.extract === 'string'
-        && page.extract.trim().length > 0
-        && typeof page.fullurl === 'string')
+        && typeof page.fullurl === 'string'
+        && (
+          (typeof page.snippet === 'string' && page.snippet.trim().length > 0)
+          || (typeof page.extract === 'string' && page.extract.trim().length > 0)
+        ))
       .slice(0, maxLimit)
-      .map(page => ({
-        title: page.title,
-        url: page.fullurl,
-        snippet: page.extract.trim(),
-        source: 'wikipedia',
-        engines: ['wikipedia'],
-      }));
+      .map(page => {
+        const matchedSnippet = typeof page.snippet === 'string'
+          ? decodeHTMLTags(page.snippet).replace(/\s+/g, ' ').trim()
+          : '';
+        const articleExtract = typeof page.extract === 'string'
+          ? page.extract.trim()
+          : '';
+        return {
+          title: page.title,
+          url: page.fullurl,
+          snippet: matchedSnippet || articleExtract,
+          source: 'wikipedia',
+          engines: ['wikipedia'],
+        };
+      });
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;

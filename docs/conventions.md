@@ -44,7 +44,7 @@ import { dedupByUrl } from './dedup.js';
 export async function search{Name}(
   query: string,
   count: number,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; throwOnError?: boolean }
 ): Promise<SearchResult[]>
 ```
 
@@ -53,6 +53,10 @@ export async function search{Name}(
 // src/tools/{name}.ts
 export function register{Name}(server: McpServer): void
 ```
+
+搜索工具的内部注册函数可额外接收 `SearchRuntime`。生产 server 必须传入进程拥有的同一
+runtime；直接测试或兼容调用可以省略，并由搜索入口惰性取得默认 runtime。不要在工具模块
+顶层创建 config、cache、health、metrics、rate limiter 或 engine policy 单例。
 
 ### 聚合模式
 ```typescript
@@ -67,12 +71,14 @@ export async function doSomething(
 
 - 全部用 `async/await`
 - 不用裸 `.then()` / `.catch()`
-- 并发请求用 `Promise.allSettled()`（不中断）
-- 超时用 `AbortSignal.timeout(N)` 
+- 并发 Provider 请求必须逐项保留 outcome；可用 `Promise.allSettled()`，或在
+  Provider 边界把异常转换为显式成功/失败结果，不能让一个失败抹掉其他结果
+- 超时必须与调用方 `AbortSignal` 组合，不能用新的 timeout signal 覆盖取消信号
 
 ## 错误处理
 
-- 引擎失败 → 返回空数组，不抛异常
+- 直接调用 adapter 默认可软失败为空数组；编排器传 `throwOnError: true` 时必须抛出
+  可分类错误，以便响应保留 `partialFailures`
 - 聚合失败 → 返回原始数据（降级），不中断流程
 - API 调用失败 → 通过 `logger` 写入 stderr，并正常降级返回
 - MCP Server/runtime 禁止直接使用 `console`；人类直接调用的 CLI 入口可使用

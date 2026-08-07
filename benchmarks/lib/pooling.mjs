@@ -5,6 +5,7 @@ import {
   AI_REVIEW_PROMPT_VERSION,
 } from './ai-review.mjs';
 import { canonicalizeSearchResultUrl } from './search-result-contract.mjs';
+import { assertCompleteCompetitiveCapture } from './capture-contract.mjs';
 
 const SYSTEM_ID = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const SAMPLE_METADATA = [
@@ -41,7 +42,7 @@ export function canonicalizePoolUrl(value) {
   }
 }
 
-export function poolLiveCaptures(inputs) {
+export function poolLiveCaptures(inputs, options = {}) {
   if (!Array.isArray(inputs) || inputs.length < 2) {
     poolError('at least two systems are required');
   }
@@ -54,7 +55,12 @@ export function poolLiveCaptures(inputs) {
   if (new Set(systemIds).size !== systemIds.length) {
     poolError('system IDs must be unique');
   }
-  sortedInputs.forEach(({ systemId, capture }) => validateCapture(capture, systemId));
+  sortedInputs.forEach(({ systemId, capture }) => {
+    validateCapture(capture, systemId);
+    if (options.requireComplete === true) {
+      assertCompleteCompetitiveCapture(capture, systemId);
+    }
+  });
 
   const firstCapture = sortedInputs[0].capture;
   const firstSampleIds = firstCapture.samples.map(sample => sample.id);
@@ -80,6 +86,15 @@ export function poolLiveCaptures(inputs) {
       captured_at: capture.captured_at,
       package_version: capture.package_version,
       requested_engines: capture.requested_engines,
+      ...(capture.capture_contract_version !== undefined && {
+        capture_contract_version: capture.capture_contract_version,
+        capture_status: capture.capture_status,
+        expected_sample_count: capture.expected_sample_count,
+        completed_sample_count: capture.completed_sample_count,
+        result_limit: capture.result_limit,
+        capture_configuration_sha256: capture.capture_configuration_sha256,
+        system_version_sha256: capture.system_version_sha256,
+      }),
     };
   });
 
@@ -261,6 +276,7 @@ export function prepareReviewAdjudication(pool, packets) {
           if (reviewMode === 'ai') {
             judgment.rationale = reviewed.rationale;
             judgment.judge_evidence = reviewed.judge_evidence;
+            judgment.judge_usage = reviewed.judge_usage;
           }
           return judgment;
         });
@@ -382,6 +398,7 @@ export function validateCompletedAdjudication(adjudication) {
       } else if (reviewMode === 'ai'
         && (!isRecord(candidate.adjudication_evidence)
           || typeof candidate.adjudication_rationale !== 'string'
+          || !isTokenUsage(candidate.adjudication_usage)
           || candidate.adjudication_evidence.provider_model !== adjudication.adjudicator.model
           || typeof candidate.adjudication_evidence.provider_response_id !== 'string'
           || candidate.adjudication_evidence.provider_response_id.length === 0
@@ -665,6 +682,17 @@ function validateAiActor(actor, role) {
     || actor.model_family !== derivedFamily
     || actor.id !== `ai:${actor.provider}:${actor.model}`
     || actor.temperature !== 0
+    || !Number.isInteger(actor.max_output_tokens)
+    || actor.max_output_tokens < 1
+    || (actor.budget_usd !== null
+      && (!Number.isFinite(actor.budget_usd) || actor.budget_usd <= 0))
+    || !/^[a-f0-9]{64}$/u.test(actor.run_configuration_sha256)
+    || !isRecord(actor.usage)
+    || !isTokenUsage(actor.usage)
+    || !Number.isInteger(actor.usage.judged_candidates)
+    || actor.usage.judged_candidates < 0
+    || !Number.isFinite(actor.usage.estimated_cost_usd)
+    || actor.usage.estimated_cost_usd < 0
     || actor.prompt_version !== AI_REVIEW_PROMPT_VERSION
     || actor.prompt_sha256 !== AI_REVIEW_PROMPT_SHA256) {
     poolError(`completed AI ${role} metadata is invalid`);
@@ -685,7 +713,16 @@ function isAiVerdictEvidence(value, actor) {
       relevance: value.relevance,
       citation_supported: value.citation_supported,
       rationale: value.rationale,
-    });
+    })
+    && isTokenUsage(value.judge_usage);
+}
+
+function isTokenUsage(value) {
+  return isRecord(value)
+    && Number.isInteger(value.input_tokens)
+    && value.input_tokens >= 0
+    && Number.isInteger(value.output_tokens)
+    && value.output_tokens >= 0;
 }
 
 function isLabel(value) {

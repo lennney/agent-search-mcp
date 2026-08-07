@@ -1,71 +1,95 @@
-import { SearchResult, type EngineSearchOptions } from '../types.js';
-import { decodeHTMLTags } from '../infrastructure/html-utils.js';
-import { withTimeout } from '../infrastructure/abort.js';
+import * as cheerio from 'cheerio';
+
 import { logger } from '../infrastructure/logger.js';
+import type { EngineSearchOptions, SearchResult } from '../types.js';
+import {
+  createHtmlParseError,
+  fetchSearchHtml,
+  normalizeHtmlText,
+  resolveHtmlResultUrl,
+} from './html-search.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const bingProvider = {
-  id: 'bing' as const,
-  name: 'Bing',
-  isFree: true,
-  languages: ['en', 'zh'],
-};
+const BING_SEARCH_URL = 'https://www.bing.com/search';
 
-export async function searchBing(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
+export const bingProvider = providerCatalog.bing;
+
+export async function searchBing(
+  query: string,
+  limit: number = 10,
+  options?: EngineSearchOptions,
+): Promise<SearchResult[]> {
   try {
-    const url = `https://www.bing.com/search?q=${encodeURIComponent(query)}&count=${limit}`;
-    const res = await fetch(url, {
+    const url = new URL(BING_SEARCH_URL);
+    url.searchParams.set('q', query);
+    url.searchParams.set('count', String(limit));
+    const page = await fetchSearchHtml('bing', url, {
+      signal: options?.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+          + 'AppleWebKit/537.36 (KHTML, like Gecko) '
+          + 'Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'en-US,en;q=0.9,zh-CN;q=0.8',
       },
-      signal: withTimeout(options?.signal, 10000),
     });
 
-    if (!res.ok) {
-      if (options?.throwOnError) throw new Error(`Bing HTTP ${res.status}`);
-      logger.warn({ status: res.status }, 'Bing HTTP error');
-      return [];
+    const results = parseBingHTML(page.html, limit);
+    if (page.hasResultCards && results.length === 0) {
+      throw createHtmlParseError('bing');
     }
-
-    const html = await res.text();
-    return parseBingResults(html, limit);
+    return results;
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
-    const msg = error instanceof Error ? error.message : String(error);
-    if (msg.includes('timeout')) {
-      logger.warn('Bing search timed out');
-    } else {
-      logger.warn({ err: msg.slice(0, 200) }, 'Bing search failed');
-    }
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn({ err: message.slice(0, 200) }, 'Bing search failed');
     return [];
   }
 }
 
-function parseBingResults(html: string, limit: number): SearchResult[] {
+export function parseBingHTML(
+  html: string,
+  limit: number = 10,
+): SearchResult[] {
+  const $ = cheerio.load(html);
   const results: SearchResult[] = [];
-  
-  // Parse Bing HTML results
-  // Pattern: <li class="b_algo"><h2><a href="URL">TITLE</a></h2><p>SNIPPET</p></li>
-  const resultRegex = /<li class="b_algo">[\s\S]*?<h2><a href="([^"]+)"[^>]*>([\s\S]*?)<\/a><\/h2>[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/g;
-  
-  let match;
-  while ((match = resultRegex.exec(html)) && results.length < limit) {
-    const url = match[1];
-    const title = decodeHTMLTags(match[2]);
-    const snippet = decodeHTMLTags(match[3]);
-    
-    if (url && title) {
-      results.push({
-        title,
-        url,
-        snippet: snippet || '',
-        source: 'bing',
-        engines: ['bing'],
-      });
-    }
-  }
-  
+  const seenUrls = new Set<string>();
+
+  $('#b_results li.b_algo, li.b_algo').each((_, element) => {
+    if (results.length >= limit) return;
+
+    const card = $(element);
+    const titleLink = card.find('h2 a[href], a[href]').first();
+    const url = resolveHtmlResultUrl(
+      titleLink.attr('href') ?? '',
+      BING_SEARCH_URL,
+    );
+    const title = normalizeHtmlText(titleLink.text());
+    if (!title || !isExternalBingUrl(url) || seenUrls.has(url)) return;
+
+    const snippet = normalizeHtmlText(
+      card.find('.b_caption p, .b_snippet, p').first().text(),
+    );
+    seenUrls.add(url);
+    results.push({
+      title,
+      url,
+      snippet,
+      source: 'bing',
+      engines: ['bing'],
+    });
+  });
+
   return results;
+}
+
+function isExternalBingUrl(value: string): boolean {
+  if (!value) return false;
+  try {
+    const hostname = new URL(value).hostname.toLowerCase();
+    return hostname !== 'bing.com' && !hostname.endsWith('.bing.com');
+  } catch {
+    return false;
+  }
 }

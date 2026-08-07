@@ -1,5 +1,5 @@
 import { SearchResult } from '../types.js';
-import { getProviderFamily, getResultEngines } from './dedup.js';
+import { getProviderFamily, getResultEngines, normalizeUrl } from './dedup.js';
 import { extractQueryTerms } from './passage-selector.js';
 
 // 域名权威评级: 域名 → 评分加成
@@ -147,15 +147,6 @@ function calculateWeightedConfidence(
     / familyWeights.size;
   const corroborationBonus = Math.min(Math.max(sourceCount - 1, 0) * 0.08, 0.2);
   return Math.min(reliability + corroborationBonus, 1.0);
-}
-
-function normalizeUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname.replace(/\/$/, '')}`.toLowerCase();
-  } catch {
-    return url.toLowerCase();
-  }
 }
 
 /**

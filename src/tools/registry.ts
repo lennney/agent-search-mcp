@@ -2,6 +2,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { ToolPolicy } from '../infrastructure/tool-policy.js';
 import {
+  getDefaultSearchRuntime,
+  type SearchRuntime,
+} from '../infrastructure/search-runtime.js';
+import {
   setupFetchCsdnArticle,
   setupFetchGithubReadme,
   setupFetchJuejinArticle,
@@ -20,7 +24,7 @@ export interface ToolCapability {
   id: string;
   summary: LocalizedText;
   bestFor: LocalizedText;
-  register: (server: McpServer) => void;
+  register: (server: McpServer, runtime: SearchRuntime) => void;
 }
 
 export const toolRegistry = [
@@ -73,8 +77,9 @@ export type RegisteredToolName = (typeof toolRegistry)[number]['id'];
 export function registerConfiguredTools(
   server: McpServer,
   policy: ToolPolicy,
+  runtime: SearchRuntime = getDefaultSearchRuntime(),
 ): void {
   for (const tool of toolRegistry) {
-    if (policy.isToolEnabled(tool.id)) tool.register(server);
+    if (policy.isToolEnabled(tool.id)) tool.register(server, runtime);
   }
 }

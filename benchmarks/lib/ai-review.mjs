@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { encode } from 'gpt-tokenizer';
 
 import { prepareBlindedReviewPacket } from './quality-metrics.mjs';
 
@@ -59,6 +60,7 @@ export function createOpenAiResponsesJudge(options = {}) {
         signal: controller.signal,
         body: JSON.stringify({
           model: request.judge.model,
+          max_output_tokens: request.judge.max_output_tokens,
           store: false,
           temperature: 0,
           tools: [],
@@ -145,12 +147,37 @@ function validateConfig(config) {
   if (modelFamily !== derivedFamily) {
     aiReviewError('modelFamily must equal the snapshot model ID without its trailing date');
   }
+  const maxOutputTokens = config.maxOutputTokens ?? 384;
+  if (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1 || maxOutputTokens > 4096) {
+    aiReviewError('maxOutputTokens must be an integer from 1 to 4096');
+  }
+  const maxCostUsd = config.maxCostUsd ?? null;
+  if (maxCostUsd !== null && (!Number.isFinite(maxCostUsd) || maxCostUsd <= 0)) {
+    aiReviewError('maxCostUsd must be a positive number');
+  }
+  const pricing = config.pricing ?? null;
+  if (pricing !== null && (!isRecord(pricing)
+    || typeof pricing.snapshot_date !== 'string'
+    || typeof pricing.source !== 'string'
+    || pricing.currency !== 'USD'
+    || !Number.isFinite(pricing.input_per_million_tokens)
+    || pricing.input_per_million_tokens < 0
+    || !Number.isFinite(pricing.output_per_million_tokens)
+    || pricing.output_per_million_tokens < 0)) {
+    aiReviewError('pricing snapshot is invalid');
+  }
+  if (maxCostUsd !== null && pricing === null) {
+    aiReviewError('a pricing snapshot is required when maxCostUsd is set');
+  }
   return {
     reviewerSlot: config.reviewerSlot.trim(),
     provider: config.provider.trim(),
     model,
     modelFamily,
     temperature: 0,
+    maxOutputTokens,
+    maxCostUsd,
+    pricing: pricing === null ? null : structuredClone(pricing),
   };
 }
 
@@ -169,7 +196,7 @@ function validateVerdict(result) {
   }
 }
 
-function reviewerMetadata(config, completedAt, promptSha256, totals) {
+function reviewerMetadata(config, completedAt, promptSha256, totals, runConfigurationSha256) {
   return {
     id: `ai:${config.provider}:${config.model}`,
     kind: 'ai',
@@ -179,6 +206,10 @@ function reviewerMetadata(config, completedAt, promptSha256, totals) {
     temperature: config.temperature,
     prompt_version: AI_REVIEW_PROMPT_VERSION,
     prompt_sha256: promptSha256,
+    max_output_tokens: config.maxOutputTokens,
+    budget_usd: config.maxCostUsd,
+    pricing_snapshot: config.pricing,
+    run_configuration_sha256: runConfigurationSha256,
     completed_at: completedAt,
     usage: totals,
   };
@@ -190,6 +221,74 @@ function extractUsage(response) {
     input_tokens: Number.isFinite(usage.input_tokens) ? usage.input_tokens : 0,
     output_tokens: Number.isFinite(usage.output_tokens) ? usage.output_tokens : 0,
   };
+}
+
+function emptyTotals() {
+  return {
+    input_tokens: 0,
+    output_tokens: 0,
+    judged_candidates: 0,
+    estimated_cost_usd: 0,
+  };
+}
+
+function calculateCost(config, inputTokens, outputTokens) {
+  if (config.pricing === null) return 0;
+  return Number((
+    inputTokens * config.pricing.input_per_million_tokens / 1_000_000
+    + outputTokens * config.pricing.output_per_million_tokens / 1_000_000
+  ).toFixed(8));
+}
+
+function addUsage(totals, usage, config) {
+  totals.input_tokens += usage.input_tokens;
+  totals.output_tokens += usage.output_tokens;
+  totals.judged_candidates += 1;
+  totals.estimated_cost_usd = calculateCost(
+    config,
+    totals.input_tokens,
+    totals.output_tokens,
+  );
+}
+
+function runConfigurationSha256(config, sourceSha256, role) {
+  return sha256({
+    source_sha256: sourceSha256,
+    role,
+    reviewer_slot: config.reviewerSlot,
+    provider: config.provider,
+    model: config.model,
+    model_family: config.modelFamily,
+    temperature: config.temperature,
+    prompt_version: AI_REVIEW_PROMPT_VERSION,
+    prompt_sha256: AI_REVIEW_PROMPT_SHA256,
+    max_output_tokens: config.maxOutputTokens,
+    budget_usd: config.maxCostUsd,
+    pricing_snapshot: config.pricing,
+  });
+}
+
+function ensureBudget(config, totals, request) {
+  if (config.maxCostUsd === null) return;
+  const estimatedInputTokens = encode(JSON.stringify(request)).length;
+  const reservedCost = calculateCost(
+    config,
+    estimatedInputTokens,
+    config.maxOutputTokens,
+  );
+  if (totals.estimated_cost_usd + reservedCost > config.maxCostUsd) {
+    aiReviewError(
+      `stage budget would be exceeded (${totals.estimated_cost_usd} + ${reservedCost} > ${config.maxCostUsd} USD)`,
+    );
+  }
+}
+
+function validUsage(value) {
+  return isRecord(value)
+    && Number.isInteger(value.input_tokens)
+    && value.input_tokens >= 0
+    && Number.isInteger(value.output_tokens)
+    && value.output_tokens >= 0;
 }
 
 function boundedText(value, name, maximum, required = true) {
@@ -237,6 +336,7 @@ function buildRequest(config, sample, candidate, role) {
       model: config.model,
       model_family: config.modelFamily,
       temperature: config.temperature,
+      max_output_tokens: config.maxOutputTokens,
     },
     system_prompt: SYSTEM_PROMPT,
     prompt_version: AI_REVIEW_PROMPT_VERSION,
@@ -252,8 +352,9 @@ function buildRequest(config, sample, candidate, role) {
   };
 }
 
-async function judgeCandidate(config, sample, candidate, role, callJudge) {
+async function judgeCandidate(config, sample, candidate, role, callJudge, totals) {
   const request = buildRequest(config, sample, candidate, role);
+  ensureBudget(config, totals, request);
   const result = await callJudge(request);
   validateVerdict(result);
   const output = {
@@ -278,6 +379,50 @@ async function judgeCandidate(config, sample, candidate, role, callJudge) {
   };
 }
 
+function validateStoredJudgment(config, sample, requestCandidate, stored, role, fields) {
+  const hasAny = fields.verdict.some(field => stored[field] !== undefined && stored[field] !== null)
+    || stored[fields.rationale] !== undefined
+    || stored[fields.evidence] !== undefined
+    || stored[fields.usage] !== undefined;
+  if (!hasAny) return null;
+  const relevance = stored[fields.verdict[0]];
+  const citationSupported = stored[fields.verdict[1]];
+  const rationale = stored[fields.rationale];
+  const evidence = stored[fields.evidence];
+  const usage = stored[fields.usage];
+  const request = buildRequest(config, sample, requestCandidate, role);
+  const verdict = { relevance, citation_supported: citationSupported, rationale };
+  if (!Number.isInteger(relevance) || relevance < 0 || relevance > 3
+    || typeof citationSupported !== 'boolean'
+    || typeof rationale !== 'string'
+    || rationale.length === 0
+    || !isRecord(evidence)
+    || evidence.request_sha256 !== sha256(request)
+    || evidence.verdict_sha256 !== sha256(verdict)
+    || !/^[a-f0-9]{64}$/u.test(evidence.provider_response_sha256)
+    || typeof evidence.provider_response_id !== 'string'
+    || evidence.provider_response_id.length === 0
+    || evidence.provider_model !== config.model
+    || !validUsage(usage)) {
+    aiReviewError(`resume contains an invalid ${role} verdict`);
+  }
+  return usage;
+}
+
+const REVIEW_FIELDS = {
+  verdict: ['relevance', 'citation_supported'],
+  rationale: 'rationale',
+  evidence: 'judge_evidence',
+  usage: 'judge_usage',
+};
+
+const ADJUDICATION_FIELDS = {
+  verdict: ['_final_relevance', '_final_citation_supported'],
+  rationale: 'adjudication_rationale',
+  evidence: 'adjudication_evidence',
+  usage: 'adjudication_usage',
+};
+
 function completedAt(options) {
   const value = options?.completedAt ?? new Date().toISOString();
   if (!Number.isFinite(Date.parse(value))) {
@@ -286,45 +431,134 @@ function completedAt(options) {
   return value;
 }
 
+function reviewStructureSha256(packet) {
+  return sha256({
+    kind: packet.kind,
+    source_fixture_sha256: packet.source_fixture_sha256,
+    reviewer_slot: packet.reviewer_slot,
+    samples: packet.samples.map(sample => ({
+      id: sample.id,
+      query: sample.query,
+      question: sample.question ?? null,
+      reference_answer: sample.reference_answer ?? null,
+      candidates: sample.candidates.map(candidate => ({
+        candidate_id: candidate.candidate_id,
+        title: candidate.title,
+        url: candidate.url,
+        snippet: candidate.snippet,
+      })),
+    })),
+  });
+}
+
+function validateResumeActor(actor, config, expectedRunSha256, role) {
+  if (!isRecord(actor)
+    || actor.kind !== 'ai'
+    || actor.provider !== config.provider
+    || actor.model !== config.model
+    || actor.model_family !== config.modelFamily
+    || actor.temperature !== 0
+    || actor.prompt_version !== AI_REVIEW_PROMPT_VERSION
+    || actor.prompt_sha256 !== AI_REVIEW_PROMPT_SHA256
+    || actor.max_output_tokens !== config.maxOutputTokens
+    || actor.budget_usd !== config.maxCostUsd
+    || JSON.stringify(actor.pricing_snapshot) !== JSON.stringify(config.pricing)
+    || actor.run_configuration_sha256 !== expectedRunSha256) {
+    aiReviewError(`${role} resume configuration drifted`);
+  }
+}
+
+function adjudicationStructureSha256(value) {
+  return sha256({
+    kind: value.kind,
+    source_pool_sha256: value.source_pool_sha256,
+    reviewers: value.reviewers,
+    review_mode: value.review_mode,
+    samples: value.samples.map(sample => ({
+      id: sample.id,
+      candidates: sample.candidates.map(candidate => ({
+        candidate_id: candidate.candidate_id,
+        judgments: candidate.judgments,
+        agreement: candidate.agreement,
+        ...(candidate.agreement && { final: candidate.final }),
+      })),
+    })),
+  });
+}
+
 export async function runAiReview(pool, rawConfig, callJudge, options = {}) {
   if (typeof callJudge !== 'function') aiReviewError('callJudge must be a function');
   if (options.onProgress !== undefined && typeof options.onProgress !== 'function') {
     aiReviewError('onProgress must be a function');
   }
   const config = validateConfig(rawConfig);
-  const packet = prepareBlindedReviewPacket(pool, {
+  const prepared = prepareBlindedReviewPacket(pool, {
     reviewerSlot: config.reviewerSlot,
   });
   const promptSha256 = AI_REVIEW_PROMPT_SHA256;
-  const totals = { input_tokens: 0, output_tokens: 0, judged_candidates: 0 };
-  packet.reviewer = reviewerMetadata(
+  const runSha256 = runConfigurationSha256(
     config,
-    null,
-    promptSha256,
-    totals,
+    prepared.source_fixture_sha256,
+    'reviewer',
   );
-  packet.instructions = [
-    'AI-generated judgments; do not relabel this packet as human-reviewed.',
-    'The judge evaluated one blinded candidate at a time with a fixed rubric.',
-    'Retain judge metadata and evidence hashes with every verdict.',
-  ];
+  const totals = emptyTotals();
+  let packet;
+  if (options.resumePacket !== undefined) {
+    if (!isRecord(options.resumePacket)
+      || reviewStructureSha256(options.resumePacket) !== reviewStructureSha256(prepared)) {
+      aiReviewError('review resume pool or blinded packet drifted');
+    }
+    packet = structuredClone(options.resumePacket);
+    validateResumeActor(packet.reviewer, config, runSha256, 'review');
+  } else {
+    packet = prepared;
+    packet.reviewer = reviewerMetadata(
+      config,
+      null,
+      promptSha256,
+      totals,
+      runSha256,
+    );
+    packet.instructions = [
+      'AI-generated judgments; do not relabel this packet as human-reviewed.',
+      'The judge evaluated one blinded candidate at a time with a fixed rubric.',
+      'Retain judge metadata, token usage, pricing snapshot, and evidence hashes with every verdict.',
+    ];
+  }
 
   for (const sample of packet.samples) {
     for (const candidate of sample.candidates) {
+      const usage = validateStoredJudgment(
+        config,
+        sample,
+        candidate,
+        candidate,
+        'reviewer',
+        REVIEW_FIELDS,
+      );
+      if (usage) addUsage(totals, usage, config);
+    }
+  }
+  packet.reviewer.usage = totals;
+  if (options.onProgress) await options.onProgress(structuredClone(packet));
+
+  for (const sample of packet.samples) {
+    for (const candidate of sample.candidates) {
+      if (candidate.judge_evidence !== undefined) continue;
       const judged = await judgeCandidate(
         config,
         sample,
         candidate,
         'reviewer',
         callJudge,
+        totals,
       );
       candidate.relevance = judged.relevance;
       candidate.citation_supported = judged.citation_supported;
       candidate.rationale = judged.rationale;
       candidate.judge_evidence = judged.evidence;
-      totals.input_tokens += judged.usage.input_tokens;
-      totals.output_tokens += judged.usage.output_tokens;
-      totals.judged_candidates += 1;
+      candidate.judge_usage = judged.usage;
+      addUsage(totals, judged.usage, config);
       if (options.onProgress) await options.onProgress(structuredClone(packet));
     }
   }
@@ -332,6 +566,56 @@ export async function runAiReview(pool, rawConfig, callJudge, options = {}) {
   packet.reviewer.completed_at = completedAt(options);
   if (options.onProgress) await options.onProgress(structuredClone(packet));
   return packet;
+}
+
+export async function runAiSchemaSmoke(rawConfig, callJudge, options = {}) {
+  if (typeof callJudge !== 'function') aiReviewError('callJudge must be a function');
+  const config = validateConfig(rawConfig);
+  const sample = {
+    id: 'schema-smoke',
+    query: 'HTTP 429 status code meaning',
+    question: 'What does HTTP 429 indicate?',
+    reference_answer: 'The client sent too many requests in a given period.',
+  };
+  const candidate = {
+    candidate_id: 'schema-smoke-candidate',
+    title: 'HTTP 429 Too Many Requests',
+    url: 'https://www.rfc-editor.org/rfc/rfc6585#section-4',
+    snippet: 'The 429 status code indicates that the user has sent too many requests.',
+  };
+  const sourceSha256 = sha256({ sample, candidate });
+  const runSha256 = runConfigurationSha256(config, sourceSha256, 'schema-smoke');
+  const totals = emptyTotals();
+  const actor = reviewerMetadata(
+    config,
+    null,
+    AI_REVIEW_PROMPT_SHA256,
+    totals,
+    runSha256,
+  );
+  const judged = await judgeCandidate(
+    config,
+    sample,
+    candidate,
+    'schema-smoke',
+    callJudge,
+    totals,
+  );
+  addUsage(totals, judged.usage, config);
+  actor.completed_at = completedAt(options);
+  return {
+    schema_version: 1,
+    kind: 'ai-review-schema-smoke',
+    source_sha256: sourceSha256,
+    actor,
+    verdict: {
+      relevance: judged.relevance,
+      citation_supported: judged.citation_supported,
+      rationale: judged.rationale,
+      judge_evidence: judged.evidence,
+      judge_usage: judged.usage,
+    },
+  };
 }
 
 export async function runAiAdjudication(
@@ -360,15 +644,33 @@ export async function runAiAdjudication(
     aiReviewError('adjudicator must use a third model family');
   }
 
-  const completed = structuredClone(pendingAdjudication);
-  const promptSha256 = AI_REVIEW_PROMPT_SHA256;
-  const totals = { input_tokens: 0, output_tokens: 0, judged_candidates: 0 };
-  completed.adjudicator = reviewerMetadata(
+  const runSha256 = runConfigurationSha256(
     config,
-    null,
-    promptSha256,
-    totals,
+    pendingAdjudication.source_pool_sha256,
+    'adjudicator',
   );
+  let completed;
+  const promptSha256 = AI_REVIEW_PROMPT_SHA256;
+  const totals = emptyTotals();
+  if (options.resumePacket !== undefined) {
+    if (!isRecord(options.resumePacket)
+      || adjudicationStructureSha256(options.resumePacket)
+        !== adjudicationStructureSha256(pendingAdjudication)) {
+      aiReviewError('adjudication resume pool or reviewer judgments drifted');
+    }
+    completed = structuredClone(options.resumePacket);
+    validateResumeActor(completed.adjudicator, config, runSha256, 'adjudication');
+  } else {
+    completed = structuredClone(pendingAdjudication);
+    completed.adjudicator = reviewerMetadata(
+      config,
+      null,
+      promptSha256,
+      totals,
+      runSha256,
+    );
+  }
+
   for (const sample of completed.samples) {
     const poolSample = pool.samples.find(candidate => candidate.id === sample.id);
     if (!poolSample) aiReviewError(`sample ${sample.id} is absent from the pool`);
@@ -379,12 +681,39 @@ export async function runAiAdjudication(
       if (!poolCandidate) {
         aiReviewError(`candidate ${candidate.candidate_id} is absent from the pool`);
       }
+      const usage = validateStoredJudgment(
+        config,
+        poolSample,
+        poolCandidate,
+        {
+          _final_relevance: candidate.final?.relevance,
+          _final_citation_supported: candidate.final?.citation_supported,
+          adjudication_rationale: candidate.adjudication_rationale,
+          adjudication_evidence: candidate.adjudication_evidence,
+          adjudication_usage: candidate.adjudication_usage,
+        },
+        'adjudicator',
+        ADJUDICATION_FIELDS,
+      );
+      if (usage) addUsage(totals, usage, config);
+    }
+  }
+  completed.adjudicator.usage = totals;
+  if (options.onProgress) await options.onProgress(structuredClone(completed));
+
+  for (const sample of completed.samples) {
+    const poolSample = pool.samples.find(candidate => candidate.id === sample.id);
+    for (const candidate of sample.candidates) {
+      if (candidate.agreement || candidate.adjudication_evidence !== undefined) continue;
+      const poolCandidate = poolSample.candidates
+        .find(item => item.candidate_id === candidate.candidate_id);
       const judged = await judgeCandidate(
         config,
         poolSample,
         poolCandidate,
         'adjudicator',
         callJudge,
+        totals,
       );
       candidate.final = {
         relevance: judged.relevance,
@@ -392,9 +721,8 @@ export async function runAiAdjudication(
       };
       candidate.adjudication_rationale = judged.rationale;
       candidate.adjudication_evidence = judged.evidence;
-      totals.input_tokens += judged.usage.input_tokens;
-      totals.output_tokens += judged.usage.output_tokens;
-      totals.judged_candidates += 1;
+      candidate.adjudication_usage = judged.usage;
+      addUsage(totals, judged.usage, config);
       if (options.onProgress) await options.onProgress(structuredClone(completed));
     }
   }

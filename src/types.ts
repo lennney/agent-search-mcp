@@ -17,33 +17,11 @@ export interface EngineSearchOptions {
   throwOnError?: boolean;
 }
 
-export const SEARCH_PROVIDERS = [
-  'duckduckgo',
-  'sogou',
-  'bing',
-  'baidu',
-  'wikipedia',
-  'startpage',
-  'yandex',
-  'mojeek',
-  'wiby',
-  'brave',
-  'tavily',
-  'exa',
-  'youcom',
-  'tencent_wsa',
-  'bocha',
-  'serper',
-] as const;
-
-export type SearchProvider = typeof SEARCH_PROVIDERS[number];
-
-export interface SearchProviderInfo {
-  id: SearchProvider;
-  name: string;
-  isFree: boolean;
-  languages: string[];
-}
+export { SEARCH_PROVIDERS } from './engines/provider-catalog.js';
+export type {
+  SearchProvider,
+  SearchProviderInfo,
+} from './engines/provider-catalog.js';
 
 /**
  * Structured engine error for agent-friendly error recovery.

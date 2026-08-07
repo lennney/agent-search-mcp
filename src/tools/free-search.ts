@@ -1,33 +1,23 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { searchDuckDuckGo } from '../engines/duckduckgo.js';
-import { searchSogou } from '../engines/sogou.js';
-import { searchBing } from '../engines/bing.js';
-import { searchBaidu } from '../engines/baidu.js';
-import { BraveProvider } from '../engines/brave.js';
-import { TavilyProvider } from '../engines/tavily.js';
-import { searchExa } from '../engines/exa.js';
-import { searchYouCom } from '../engines/youcom.js';
-import { searchTencentWsa } from '../engines/tencent-wsa.js';
-import { searchBocha } from '../engines/bocha.js';
-import { searchSerper } from '../engines/serper.js';
 import {
   classifyEngineError,
   EngineAdapterError,
   isEngineAdapterError,
 } from '../engines/engine-error.js';
-import { searchWikipedia } from '../engines/wikipedia.js';
-import { searchStartpage } from '../engines/startpage.js';
-import { searchYandex } from '../engines/yandex.js';
-import { searchMojeek } from '../engines/mojeek.js';
-import { searchWiby } from '../engines/wiby.js';
 import {
+  ENGINE_WEIGHTS,
+  WATERFALL_PHASES,
   hasEngineCredential,
   optionalEngineCredentialEnvironment,
   freeEngines,
   paidEngines,
-} from '../engines/index.js';
+} from '../engines/provider-catalog.js';
 import { getSecurityNote } from '../infrastructure/security.js';
+import {
+  getDefaultSearchRuntime,
+  type SearchRuntime,
+} from '../infrastructure/search-runtime.js';
 import {
   SEARCH_PROVIDERS,
   type EngineError,
@@ -56,20 +46,11 @@ import {
   searchOutputSchema,
 } from './search-output.js';
 import {
-  SearchCache,
   logger,
-  HealthTracker,
-  RateLimiter,
-  loadConfig,
-  EnginePolicy,
-  ServerMetrics,
   abortableDelay,
   SearchRequestBudget,
-  createProviderCooldownStore,
-  createExactCacheStore,
   createSearchCacheKey,
   isCacheableSearchResponse,
-  isSearchResponseCacheValue,
   createSearchProviderPlan,
   type SearchRequestBudgetSnapshot,
 } from '../infrastructure/index.js';
@@ -77,46 +58,8 @@ import {
 const FREE_ENGINES: readonly SearchProvider[] = freeEngines;
 const PAID_ENGINES: readonly SearchProvider[] = paidEngines;
 
-// Engine weights (higher = more trusted)
-const ENGINE_WEIGHTS: Record<string, number> = {
-  duckduckgo: 0.85,
-  sogou: 0.8,
-  bing: 0.9,
-  baidu: 0.75,
-  wikipedia: 0.93,
-  startpage: 0.86,
-  yandex: 0.82,
-  mojeek: 0.8,
-  wiby: 0.78,
-  brave: 0.95,
-  tavily: 0.9,
-  exa: 0.92,
-  youcom: 0.91,
-  tencent_wsa: 0.9,
-  bocha: 0.9,
-  serper: 0.9,
-};
-
-// Infrastructure singletons
-const config = loadConfig();
-const cache = new SearchCache({
-  maxSize: config.searchCacheMaxEntries,
-  defaultTtlMs: config.searchCacheTtlMs,
-  store: createExactCacheStore(
-    config.searchCacheDirectory,
-    config.searchCacheMaxEntries,
-  ),
-  validate: isSearchResponseCacheValue,
-});
-const healthTracker = new HealthTracker(
-  createProviderCooldownStore(config.providerCooldownStorePath),
-);
-const serverMetrics = new ServerMetrics(cache);
-const rateLimiter = new RateLimiter();
-const enginePolicy = new EnginePolicy(config.ALLOWED_ENGINES, config.DENIED_ENGINES);
-
-function isSemanticRoutingEnabled(): boolean {
-  return config.semanticDedup || config.semanticRerank;
+function isSemanticRoutingEnabled(runtime: SearchRuntime): boolean {
+  return runtime.config.semanticDedup || runtime.config.semanticRerank;
 }
 
 /** Group adapters by upstream provider while preserving caller preference. */
@@ -135,6 +78,7 @@ function getProviderChains(engines: SearchProvider[]): SearchProvider[][] {
  * Search a single engine with health check, rate limiting, and retry logic.
  */
 async function searchEngine(
+  runtime: SearchRuntime,
   engine: SearchProvider,
   query: string,
   limit: number,
@@ -145,7 +89,7 @@ async function searchEngine(
 ): Promise<EngineOutcome> {
   signal?.throwIfAborted();
   if (
-    config.searchProviderMode === 'free_only'
+    runtime.config.searchProviderMode === 'free_only'
     && PAID_ENGINES.includes(engine)
   ) {
     return {
@@ -163,7 +107,7 @@ async function searchEngine(
     };
   }
   // Skip engines blocked by policy
-  if (!enginePolicy.isAllowed(engine)) {
+  if (!runtime.enginePolicy.isAllowed(engine)) {
     logger.info({ engine }, 'Engine blocked by policy');
     return {
       engine,
@@ -181,7 +125,7 @@ async function searchEngine(
   }
 
   // Skip unhealthy providers
-  const availability = healthTracker.getAvailability(engine);
+  const availability = runtime.healthTracker.getAvailability(engine);
   if (!availability.available) {
     const retryAt = availability.retryAt === null
       ? 'after provider recovery'
@@ -206,7 +150,7 @@ async function searchEngine(
   }
 
   // Rate limit before making the request
-  await rateLimiter.waitForSlot(engine, signal);
+  await runtime.rateLimiter.waitForSlot(engine, signal);
 
   let lastError: Error | null = null;
 
@@ -216,69 +160,11 @@ async function searchEngine(
     }
     const startTime = Date.now();
     try {
-      let results: SearchResult[];
       const engineOptions = { signal, throwOnError: true };
-      switch (engine) {
-        case 'duckduckgo':
-          results = await searchDuckDuckGo(query, limit, engineOptions);
-          break;
-        case 'sogou':
-          results = await searchSogou(query, limit, engineOptions);
-          break;
-        case 'bing':
-          results = await searchBing(query, limit, engineOptions);
-          break;
-        case 'baidu':
-          results = await searchBaidu(query, limit, engineOptions);
-          break;
-        case 'wikipedia':
-          results = await searchWikipedia(query, limit, engineOptions);
-          break;
-        case 'startpage':
-          results = await searchStartpage(query, limit, engineOptions);
-          break;
-        case 'yandex':
-          results = await searchYandex(query, limit, engineOptions);
-          break;
-        case 'mojeek':
-          results = await searchMojeek(query, limit, engineOptions);
-          break;
-        case 'wiby':
-          results = await searchWiby(query, limit, engineOptions);
-          break;
-        case 'brave':
-          results = await new BraveProvider().search(query, limit, engineOptions);
-          break;
-        case 'tavily':
-          results = await new TavilyProvider().search(query, limit, engineOptions);
-          break;
-        case 'exa':
-          results = await searchExa({
-            query,
-            count: limit,
-            apiKey: process.env.EXA_API_KEY || '',
-            signal,
-            throwOnError: true,
-          });
-          break;
-        case 'youcom':
-          results = await searchYouCom(query, limit, engineOptions);
-          break;
-        case 'tencent_wsa':
-          results = await searchTencentWsa(query, limit, engineOptions);
-          break;
-        case 'bocha':
-          results = await searchBocha(query, limit, engineOptions);
-          break;
-        case 'serper':
-          results = await searchSerper(query, limit, engineOptions);
-          break;
-        default:
-          return { engine, status: 'skipped', results: [] };
-      }
+      const results = await runtime.searchProvider(engine, query, limit, engineOptions);
       signal?.throwIfAborted();
       const latency = Date.now() - startTime;
-      healthTracker.recordSuccess(engine, latency);
+      runtime.healthTracker.recordSuccess(engine, latency);
       logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
       return { engine, status: 'success', results };
     } catch (err) {
@@ -307,13 +193,13 @@ async function searchEngine(
         && lastError.cooldownMs
         && lastError.failureType !== 'budget_exhausted'
       ) {
-        healthTracker.suspend(
+        runtime.healthTracker.suspend(
           engine,
           lastError.cooldownMs,
           lastError.failureType,
         );
       } else {
-        healthTracker.recordFailure(
+        runtime.healthTracker.recordFailure(
           engine,
           isEngineAdapterError(lastError)
             && lastError.failureType !== 'budget_exhausted'
@@ -381,9 +267,9 @@ function normalizePaidEngineOrder(order: readonly string[]): SearchProvider[] {
     .filter((engine): engine is SearchProvider => paid.has(engine as SearchProvider));
 }
 
-function getDefaultProviderPlan(waterfall: boolean) {
+function getDefaultProviderPlan(runtime: SearchRuntime, waterfall: boolean) {
   return createSearchProviderPlan({
-    mode: config.searchProviderMode,
+    mode: runtime.config.searchProviderMode,
     freeStages: waterfall
       ? [
         WATERFALL_PHASES.phase1a,
@@ -391,7 +277,7 @@ function getDefaultProviderPlan(waterfall: boolean) {
         WATERFALL_PHASES.phase1c,
       ]
       : [['duckduckgo', 'sogou']],
-    paidEngines: normalizePaidEngineOrder(config.paidEngineOrder),
+    paidEngines: normalizePaidEngineOrder(runtime.config.paidEngineOrder),
     hasCredential: hasApiKey,
   });
 }
@@ -448,6 +334,9 @@ interface SearchResponse {
     execution?: {
       mode: 'parallel' | 'waterfall';
       engine_calls: number;
+      scheduled_adapters?: number;
+      adapter_attempts?: number;
+      http_requests?: number | null;
       searched_engines: string[];
       phases_completed: string[];
       early_stop: boolean;
@@ -469,7 +358,18 @@ interface SearchResponse {
 
 // ─── Request collapsing ───────────────────────────────────────────────
 // Track in-flight requests to avoid duplicate concurrent calls
-const pendingRequests = new Map<string, Promise<SearchResponse>>();
+const pendingRequestsByRuntime = new WeakMap<
+  SearchRuntime,
+  Map<string, Promise<SearchResponse>>
+>();
+
+function getPendingRequests(runtime: SearchRuntime): Map<string, Promise<SearchResponse>> {
+  const existing = pendingRequestsByRuntime.get(runtime);
+  if (existing) return existing;
+  const pending = new Map<string, Promise<SearchResponse>>();
+  pendingRequestsByRuntime.set(runtime, pending);
+  return pending;
+}
 
 /**
  * Generate cache key for request collapsing.
@@ -500,10 +400,14 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
   });
 }
 
-function makeSearchCacheKey(options: SearchWithFallbackOptions): string {
+function makeSearchCacheKey(
+  runtime: SearchRuntime,
+  options: SearchWithFallbackOptions,
+): string {
+  const { config } = runtime;
   const count = options.count ?? 10;
   const engines = options.engines
-    ?? getDefaultProviderPlan(options.waterfall === true)
+    ?? getDefaultProviderPlan(runtime, options.waterfall === true)
       .flatMap(stage => stage.engines);
   return createSearchCacheKey({
     request: {
@@ -607,16 +511,20 @@ function collectEngineOutcomes(
  * 3. Early exit: stop when enough results collected
  * 4. Frequency scoring: count how many engines returned each result
  */
-export async function searchWithFallback(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+export async function searchWithFallback(
+  options: SearchWithFallbackOptions,
+  runtime: SearchRuntime = getDefaultSearchRuntime(),
+): Promise<SearchResponse> {
   options.signal?.throwIfAborted();
   const requestedCount = options.count ?? 10;
   if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 50) {
     throw new RangeError('count must be an integer between 1 and 50');
   }
   if (options.signal) {
-    return executeSearch(options);
+    return executeSearch(options, runtime);
   }
   const collapseKey = makeCollapseKey(options);
+  const pendingRequests = getPendingRequests(runtime);
   
   // Check if same request is already in-flight
   const pending = pendingRequests.get(collapseKey);
@@ -626,7 +534,7 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
   }
   
   // Start new request and track it
-  const searchPromise = executeSearch(options);
+  const searchPromise = executeSearch(options, runtime);
   pendingRequests.set(collapseKey, searchPromise);
 
   try {
@@ -639,7 +547,11 @@ export async function searchWithFallback(options: SearchWithFallbackOptions): Pr
 /**
  * Execute the actual search logic (internal).
  */
-async function executeSearch(options: SearchWithFallbackOptions): Promise<SearchResponse> {
+async function executeSearch(
+  options: SearchWithFallbackOptions,
+  runtime: SearchRuntime,
+): Promise<SearchResponse> {
+  const { config } = runtime;
   const budget = new SearchRequestBudget({
     engine_calls: config.searchBudgetMaxCalls,
     elapsed_ms: config.searchBudgetMaxElapsedMs,
@@ -648,16 +560,15 @@ async function executeSearch(options: SearchWithFallbackOptions): Promise<Search
   }, options.signal);
   try {
     const response = options.waterfall
-      ? await executeWaterfallSearch(options, 0, budget)
-      : await executeParallelSearch(options, budget);
+      ? await executeWaterfallSearch(options, 0, budget, runtime)
+      : await executeParallelSearch(options, budget, runtime);
     const evidence = response.meta.evidence_budget;
-    budget.observeEvidence(
-      evidence?.used ?? 0,
-      (evidence?.truncated_results ?? 0) > 0,
-    );
+    budget.observeEvidence(evidence?.used ?? 0);
     const snapshot = budget.snapshot();
     if (response.meta.execution) {
       response.meta.execution.budget = snapshot;
+      response.meta.execution.adapter_attempts = snapshot.observed.engine_calls;
+      response.meta.execution.http_requests ??= null;
       if (snapshot.exhausted_reasons.some(reason => reason !== 'evidence_chars')) {
         response.meta.execution.stop_reason = 'budget_exhausted';
         response.meta.execution.early_stop = true;
@@ -694,8 +605,14 @@ async function executeSearch(options: SearchWithFallbackOptions): Promise<Search
  * @param count    Requested result count (drives how many engines to fan out).
  * @returns        Number of engines to search concurrently in one batch.
  */
-function calculateAdaptiveConcurrency(engines: SearchProvider[], count: number): number {
-  const unhealthyCount = engines.filter(e => !healthTracker.isHealthy(e)).length;
+function calculateAdaptiveConcurrency(
+  runtime: SearchRuntime,
+  engines: SearchProvider[],
+  count: number,
+): number {
+  const unhealthyCount = engines.filter(
+    e => !runtime.healthTracker.isHealthy(e),
+  ).length;
   const unhealthyRatio = engines.length > 0 ? unhealthyCount / engines.length : 0;
   const allHealthy = unhealthyCount === 0;
 
@@ -709,9 +626,11 @@ function calculateAdaptiveConcurrency(engines: SearchProvider[], count: number):
 }
 
 function getEffectiveResultThresholds(
+  runtime: SearchRuntime,
   requestedMinConfidence: number,
   requestedMinSourceCount: number,
 ): { minConfidence: number; minSourceCount: number } {
+  const { config } = runtime;
   if (config.outputStyle !== 'compact') {
     return {
       minConfidence: requestedMinConfidence,
@@ -727,8 +646,10 @@ function getEffectiveResultThresholds(
 async function executeParallelSearch(
   options: SearchWithFallbackOptions,
   budget: SearchRequestBudget,
+  runtime: SearchRuntime,
 ): Promise<SearchResponse> {
-  const semanticRoutingEnabled = isSemanticRoutingEnabled();
+  const { cache, config, rateLimiter } = runtime;
+  const semanticRoutingEnabled = isSemanticRoutingEnabled(runtime);
   const {
     query,
     count = 10,
@@ -739,10 +660,11 @@ async function executeParallelSearch(
     includeDomains,
     excludeDomains,
   } = options;
-  const defaultPlan = getDefaultProviderPlan(false);
+  const defaultPlan = getDefaultProviderPlan(runtime, false);
   const userEngines = explicitEngines
     ?? defaultPlan.flatMap(stage => stage.engines);
   const effectiveThresholds = getEffectiveResultThresholds(
+    runtime,
     minConfidence,
     minSourceCount,
   );
@@ -751,7 +673,7 @@ async function executeParallelSearch(
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
 
   // Check cache first
-  const cacheKey = makeSearchCacheKey(options);
+  const cacheKey = makeSearchCacheKey(runtime, options);
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
@@ -797,7 +719,7 @@ async function executeParallelSearch(
   );
 
   // ── Step 3: Batch concurrency + early exit (from ddgs) ──────────────
-  const BATCH_SIZE = calculateAdaptiveConcurrency(phase1Engines, count);
+  const BATCH_SIZE = calculateAdaptiveConcurrency(runtime, phase1Engines, count);
   const allResults: SearchResult[] = [];
   const failures: EngineError[] = getMissingCredentialFailures(userEngines);
   const searchedEngines: string[] = [];
@@ -835,6 +757,7 @@ async function executeParallelSearch(
       searchedEngines.push(engine);
       if (!budget.canContinue()) break;
       const outcome = await searchEngine(
+        runtime,
         engine,
         query,
         limit,
@@ -885,6 +808,7 @@ async function executeParallelSearch(
     parallelEvaluation = evaluateParallelEvidence();
     if (semanticRoutingEnabled) {
       preparedSemanticResults = await applySemanticProcessing(
+        runtime,
         parallelEvaluation.results,
         query,
         options.signal,
@@ -979,6 +903,7 @@ async function executeParallelSearch(
     ? preparedSemanticResults ?? []
     : parallelEvaluation?.results ?? [];
   const { formatted } = await finalizeSearchResults(
+    runtime,
     semanticResults,
     query,
     options.enrich && budget.canContinue(),
@@ -996,6 +921,11 @@ async function executeParallelSearch(
       execution: {
         mode: 'parallel',
         engine_calls: searchedEngines.length,
+        scheduled_adapters: new Set([
+          ...phase1ProviderChains.flat(),
+          ...phase2ProviderChains.flat(),
+        ]).size,
+        http_requests: null,
         searched_engines: [...searchedEngines],
         phases_completed: [
           ...(phase1Kind === 'free' && freePhaseAttempted ? ['free'] : []),
@@ -1044,12 +974,14 @@ async function executeParallelSearch(
  * routing can assess the exact transformed display basket.
  */
 async function applySemanticProcessing(
+  runtime: SearchRuntime,
   scored: ScoredResult[],
   query: string,
   signal?: AbortSignal,
 ): Promise<ScoredResult[]> {
+  const { config } = runtime;
   signal?.throwIfAborted();
-  if (isSemanticRoutingEnabled()) {
+  if (isSemanticRoutingEnabled(runtime)) {
     try {
       if (config.semanticDedup) {
         const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
@@ -1073,6 +1005,7 @@ async function applySemanticProcessing(
  * Enrich and format a normalized, optionally semantic-processed basket.
  */
 async function finalizeSearchResults(
+  runtime: SearchRuntime,
   scored: ScoredResult[],
   query: string,
   enrich: boolean | undefined,
@@ -1080,6 +1013,7 @@ async function finalizeSearchResults(
   enrichMinConfidence: number | undefined,
   signal?: AbortSignal,
 ): Promise<{ scored: ScoredResult[]; formatted: ReturnType<typeof formatResults> }> {
+  const { config } = runtime;
   signal?.throwIfAborted();
   // Content enrichment (optional)
   if (enrich) {
@@ -1110,12 +1044,6 @@ async function finalizeSearchResults(
   return { scored, formatted };
 }
 
-const WATERFALL_PHASES = {
-  phase1a: ["duckduckgo", "sogou"],
-  phase1b: ["bing", "baidu"],
-  phase1c: ["wikipedia", "startpage", "yandex", "mojeek", "wiby"],
-} as const;
-
 function selectWaterfallPhase(
   phase: readonly string[],
   requestedEngines: Set<SearchProvider> | undefined,
@@ -1130,8 +1058,10 @@ async function executeWaterfallSearch(
   options: SearchWithFallbackOptions,
   depth: number = 0,
   budget: SearchRequestBudget,
+  runtime: SearchRuntime,
 ): Promise<SearchResponse> {
-  const semanticRoutingEnabled = isSemanticRoutingEnabled();
+  const { cache, config, rateLimiter } = runtime;
+  const semanticRoutingEnabled = isSemanticRoutingEnabled(runtime);
   // Guard against infinite recursion from query expansion
   if (depth > 2) {
     logger.warn({ query: options.query, depth }, 'Waterfall recursion depth exceeded, returning empty');
@@ -1156,6 +1086,7 @@ async function executeWaterfallSearch(
     waterfallMinConfidence = 0.6,
   } = options;
   const effectiveThresholds = getEffectiveResultThresholds(
+    runtime,
     minConfidence,
     minSourceCount,
   );
@@ -1163,7 +1094,7 @@ async function executeWaterfallSearch(
   const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
   logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
 
-  const cacheKey = makeSearchCacheKey(options);
+  const cacheKey = makeSearchCacheKey(runtime, options);
   const cached = cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: options.engines }, 'Waterfall cache hit');
@@ -1223,7 +1154,7 @@ async function executeWaterfallSearch(
     ? (() => {
       let freeStageIndex = 0;
       const freeLabels = ['1a', '1b', '1c'];
-      return getDefaultProviderPlan(true).map(stage => ({
+      return getDefaultProviderPlan(runtime, true).map(stage => ({
         label: stage.kind === 'optional'
           ? '2'
           : freeLabels[freeStageIndex++],
@@ -1259,7 +1190,7 @@ async function executeWaterfallSearch(
 
   async function searchBatch(engines: SearchProvider[], phaseLabel: string): Promise<boolean> {
     phasesCompleted.push(phaseLabel);
-    const batchSize = calculateAdaptiveConcurrency(engines, count);
+    const batchSize = calculateAdaptiveConcurrency(runtime, engines, count);
 
     for (let i = 0; i < engines.length; i += batchSize) {
       if (!budget.canContinue()) break;
@@ -1268,6 +1199,7 @@ async function executeWaterfallSearch(
         batch.map(async (engine) => {
           searchedEngines.push(engine);
           return searchEngine(
+            runtime,
             engine,
             query,
             count,
@@ -1292,6 +1224,7 @@ async function executeWaterfallSearch(
     const evaluation = evaluateCurrentEvidence();
     if (semanticRoutingEnabled) {
       preparedSemanticResults = await applySemanticProcessing(
+        runtime,
         evaluation.results,
         query,
         options.signal,
@@ -1345,7 +1278,7 @@ async function executeWaterfallSearch(
           waterfall: true,
           enrich: false,
           expandQueries: false,
-        }, depth + 1, budget);
+        }, depth + 1, budget, runtime);
         const altExecution = altSearch.meta.execution;
         if (altExecution) {
           searchedEngines.push(...altExecution.searched_engines);
@@ -1375,6 +1308,7 @@ async function executeWaterfallSearch(
     && !expansionRan
     ? preparedSemanticResults
     : await applySemanticProcessing(
+      runtime,
       finalEvaluation.results,
       query,
       options.signal,
@@ -1383,6 +1317,7 @@ async function executeWaterfallSearch(
     ? evidenceEvaluator.assess(finalScored)
     : finalEvaluation.qualityGate;
   const { formatted } = await finalizeSearchResults(
+    runtime,
     finalScored,
     query,
     options.enrich && budget.canContinue(),
@@ -1400,6 +1335,10 @@ async function executeWaterfallSearch(
       execution: {
         mode: 'waterfall',
         engine_calls: searchedEngines.length,
+        scheduled_adapters: new Set(
+          providerStages.flatMap(stage => stage.engines),
+        ).size,
+        http_requests: null,
         searched_engines: [...searchedEngines],
         phases_completed: phasesCompleted,
         early_stop: stoppedEarly,
@@ -1432,10 +1371,10 @@ async function executeWaterfallSearch(
 
 // ─── Tool registration ──────────────────────────────────────────────────
 
-// Export the health tracker instance so index.ts can use the same singleton
-export { cache, healthTracker, serverMetrics, enginePolicy };
-
-export function setupFreeSearchTool(server: McpServer): void {
+export function setupFreeSearchTool(
+  server: McpServer,
+  runtime: SearchRuntime = getDefaultSearchRuntime(),
+): void {
   server.registerTool(
     'free_search',
     {
@@ -1444,7 +1383,7 @@ export function setupFreeSearchTool(server: McpServer): void {
         'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
         'Not recommended for: Filtered or verified-only results — use free_search_advanced. ' +
         'For full page content — use free_extract.\n\n' +
-        'Twelve adapters are selectable; the default request uses DuckDuckGo + Sogou only. ' +
+        `${SEARCH_PROVIDERS.length} adapters are selectable; the default request uses DuckDuckGo + Sogou only. ` +
         'Adapters that share one upstream family are tried sequentially on failure and never double-count as corroboration. ' +
         'Explicitly requested optional API adapters run only when credentials are present and the free basket is short or below the quality gate.\n' +
         'Results are deduplicated and include separate confidence, relevance, and source-count signals.\n\n' +
@@ -1472,12 +1411,12 @@ export function setupFreeSearchTool(server: McpServer): void {
           count: limit,
           engines: userEngines,
           signal: extra?.signal,
-        });
-        serverMetrics.recordRequest(Date.now() - start);
+        }, runtime);
+        runtime.serverMetrics.recordRequest(Date.now() - start);
         return createSearchToolResult(results);
       } catch (error) {
         if (extra?.signal.aborted) throw error;
-        serverMetrics.recordRequest(Date.now() - start);
+        runtime.serverMetrics.recordRequest(Date.now() - start);
         logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Search tool execution failed');
         return {
           content: [

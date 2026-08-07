@@ -127,6 +127,17 @@ describe('ServerMetrics edge cases', () => {
 });
 
 describe('HealthTracker', () => {
+  it('reports the first observed provider latency without halving it', () => {
+    const health = new HealthTracker();
+
+    health.recordSuccess('test-provider', 240);
+
+    expect(health.getHealth()[0]?.avgLatency).toBe(240);
+
+    health.recordSuccess('test-provider', 160);
+    expect(health.getHealth()[0]?.avgLatency).toBe(200);
+  });
+
   it('tracks provider health with circuit breaker', () => {
     const stdoutSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const health = new HealthTracker();

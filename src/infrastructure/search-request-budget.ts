@@ -51,7 +51,7 @@ export class SearchRequestBudget {
 
   claimEngineCall(): boolean {
     this.refreshElapsed();
-    if (this.isHardExhausted()) return false;
+    if (this.isHardExhausted() || !this.hasResultCapacity()) return false;
     if (this.engineCalls >= this.limits.engine_calls) {
       this.exhaust('engine_calls');
       return false;
@@ -65,15 +65,20 @@ export class SearchRequestBudget {
     const remaining = Math.max(this.limits.result_count - this.resultCount, 0);
     const admitted = results.slice(0, remaining);
     this.resultCount += admitted.length;
-    if (admitted.length < results.length || this.resultCount >= this.limits.result_count) {
+    // Reaching the capacity is a normal bounded completion. Record exhaustion
+    // only when at least one result was actually rejected by the budget.
+    if (admitted.length < results.length) {
       this.exhaust('result_count');
     }
     return admitted;
   }
 
-  observeEvidence(used: number, truncated: boolean): void {
+  observeEvidence(used: number): void {
     this.evidenceChars = Math.max(0, used);
-    if (truncated || used >= this.limits.evidence_chars) {
+    // `truncated_results` also includes ordinary snippet shortening, so the
+    // caller reports it separately. This dimension is exhausted only when the
+    // shared character allowance itself is fully consumed.
+    if (used >= this.limits.evidence_chars) {
       this.exhaust('evidence_chars', false);
     }
   }
@@ -81,7 +86,7 @@ export class SearchRequestBudget {
   canContinue(): boolean {
     this.callerSignal?.throwIfAborted();
     this.refreshElapsed();
-    return !this.isHardExhausted();
+    return !this.isHardExhausted() && this.hasResultCapacity();
   }
 
   isBudgetAbort(): boolean {
@@ -118,6 +123,10 @@ export class SearchRequestBudget {
 
   private isHardExhausted(): boolean {
     return [...this.exhaustedReasons].some(reason => reason !== 'evidence_chars');
+  }
+
+  private hasResultCapacity(): boolean {
+    return this.resultCount < this.limits.result_count;
   }
 
   private exhaust(reason: SearchBudgetDimension, abort = true): void {

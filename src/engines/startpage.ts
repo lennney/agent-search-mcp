@@ -2,13 +2,9 @@ import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const startpageProvider = {
-  id: 'startpage' as const,
-  name: 'Startpage',
-  isFree: true,
-  languages: ['en', 'auto'],
-};
+export const startpageProvider = providerCatalog.startpage;
 
 async function getScValue(options?: EngineSearchOptions): Promise<string> {
   try {

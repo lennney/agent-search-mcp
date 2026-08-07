@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { searchWikipedia, wikipediaProvider } from '../../src/engines/wikipedia.js';
+import { scoreAndRank } from '../../src/aggregation/scorer.js';
 
 describe('Wikipedia engine', () => {
   it('has correct provider metadata', () => {
@@ -34,6 +35,50 @@ describe('Wikipedia engine', () => {
       expect(results[0].snippet).toBe('Test snippet with enough detail for ranking.');
       expect(results[0].source).toBe('wikipedia');
       expect(results[0].engines).toEqual(['wikipedia']);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('preserves the matched search passage for downstream relevance ranking', async () => {
+    const originalFetch = global.fetch;
+    let requestedUrl = '';
+    try {
+      global.fetch = async (input) => {
+        requestedUrl = String(input);
+        return {
+          ok: true,
+          json: async () => ({
+            query: {
+              pages: [
+                {
+                  index: 1,
+                  title: 'HMAC',
+                  extract: 'HMAC is a keyed-hash message authentication code.',
+                  snippet: 'A keyed-hash message authentication code.',
+                  fullurl: 'https://en.wikipedia.org/wiki/HMAC',
+                },
+                {
+                  index: 2,
+                  title: 'OAuth',
+                  extract: 'OAuth is an open standard for access delegation.',
+                  snippet: '<span class="searchmatch">Proof Key for Code Exchange</span> is an OAuth extension.',
+                  fullurl: 'https://en.wikipedia.org/wiki/OAuth',
+                },
+              ],
+            },
+          }),
+        } as unknown as Response;
+      };
+
+      const query = 'Proof Key for Code Exchange';
+      const results = await searchWikipedia(query, 3);
+      const ranked = scoreAndRank(results, query, { wikipedia: 0.93 });
+
+      expect(new URL(requestedUrl).searchParams.get('gsrprop')).toBe('snippet');
+      expect(results.find(result => result.title === 'OAuth')?.snippet)
+        .toContain('Proof Key for Code Exchange');
+      expect(ranked[0].title).toBe('OAuth');
     } finally {
       global.fetch = originalFetch;
     }

@@ -10,8 +10,9 @@ tags:
 
 # 系统架构
 
-> 三层架构：工具层（Agent 接口） → 聚合层（质量引擎） → 引擎层（搜索后端）。
-> 所有路径都有降级：如果上层失败，下层保证不中断。
+> 工具层（Agent 接口） → 编排/聚合层（质量与证据） → 引擎层（搜索后端），
+> 由基础设施层提供预算、缓存、健康和安全控制。Provider 失败会保留证据并继续
+> 有界降级；调用方取消、参数错误和协议错误不会被吞掉。
 
 ## 架构概览
 
@@ -41,8 +42,9 @@ tags:
 │              引擎层 (engines/)                     │
 │                                                   │
 │  免费: DDG  Sogou  Bing  Baidu  Wikipedia        │
-│        Startpage  Yandex  Mojeek                 │
+│        Startpage  Yandex  Mojeek  Wiby           │
 │  可选 API: Brave  Tavily  Exa  You.com           │
+│            Tencent WSA  Bocha  Serper             │
 │  DDG 回退: Web preload → HTML → Lite             │
 ├─────────────────────────────────────────────────┤
 │           基础设施层 (infrastructure/)              │
@@ -75,8 +77,10 @@ Agent → free_search(query, engines?, limit?)
 ### 渐进搜索请求 (`free_search_advanced` / `search_with_synthesis`)
 
 Advanced 和 synthesis 路径启用固定 waterfall：1a（DDG/Sogou）→
-1b（Bing/Baidu）→ 1c（Wikipedia/Startpage/Yandex/Mojeek）→
+1b（Bing/Baidu）→ 1c（Wikipedia/Startpage/Yandex/Mojeek/Wiby）→
 可选 API → 确定性查询变体。每一阶段都重算同一个多维质量门。
+`search_with_synthesis` 复用同一 canonical Search Evidence Packet 和 output schema，
+只额外增加 `prompt_hint`；文本通道仍是紧凑兼容视图，不维护第二份结果合同。
 
 ### 内容提取 (free_extract)
 
@@ -105,11 +109,12 @@ Phase 1a: DDG + Sogou (2 免费引擎, 轻量)
 Phase 1b: Bing + Baidu (2 免费引擎, 中等)
   → 同上质量门。
 
-Phase 1c: Wikipedia + Startpage + Yandex + Mojeek
+Phase 1c: Wikipedia + Startpage + Yandex + Mojeek + Wiby
   → 同上质量门。
 
-Phase 2: Brave + Tavily + Exa + You.com
-  → 未传 engines 时调用所有已有凭证的 adapter；
+Phase 2: 可选 API adapter
+  → 未传 engines 时，只有 `quality_escalation` / `paid_first` 会按
+    `PAID_ENGINE_ORDER` 选择第一个已有凭证的 adapter；
     传入 engines 时只调用显式选择且已有凭证的 adapter。
   → 再次检查质量门，不足才进入查询变体。
 ```
@@ -130,7 +135,19 @@ semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
 - `source_count` 是 family 计数；`confidence` 仍是 0–1 的来源可靠性，
   只接受有限的独立 corroboration bonus
 
-### 3. 降级哲学 (Graceful Degradation)
+### 3. Provider Runtime Registry
+
+`engines/provider-catalog.ts` 是静态 Provider 事实的唯一 owner：Provider ID、显示 metadata、
+zero-key/optional access、凭证环境变量、upstream family、评分权重和 waterfall phase 都从
+这里派生。`engines/runtime-registry.ts` 只负责把每个 catalog entry 绑定到 adapter executor；
+共享类型不会导入 runtime registry，因此不会在普通 schema/type 路径初始化所有 adapter。
+
+编排层通过 `searchProvider()` 调用 adapter，不再维护逐 Provider switch。`engines/index.ts`、
+capabilities、doctor、benchmark、去重 family、权重和路由阶段都消费 catalog 投影；版本化的
+`provider-families-v1.json` 仍是跨仓库合同，并由离线 parity test 约束。adapter 导出的旧
+metadata 名称保留兼容，但值直接引用 catalog，不形成第二份事实副本。
+
+### 4. 降级哲学 (Graceful Degradation)
 
 每一层都有降级路径，确保不中断:
 
@@ -143,13 +160,16 @@ semantic dedup/rerank，再以 post-semantic display basket 决定是否跳过
 | DDG 搜索 | 页面签发 Web preload → cheerio HTML → 同源 Lite 机会性尝试 → 显式失败/空数组 |
 | 付费引擎 | 无 API key → 自动跳过（不报错） |
 
-### 4. 惰性初始化 (Lazy Initialization)
+### 5. 惰性初始化 (Lazy Initialization)
 
-运行状态只在首次需要时创建，并缓存到进程生命周期:
+进程入口解析一次配置并创建一个 `SearchRuntime`。stdio server 与 HTTP 模式下每个无状态
+transport server 都复用它，因此缓存、Provider 冷却、指标和限速不会按 HTTP 请求重置。
+CLI 等直接调用路径只在首次搜索时创建默认 runtime，避免模块导入阶段过早读取环境：
 
 - **代理连接池**: DDG/Sogou 首次代理请求时按脱敏配置创建
-- **引擎健康状态**: 首次失败后缓存降级结果
-- **Rate limiter**: 首次调用时创建，后续复用
+- **搜索运行时**: 聚合 config、cache、health、metrics、rate limiter、engine policy 与
+  Provider dispatch；工具和健康资源接收同一个实例
+- **请求合并**: 只在同一 runtime 内复用相同 pending 请求，不跨测试/server runtime 串线
 
 DDG 不再探测 Python 或启动子进程；Web、HTML 与 Lite 是同一 provider
 family。Web 表示只接受
@@ -162,7 +182,13 @@ DDG/Sogou 的 CAPTCHA、202 challenge 和 `/antispider/` 会转换为结构化
 `bot_challenge`。健康控制面立即暂停该 provider 一小时；到期后才允许新探测，
 避免在已知受限的网络出口上继续消耗延迟和上游配额。
 
-### 5. 运行控制面不占默认工具槽位
+Bing/Yandex 共用 `engines/html-search.ts` 的单请求传输边界：该模块负责组合取消、
+超时、HTTP/`Retry-After`、challenge 和成功页面结构漂移分类；adapter 只负责各自的
+DOM 结果解析。严格编排会收到类型化失败并记录 `partialFailures`，直接 adapter 仍可
+按兼容合同软失败为空数组。该共享层不读取系统代理，也不添加重试、分页或第二请求。
+Startpage/Mojeek 仍保留既有实现，待同一接口在真实调用者中稳定后再评估迁移。
+
+### 6. 运行控制面不占默认工具槽位
 
 运行状态通过 MCP Resource 和 HTTP probe 暴露，而不是再注册一个默认可见的
 `status` 工具：
@@ -178,7 +204,7 @@ DDG/Sogou 的 CAPTCHA、202 challenge 和 `/antispider/` 会转换为结构化
 未来若增加 `fasm doctor`，只显示配置项是否存在、来源和修复建议，所有 key/token
 都必须脱敏。
 
-### 6. 预算分层
+### 7. 预算分层
 
 当前稳定核心已经有三类不同预算，不能合并成一个含义模糊的“Budget Manager”：
 
@@ -186,11 +212,24 @@ DDG/Sogou 的 CAPTCHA、202 challenge 和 `/antispider/` 会转换为结构化
 2. **证据预算**：`EVIDENCE_BUDGET_CHARS` 限制整个响应的 passage 字符数；
 3. **结果预算**：count、Compact、`MAX_FULL_RESULTS` 和 semantic top-K。
 
+执行响应保留兼容字段 `engine_calls`，并新增精确语义：`scheduled_adapters` 是本次
+路由计划纳入的 adapter identity 数，`adapter_attempts` 来自请求预算计数并包含 retry。
+一个 adapter attempt 可能在内部尝试多个表示，因此在 transport 统一计数前
+`http_requests` 明确为 `null`，不拿 adapter 调度数冒充 HTTP 请求数。
+
 如果以后增加跨请求/持久 session budget，必须给出明确 owner、窗口、reset 时间和
 机器可读的 `BUDGET_EXCEEDED`；不能把拒绝伪装成零结果，也不能用进程级计数冒充
 per-task 限额。
 
-### 7. MCP Web Hound 对照后的边界
+### 8. URL canonicalization 版本边界
+
+`aggregation/url-canonicalization.ts` 是 dedup 与 scorer 的共同 owner。生产固定为 `v1`，
+保持现有 cache/evidence key：去协议、去 query/fragment、路径转小写。合成校准集已经
+记录 v1 对 identity、pagination、language query 和大小写敏感路径的四类 false merge。
+`v2-candidate` 只删除明确 tracking 参数、排序其余 query 并保留路径大小写；它通过当前
+合成校准，但在 pooled qrels、cache migration 和 evidence contract 评审完成前不启用。
+
+### 9. MCP Web Hound 对照后的边界
 
 对
 [`mcp-web-hound@f468da9`](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11)
@@ -211,7 +250,7 @@ per-task 限额。
 | 目录 | 职责 | 核心文件 |
 |------|------|---------|
 | `src/tools/` | MCP 工具注册 (Agent 接口) | 每工具独立文件 |
-| `src/engines/` | 搜索引擎适配 (每引擎独立) | `{name}.ts` + 统一签名 |
+| `src/engines/` | Provider catalog/runtime registry 与搜索适配 | `provider-catalog.ts`、`runtime-registry.ts`、`{name}.ts` |
 | `src/aggregation/` | 搜索证据评估与结果处理管道 | `search-evidence.ts` 统一过滤、去重、评分和质量门 |
 | `src/synthesis/` | 搜索结果合成 (prompt_hint) | 零 LLM 依赖 |
 | `src/infrastructure/` | 共享基础设施 | 跨层可用 |
@@ -278,6 +317,7 @@ Wiby 是零密钥的独立小型网页索引，只在免费瀑布后段作为补
 
 | 文档 | 内容 |
 |------|------|
+| [research/2026-08-07-full-design-audit-and-assimilation.md](research/2026-08-07-full-design-audit-and-assimilation.md) | 全面设计审计、竞品吸收矩阵与优先级 |
 | [research/2026-07-26-agent-search-product-architecture.md](research/2026-07-26-agent-search-product-architecture.md) | 当前竞品源码、Agent/MCP 分层和架构策略 |
 | [conventions.md](conventions.md) | 编码规范（命名/导入/签名） |
 | [AGENTS.md](../AGENTS.md) | 项目地图（Agent 第一站） |

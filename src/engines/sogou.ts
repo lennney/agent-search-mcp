@@ -5,6 +5,7 @@ import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
+import { providerCatalog } from './provider-catalog.js';
 
 const SOGOU_ORIGIN = 'https://www.sogou.com';
 const SOGOU_SEARCH_URL = `${SOGOU_ORIGIN}/web`;
@@ -15,12 +16,7 @@ const USER_AGENT =
   + 'AppleWebKit/537.36 (KHTML, like Gecko) '
   + 'Chrome/136.0.0.0 Safari/537.36';
 
-export const sogouProvider = {
-  id: 'sogou' as const,
-  name: 'Sogou Search',
-  isFree: true,
-  languages: ['zh'],
-};
+export const sogouProvider = providerCatalog.sogou;
 
 export function parseSogouHtml(html: string): SearchResult[] {
   if (looksLikeChallengePage(html)) throw sogouChallenge();

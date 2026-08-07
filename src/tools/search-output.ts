@@ -82,6 +82,9 @@ export const searchOutputSchema = {
     execution: z.object({
       mode: z.enum(['parallel', 'waterfall']),
       engine_calls: z.number().int().min(0),
+      scheduled_adapters: z.number().int().min(0).optional(),
+      adapter_attempts: z.number().int().min(0).optional(),
+      http_requests: z.number().int().min(0).nullable().optional(),
       searched_engines: z.array(z.string()),
       phases_completed: z.array(z.string()),
       early_stop: z.boolean(),
@@ -119,6 +122,11 @@ export const searchOutputSchema = {
   })).optional(),
   partialFailures: z.array(engineErrorSchema).optional(),
   cache_hit: z.boolean().optional(),
+};
+
+export const searchWithSynthesisOutputSchema = {
+  ...searchOutputSchema,
+  prompt_hint: z.string(),
 };
 
 interface SearchEvidencePacketLike {
@@ -172,4 +180,12 @@ export function createSearchToolResult<T extends SearchEvidencePacketLike>(packe
     content: [{ type: 'text' as const, text: lines.join('\n') }],
     structuredContent: packet as unknown as Record<string, unknown>,
   };
+}
+
+export function createSynthesisToolResult<
+  T extends SearchEvidencePacketLike & { prompt_hint: string },
+>(packet: T) {
+  const result = createSearchToolResult(packet);
+  result.content[0].text += `\nPrompt hint:\n${packet.prompt_hint}`;
+  return result;
 }
