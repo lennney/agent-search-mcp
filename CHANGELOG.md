@@ -18,6 +18,10 @@ tags:
 - test: Added a cache-partitioned internal zero-retry override for controlled
   benchmark and qualification runs while leaving the MCP retry default and
   tool input schemas unchanged.
+- test: Qualified the explicitly approved current network exit on all ten
+  bilingual routing queries with non-empty DDG and Wikipedia results, no
+  failures, and a private report containing hashes and operational metadata
+  only; this is a runner gate, not a quality claim.
 - test: Completed a two-call bilingual Wikipedia runtime smoke with explicit
   `en/us-en` and `zh/cn-zh` contexts, Top-3, zero retries, conservative pacing,
   and no retained result text; this remains availability evidence, not a

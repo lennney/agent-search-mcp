@@ -15,7 +15,7 @@
 |------|------|------|----------|
 | 1 | P1.5 half-open probe lease | 已完成，未提交 | 状态机、并发与所有退出路径已通过完整离线门禁 |
 | 2 | P1.6 双语 request-context smoke | 已完成 | Wikipedia 英中各一条成功；无原文 artifact |
-| 3 | P1.3 三系统正式 capture | 驱动就绪，待受控 runner qualification | 30 条预注册查询、完整 checkpoint、私有 artifact |
+| 3 | P1.3 三系统正式 capture | qualification 10/10 ready，待正式 capture | 30 条预注册查询、完整 checkpoint、私有 artifact |
 | 4 | P2 双评审与分歧裁决 | 待完整 pool | 固定模型与预算完成合同验证，不静默替换 |
 | 5 | P1.1 relevance calibration | 待 completed qrels | 只生成内部校准证据，不自动修改生产阈值 |
 | 6 | 下一 release candidate | 待上述证据和发布决策 | 从最终提交生成唯一 tarball 并重跑发布矩阵 |

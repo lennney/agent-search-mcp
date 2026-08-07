@@ -123,7 +123,8 @@ tags:
   Node 20 的 Hono 2.x；本项目不注册受影响的 `serve-static`。
 - 当前分支保留 `73c34969` 的一次有限 DDG Live E2E 作为历史时间点观察。P1 双语
   `SearchRequestContext` 已改变编排后的 DDG 请求上下文，因此旧证据不再证明当前
-  精确请求链。当前曾触发 DDG challenge 的出口禁止复用，也不据此声明可用率或准确率。
+  精确请求链。该出口在用户重新明确授权后已完成新的 10-query qualification；两份证据
+  均不用于声明可用率或准确率。
 
 ## 下一步
 
@@ -375,5 +376,10 @@ tags:
 - capture 控制器现在把 subprocess timeout 保留为普通 `timeout` 样本，不再误分类为
   `upstream_error`。完整离线门禁为 84 个测试文件（836 通过、2 跳过），build、lint、
   query-set validator 和更新后的 competitive dry-run 均通过。
-- 本轮仍未运行 10-query qualification 或 90-sample capture，也没有生成结果 artifact；下一步
-  是在受控 runner 上先执行 qualification，只有 `ready` 才能启动正式 capture。
+- 用户明确批准当前出口后，已完成 10-query qualification：`capture_status=complete`、
+  `readiness=ready`、10/10 查询合格。DDG 与 Wikipedia 均为 10 次非空、0 次空结果、0 次
+  失败；没有 partial failure、challenge 或限流。报告位于仓库外私有目录
+  `D:\object\active\agent-search-competitive-runner\artifacts\runner-qualification-2026-08-08-current.json`。
+  脱敏复核确认报告不含 query/title/URL/snippet/body 字段，也不含查询原文。
+- qualification 不是质量结论。90-sample 正式 capture 和竞品驱动真实调用尚未启动；下一步
+  可按已批准的 P1.3 合同开始正式 capture。
