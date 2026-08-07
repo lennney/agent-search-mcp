@@ -256,6 +256,7 @@ settings cover the common deployment choices:
 | Reduce response tokens | `OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS` |
 | Restrict tools or engines | `ENABLED_TOOLS`, `DISABLED_TOOLS`, `ALLOWED_ENGINES`, `DENIED_ENGINES` |
 | Use an explicit proxy | `DUCKDUCKGO_PROXY_URL`, `SOGOU_PROXY_URL`, or `USE_PROXY=true` with `PROXY_URL` |
+| Use a user-owned proxy pool | `DUCKDUCKGO_PROXY_URLS` or `SOGOU_PROXY_URLS` as a JSON array of 2-16 HTTP(S) proxy URLs |
 | Persist the exact-result cache | `SEARCH_CACHE_DIRECTORY`, `SEARCH_CACHE_TTL_MS`, `SEARCH_CACHE_MAX_ENTRIES` |
 | Enable optional semantic processing | `SEMANTIC_DEDUP`, `SEMANTIC_RERANK`, `DEDUP_THRESHOLD`, `RERANK_TOP_K` |
 
@@ -263,6 +264,14 @@ Adding an API key does not authorize paid traffic. The routing policy controls
 provider use. The default exact-result cache stays in memory; setting
 `SEARCH_CACHE_DIRECTORY` opts into local persistence. Semantic processing is
 the only optional feature that uses Python and Model2Vec.
+
+Proxy pools select a deterministic first exit from the logical query and keep
+multi-step provider requests sticky. Only a transport failure can move to the
+next configured exit; a failed transport is cooled for 60 seconds. HTTP
+responses, including 403, 429, and challenge pages, never trigger proxy
+switching and continue through the provider's existing cooldown contract.
+Engine-specific single-proxy variables take precedence over their pool. Proxy
+credentials are never printed by `fasm doctor`.
 
 ### HTTP deployment
 

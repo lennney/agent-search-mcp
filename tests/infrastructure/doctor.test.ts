@@ -120,6 +120,30 @@ describe('search configuration doctor', () => {
     expect(JSON.stringify(report)).not.toContain('secret');
   });
 
+  it('reports proxy-pool provenance without exposing pool members', () => {
+    const environment = {
+      SOGOU_PROXY_URLS: JSON.stringify([
+        'http://first-user:first-secret@first.example:8080',
+        'https://second-user:second-secret@second.example:8443',
+      ]),
+    };
+    const report = createDoctorReport({
+      environment,
+      nodeVersion: '22.0.0',
+      platform: 'win32',
+    });
+    const rendered = `${JSON.stringify(report)}\n${formatDoctorReport(report)}`;
+
+    expect(report.configuration.find(check => check.id === 'sogou-proxy'))
+      .toMatchObject({
+        status: 'present',
+        provenance: ['environment:SOGOU_PROXY_URLS'],
+      });
+    for (const secret of ['first-user', 'first-secret', 'first.example', 'second.example']) {
+      expect(rendered).not.toContain(secret);
+    }
+  });
+
   it('flags an invalid shared proxy switch without reading ambient proxies', () => {
     const report = createDoctorReport({
       environment: {

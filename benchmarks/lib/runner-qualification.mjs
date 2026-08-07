@@ -108,7 +108,8 @@ export function evaluateRunnerQualification(input, options = {}) {
     || input.systems.some(system =>
       !Array.isArray(system?.engines)
       || system.engines.length === 0
-      || system.engines.some(engine => typeof engine !== 'string'))) {
+      || system.engines.some(engine => typeof engine !== 'string')
+      || (system.profile_sha256 !== undefined && !SHA256.test(system.profile_sha256)))) {
     qualificationError('systems must have unique stable IDs and engine lists');
   }
 

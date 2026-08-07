@@ -112,7 +112,7 @@ async function fetchSogouHtml(
       },
       redirect: 'manual',
       signal,
-    });
+    }, { affinityKey: initialUrl.searchParams.get('query') ?? '' });
     mergeResponseCookies(cookies, response.headers);
 
     if (response.status >= 300 && response.status < 400) {

@@ -3,6 +3,7 @@ import {
   type IncomingMessage,
   type Server,
 } from 'node:http';
+import { createHash } from 'node:crypto';
 import type { Socket } from 'node:net';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -82,6 +83,86 @@ describe('engine HTTP transport', () => {
     expect(response.status).toBe(204);
   });
 
+  it('keeps a query sticky and cools only a transport-failed proxy', async () => {
+    let failedProxyRequests = 0;
+    let healthyProxyRequests = 0;
+    const failedProxy = await listen(createTunnelProxy((_request, socket) => {
+      failedProxyRequests += 1;
+      socket.destroy();
+    }));
+    const healthyProxy = await listen(createTunnelProxy((_request, socket) => {
+      healthyProxyRequests += 1;
+      respondThroughTunnel(socket, 200, 'healthy');
+    }));
+    servers.push(failedProxy.server, healthyProxy.server);
+    vi.stubEnv('SOGOU_PROXY_URLS', JSON.stringify([
+      `http://127.0.0.1:${failedProxy.port}`,
+      `http://127.0.0.1:${healthyProxy.port}`,
+    ]));
+    const affinityKey = affinityForIndex('sogou', 0, 2);
+
+    const first = await fetchForEngine(
+      'sogou',
+      'http://target.example/search',
+      undefined,
+      { affinityKey },
+    );
+    const second = await fetchForEngine(
+      'sogou',
+      'http://target.example/search',
+      undefined,
+      { affinityKey },
+    );
+
+    expect(await first.text()).toBe('healthy');
+    expect(await second.text()).toBe('healthy');
+    expect(failedProxyRequests).toBe(1);
+    expect(healthyProxyRequests).toBe(2);
+  });
+
+  it('does not switch exits after an upstream HTTP rate-limit response', async () => {
+    let firstProxyRequests = 0;
+    let secondProxyRequests = 0;
+    const firstProxy = await listen(createTunnelProxy((_request, socket) => {
+      firstProxyRequests += 1;
+      respondThroughTunnel(socket, 429, 'challenge');
+    }));
+    const secondProxy = await listen(createTunnelProxy((_request, socket) => {
+      secondProxyRequests += 1;
+      respondThroughTunnel(socket, 200, 'unexpected');
+    }));
+    servers.push(firstProxy.server, secondProxy.server);
+    vi.stubEnv('DUCKDUCKGO_PROXY_URLS', JSON.stringify([
+      `http://127.0.0.1:${firstProxy.port}`,
+      `http://127.0.0.1:${secondProxy.port}`,
+    ]));
+    const affinityKey = affinityForIndex('duckduckgo', 0, 2);
+
+    const response = await fetchForEngine(
+      'duckduckgo',
+      'http://target.example/search',
+      undefined,
+      { affinityKey },
+    );
+
+    expect(response.status).toBe(429);
+    expect(firstProxyRequests).toBe(1);
+    expect(secondProxyRequests).toBe(0);
+  });
+
+  it('rejects malformed or duplicate proxy pools without exposing values', async () => {
+    vi.stubEnv('DUCKDUCKGO_PROXY_URLS', JSON.stringify([
+      'http://proxy-user:proxy-secret@proxy.example:8080',
+      'http://proxy-user:proxy-secret@proxy.example:8080',
+    ]));
+
+    await expect(fetchForEngine('duckduckgo', 'https://example.com'))
+      .rejects.toMatchObject({
+        failureType: 'validation_error',
+        environmentName: 'DUCKDUCKGO_PROXY_URLS',
+      });
+  });
+
   it('preserves caller cancellation for proxied requests', async () => {
     let requestReceived!: () => void;
     const received = new Promise<void>(resolve => {
@@ -141,6 +222,15 @@ async function listen(server: Server): Promise<{ server: Server; port: number }>
   return { server, port: address.port };
 }
 
+function affinityForIndex(engine: string, expectedIndex: number, size: number): string {
+  for (let index = 0; index < 1000; index += 1) {
+    const value = `query-${index}`;
+    const digest = createHash('sha256').update(`${engine}\0${value}`).digest();
+    if (digest.readUInt32BE(0) % size === expectedIndex) return value;
+  }
+  throw new Error('Unable to construct deterministic affinity key');
+}
+
 function createTunnelProxy(
   onRequest: (
     connectRequest: IncomingMessage,
@@ -179,7 +269,11 @@ function respondThroughTunnel(
   status: number,
   body = '',
 ): void {
-  const reason = status === 204 ? 'No Content' : 'OK';
+  const reason = status === 204
+    ? 'No Content'
+    : status === 429
+      ? 'Too Many Requests'
+      : 'OK';
   socket.end(
     `HTTP/1.1 ${status} ${reason}\r\n`
       + `Content-Length: ${Buffer.byteLength(body)}\r\n`

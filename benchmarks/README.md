@@ -69,12 +69,12 @@ candidate/ranking shapes differ:
 
 ```bash
 npm run benchmark:qualify-runner -- \
-  --system duckduckgo-web=duckduckgo \
+  --system agent-search-free-waterfall=duckduckgo,sogou,bing,baidu,wikipedia,startpage,yandex,mojeek,wiby \
   --system wikipedia=wikipedia \
   --limit 10 \
   --minimum-queries 10 \
   --query-delay-ms 10000 \
-  --output benchmarks/reports/runner-qualification-2026-07-26-local.json
+  --output D:/private-search-artifacts/runner-qualification.json
 ```
 
 The checked-in local observation was `ready` for 10/10 bilingual calibration
@@ -104,9 +104,12 @@ npm run benchmark:import-external -- \
 
 The export contains `system: { id, version }`, `captured_at`,
 `content_licenses`, and ordered `samples`. Each sample has the query-set `id`,
-`duration_ms`, and exactly one of `results` or an enumerated `failure_type`
-(`timeout`, `rate_limited`, `permission_denied`, `upstream_error`,
-`unavailable`, or `unknown`); a result contains only `title`, HTTP(S) `url`, and
+`duration_ms`, and exactly one of `results` or an enumerated `failure_type`.
+Failures may additionally include a validated `failure_scope` and, only when the
+driver has direct evidence, a stable `failure_source` adapter ID. Raw provider
+messages are never part of this interface. Allowed failures are `timeout`,
+`bot_challenge`, `rate_limited`, `permission_denied`, `upstream_error`,
+`unavailable`, or `unknown`; a result contains only `title`, HTTP(S) `url`, and
 optional `snippet`. Arbitrary provider error text is never retained. The
 importer takes query text and review metadata from the repository query set,
 bounds retained fields, hashes the source export, and emits the same traced
@@ -159,14 +162,16 @@ three-system manifest and 90-call Latin-square schedule.
 
 On a separately approved clean runner, `--execute` requires one executable
 driver, one result-content license disclosure, and one printable
-`--implementation-revision system-id=value` per system plus an absolute
-`--output-root` outside the repository. Drivers receive one bounded JSON
+`--implementation-revision system-id=value` per system, a fresh complete
+`--qualification-report` for the exact formal Agent Search profile, plus an
+absolute `--output-root` outside the repository. Drivers receive one bounded JSON
 request on stdin and return one pinned-version JSON result on stdout. The
 controller never invokes a shell, does not forward API keys or proxy variables,
 does not retry, and writes a private checkpoint after every call. Competitor
 installation and driver implementation remain outside this repository.
 The checkpoint and each raw export retain the declared implementation revision,
-the exact driver SHA-256, and the system-configuration SHA-256.
+the exact driver SHA-256, the system-configuration SHA-256, the qualification
+artifact SHA-256, and its formal-profile SHA-256.
 
 The formal Agent Search profile is derived from the runtime engine registry
 and fixes `free_only`, all nine zero-key adapters, waterfall routing, Top-5,

@@ -826,6 +826,13 @@ Research:
 - [x] Add an explicit Node 18.17-compatible Undici proxy transport for DDG and
       Sogou after dependency review. Keep it request-local, redact credentials,
       preserve cancellation, and do not consume ambient proxy variables.
+- [x] Add query-sticky, user-owned DDG/Sogou proxy pools at the shared transport
+      seam. Fail over only on transport exceptions, cool failed transports for
+      60 seconds, and never switch exits after HTTP challenge/403/429 evidence.
+- [x] Bind formal competitive execution to a fresh exact-profile qualification
+      hash and retain validated provider-level failure attribution in private
+      checkpoints. The earlier DDG/Wikipedia-only qualification remains narrow
+      evidence and cannot authorize the nine-adapter formal profile.
 - [x] Verify the packed Windows `fasm.cmd` entry against live native DDG search,
       and bound fallback query expansion to one generation.
 - [ ] Capture a non-empty Sogou fixture from a legitimate alternate exit. Do

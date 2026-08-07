@@ -12,6 +12,10 @@ import {
   createSubprocessCompetitiveInvoker,
 } from './lib/competitive-driver.mjs';
 import { validateCompetitiveQuerySet } from './lib/competitive-query-set.mjs';
+import {
+  assertCompetitiveQualification,
+  createAgentSearchQualificationProfile,
+} from './lib/competitive-run-contract.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const argv = process.argv.slice(2);
@@ -56,6 +60,16 @@ try {
         );
       }
     }
+    const qualificationPath = resolve(requiredOption('--qualification-report'));
+    const qualificationReport = JSON.parse(await readFile(qualificationPath, 'utf8'));
+    const { freeEngines } = await import('../dist/engines/provider-catalog.js');
+    const qualificationEvidence = assertCompetitiveQualification(
+      qualificationReport,
+      createAgentSearchQualificationProfile(
+        'agent-search-free-waterfall',
+        [...freeEngines],
+      ),
+    );
     const runtimeEvidence = Object.fromEntries(await Promise.all(
       plan.systems.map(async system => [
         system.id,
@@ -76,6 +90,7 @@ try {
         captured_at: capturedAt,
         query_set_sha256: validation.query_set_sha256,
         runtime_evidence: runtimeEvidence,
+        qualification_evidence: qualificationEvidence,
       }),
     });
     if (state.capture_status !== 'complete') {
@@ -97,6 +112,7 @@ try {
           configuration: {
             ...system.options,
             runtime_evidence: runtimeEvidence[system.id],
+            qualification_evidence: qualificationEvidence,
           },
           content_licenses: {
             [system.id]: { license: licenses.get(system.id) },

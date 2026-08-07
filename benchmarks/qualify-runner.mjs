@@ -16,13 +16,12 @@ import {
   runnerQualificationExitCode,
   terminalQualificationFailure,
 } from './lib/runner-qualification.mjs';
+import {
+  competitiveProfileSha256,
+  createAgentSearchQualificationProfile,
+} from './lib/competitive-run-contract.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const ALL_ENGINES = [
-  'duckduckgo', 'sogou', 'bing', 'baidu',
-  'wikipedia', 'startpage', 'yandex', 'mojeek',
-  'brave', 'tavily', 'exa', 'youcom',
-];
 const argv = process.argv.slice(2);
 
 try {
@@ -35,7 +34,6 @@ try {
   if (systemSpecs.length < 2) {
     throw new Error('at least two --system id=engine,engine definitions are required');
   }
-  const systems = systemSpecs.map(parseSystem);
   const querySet = JSON.parse(await readFile(querySetPath, 'utf8'));
   const limit = integerOption('--limit') ?? 2;
   const queries = selectBenchmarkQueries(querySet, limit);
@@ -46,7 +44,11 @@ try {
   process.env.MAX_FULL_RESULTS = '50';
   process.env.MIN_CONFIDENCE = '0';
   process.env.MIN_SOURCE_COUNT = '1';
-  const { searchWithFallback } = await import('../dist/tools/free-search.js');
+  const [{ searchWithFallback }, { SEARCH_PROVIDERS }] = await Promise.all([
+    import('../dist/tools/free-search.js'),
+    import('../dist/engines/provider-catalog.js'),
+  ]);
+  const systems = systemSpecs.map(value => parseSystem(value, SEARCH_PROVIDERS));
 
   const samples = [];
   let stopReason = null;
@@ -62,7 +64,7 @@ try {
       try {
         const response = await searchWithFallback({
           query,
-          count: 10,
+          count: 5,
           engines: system.engines,
           waterfall: true,
           minConfidence: 0,
@@ -112,7 +114,12 @@ try {
     query_set_sha256: createHash('sha256')
       .update(JSON.stringify(queries))
       .digest('hex'),
-    systems,
+    systems: systems.map(system => ({
+      ...system,
+      profile_sha256: competitiveProfileSha256(
+        createAgentSearchQualificationProfile(system.system_id, system.engines),
+      ),
+    })),
     samples,
   }, {
     minimumQueries,
@@ -130,6 +137,7 @@ try {
         'candidate-set and ranking hashes',
         'provider families',
         'engine/failure types',
+        'formal profile hashes',
         'counts and durations',
       ],
       omitted: ['query text', 'titles', 'URLs', 'snippets', 'response bodies'],
@@ -150,14 +158,14 @@ try {
   process.exitCode = 1;
 }
 
-function parseSystem(value) {
+function parseSystem(value, availableEngines) {
   const separator = value.indexOf('=');
   if (separator <= 0 || separator === value.length - 1) {
     throw new Error('--system must use system-id=engine,engine');
   }
   return {
     system_id: value.slice(0, separator),
-    engines: parseEngineSelection(value.slice(separator + 1), ALL_ENGINES),
+    engines: parseEngineSelection(value.slice(separator + 1), availableEngines),
   };
 }
 

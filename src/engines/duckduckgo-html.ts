@@ -91,7 +91,7 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
       },
       body: body.toString(),
       signal,
-    });
+    }, { affinityKey: query });
 
     // DDG returns 202 for rate limits (gajae-code pattern)
     if (res.status === 202) {
@@ -167,7 +167,7 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
       },
       body: body.toString(),
       signal: withTimeout(options?.signal, 10000),
-    });
+    }, { affinityKey: query });
 
     if (res.status === 202) {
       if (options?.throwOnError) throw new Error('DuckDuckGo Lite HTTP 202 rate limit');

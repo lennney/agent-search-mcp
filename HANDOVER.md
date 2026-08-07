@@ -8,6 +8,24 @@ tags:
 - handover
 ---
 
+## 2026-08-08: Proxy-pool reliability and competitive run binding
+
+- DDG/Sogou transport accepts opt-in user-owned proxy pools from
+  `DUCKDUCKGO_PROXY_URLS` / `SOGOU_PROXY_URLS`. Selection is deterministic per
+  logical query; only thrown transport failures advance to another exit and
+  cool that transport for 60 seconds. HTTP 403/429/challenge responses never
+  rotate exits and retain the existing provider cooldown behavior.
+- Formal competitive drivers still receive no proxy variables. Driver failures
+  may retain a validated `failure_scope` and directly evidenced
+  `failure_source`, so a future checkpoint can identify the challenged adapter
+  without retaining raw provider text.
+- Formal `--execute` requires a fresh, complete, ready qualification report
+  whose profile hash matches the runtime-derived nine zero-key adapters,
+  Top-5, waterfall, no enrichment/query expansion, and zero retry. The earlier
+  DDG/Wikipedia report cannot satisfy this gate.
+- Architecture decision: `docs/decisions/ADR-20260808-sticky-proxy-pools.md`.
+  No new live search was performed in this change.
+
 # Agent Search MCP — Handover
 
 ## 当前状态

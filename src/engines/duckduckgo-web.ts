@@ -57,7 +57,7 @@ export async function searchDuckDuckGoWeb(
       headers: navigationHeaders(options?.requestContext?.acceptLanguage),
       redirect: 'error',
       signal,
-    });
+    }, { affinityKey: query });
     const homeHtml = await readBoundedText(homeResponse);
     ensureUsableResponse('Web bootstrap', homeResponse, homeHtml);
     signal.throwIfAborted();
@@ -68,11 +68,12 @@ export async function searchDuckDuckGoWeb(
       'duckduckgo',
       buildJsonApiUrl(preloadUrl),
       {
-      method: 'GET',
-      headers: scriptHeaders(options?.requestContext?.acceptLanguage),
-      redirect: 'error',
-      signal,
+        method: 'GET',
+        headers: scriptHeaders(options?.requestContext?.acceptLanguage),
+        redirect: 'error',
+        signal,
       },
+      { affinityKey: query },
     );
     const apiBody = await readBoundedText(apiResponse);
     ensureUsableResponse('Web API', apiResponse, apiBody);

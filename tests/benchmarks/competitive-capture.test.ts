@@ -14,6 +14,11 @@ import {
   createSubprocessCompetitiveInvoker,
   validateDriverResponse,
 } from '../../benchmarks/lib/competitive-driver.mjs';
+import {
+  assertCompetitiveQualification,
+  competitiveProfileSha256,
+  createAgentSearchQualificationProfile,
+} from '../../benchmarks/lib/competitive-run-contract.mjs';
 
 const queries = Array.from({ length: 30 }, (_, index) => ({
   id: `q-${index + 1}`,
@@ -177,6 +182,62 @@ describe('competitive capture controller', () => {
         url: `https://example.com/${index}`,
       })),
     })).toThrow(/result limit/);
+  });
+
+  it('preserves typed provider attribution without accepting arbitrary text', () => {
+    const call = buildCompetitiveCapturePlan(queries.slice(0, 1)).calls[0];
+    expect(validateDriverResponse(call, {
+      system_version: call.system_version,
+      duration_ms: 20,
+      failure_type: 'bot_challenge',
+      failure_scope: 'provider',
+      failure_source: 'duckduckgo',
+    })).toEqual({
+      system_version: call.system_version,
+      duration_ms: 20,
+      failure_type: 'bot_challenge',
+      failure_scope: 'provider',
+      failure_source: 'duckduckgo',
+    });
+    expect(() => validateDriverResponse(call, {
+      system_version: call.system_version,
+      duration_ms: 20,
+      failure_type: 'bot_challenge',
+      failure_scope: 'provider',
+      failure_source: 'raw upstream response: secret',
+    })).toThrow(/failure attribution/);
+  });
+
+  it('requires a fresh ready qualification for the exact formal profile', () => {
+    const now = Date.parse('2026-08-08T00:20:00.000Z');
+    const profile = createAgentSearchQualificationProfile(
+      'agent-search-free-waterfall',
+      ['duckduckgo', 'sogou', 'wikipedia'],
+    );
+    const report = {
+      kind: 'search-runner-qualification',
+      capture_status: 'complete',
+      observed_at: '2026-08-08T00:10:00.000Z',
+      readiness: { status: 'ready' },
+      systems: [{
+        system_id: 'agent-search-free-waterfall',
+        engines: ['duckduckgo', 'sogou', 'wikipedia'],
+        profile_sha256: competitiveProfileSha256(profile),
+      }],
+    };
+
+    expect(assertCompetitiveQualification(report, profile, { now })).toEqual({
+      qualification_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      profile_sha256: competitiveProfileSha256(profile),
+      observed_at: report.observed_at,
+    });
+    expect(() => assertCompetitiveQualification(report, {
+      ...profile,
+      result_limit: 10,
+    }, { now })).toThrow(/profile differs/);
+    expect(() => assertCompetitiveQualification(report, profile, {
+      now: Date.parse('2026-08-08T01:00:01.000Z'),
+    })).toThrow(/stale/);
   });
 
   it('hashes the exact driver, configuration, and implementation revision', () => {

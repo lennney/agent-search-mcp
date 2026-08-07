@@ -12,6 +12,8 @@ const ALLOWED_FAILURES = new Set([
   'unavailable',
   'unknown',
 ]);
+const ALLOWED_FAILURE_SCOPES = new Set(['provider', 'system', 'driver']);
+const FAILURE_SOURCE = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/u;
 
 function fail(message) {
   throw new Error(`Invalid competitive driver: ${message}`);
@@ -66,10 +68,20 @@ export function validateDriverResponse(call, response) {
     fail(`${call.system_id} returned an invalid or unpinned response`);
   }
   if (response.failure_type !== undefined) {
+    if ((response.failure_source !== undefined
+      && (typeof response.failure_source !== 'string'
+        || !FAILURE_SOURCE.test(response.failure_source)))
+      || (response.failure_scope !== undefined
+        && !ALLOWED_FAILURE_SCOPES.has(response.failure_scope))
+      || (response.failure_source !== undefined && response.failure_scope !== 'provider')) {
+      fail(`${call.system_id} returned invalid failure attribution`);
+    }
     return {
       system_version: response.system_version,
       duration_ms: response.duration_ms,
       failure_type: response.failure_type,
+      ...(response.failure_scope !== undefined && { failure_scope: response.failure_scope }),
+      ...(response.failure_source !== undefined && { failure_source: response.failure_source }),
     };
   }
   if (!Array.isArray(response.results) || response.results.length > call.result_limit) {

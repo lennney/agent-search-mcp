@@ -11,6 +11,13 @@ tags:
 
 ## Unreleased
 
+- feat: Added opt-in, user-owned DDG and Sogou HTTP(S) proxy pools with
+  deterministic query affinity and a 60-second transport-failure cooldown;
+  HTTP challenge/rate-limit responses never rotate exits, and single-proxy
+  settings retain precedence.
+- fix: Bound formal competitive execution to a fresh, complete qualification
+  report for the exact runtime-derived nine-adapter profile, and preserved
+  validated provider-level failure attribution in private checkpoints.
 - fix: Aligned the Open-WebSearch 2.1.9 competitive profile with its annotated
   tag commit and packaged engine registry, preserved subprocess timeouts as
   timeout samples, and made qualification stop after challenge/rate-limit
