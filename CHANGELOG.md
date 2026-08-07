@@ -11,6 +11,16 @@ tags:
 
 ## Unreleased
 
+- test: Completed a two-call bilingual Wikipedia runtime smoke with explicit
+  `en/us-en` and `zh/cn-zh` contexts, Top-3, zero retries, conservative pacing,
+  and no retained result text; this remains availability evidence, not a
+  search-quality claim.
+- refactor: Moved provider-attempt admission and completion behind an atomic,
+  idempotent `HealthTracker` lease so only one half-open probe can run and the
+  orchestrator no longer owns circuit-success, failure, or suspension writes.
+- test: Added offline runtime coverage proving half-open leases are released on
+  cancellation, request-budget rejection, rate-limit wait failure, and every
+  completed outcome without turning pre-dispatch exits into provider failures.
 - refactor: Resolved one bilingual search request context per logical query and
   propagated it through collapse/cache keys, retries, waterfall expansion, and
   provider dispatch; DDG and Wikipedia now receive bounded language/region

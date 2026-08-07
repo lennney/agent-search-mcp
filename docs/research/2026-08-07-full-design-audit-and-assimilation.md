@@ -1,7 +1,7 @@
 # Agent Search MCP 全面设计审计与竞品吸收矩阵
 
 日期：2026-08-07
-状态：源码审计完成；低风险修正已落地；架构改造保持 proposed
+状态：源码审计完成；P0/P1 已落地并提交；P1.5 已完成但未提交
 
 ## 结论
 
@@ -60,7 +60,7 @@ Agent Search 的核心方向是成立的：它不应继续与竞品比“引擎�
 | 预算 | 强 | 三层预算分离；调度、attempt 与未知 HTTP 请求数已显式区分 | 保留 |
 | 去重与 provenance | 强但有受控遗留 | family-aware corroboration 正确；URL 已版本化，v2 候选通过合成集但未切生产 | 等 pooled qrels |
 | 缓存 | 中强 | key 绑定策略、输出和 freshness；不缓存空/预算耗尽结果 | 保留，减少遗留 API |
-| 健康/冷却 | 中强 | challenge 立即暂停并可持久化；generic circuit 有界 | 修正指标，补 half-open 并发测试 |
+| 健康/冷却 | 强 | challenge cooldown 与 generic circuit 分离；half-open 单 probe 有显式 lease | P1.5 已完成 |
 | 安全/提取 | 强 | HTTP 默认认证、Origin allowlist、SSRF/redirect/内容预算 | 保留并做误报校准 |
 | Benchmark | 强准备、无胜负结论 | 30 条双语合同、断点续跑、预算与私有 artifact 边界已具备 | 继续真实 capture |
 | Onboarding | 中强 | README、`fasm doctor`、capabilities/health Resource 和 Skill 已连通 | 保留最小路径 |
@@ -235,9 +235,10 @@ evidence contract，且不会把
 删除，而不是形成第二套 key 规则。
 
 健康层正确地区分 generic circuit 与 provider-declared cooldown，challenge 可立即暂停并
-持久化。本轮修复了首个成功样本被除以二的问题。仍需补一个并发测试：代码声明了
-half-open 只允许一个 probe，但当前状态没有明确的 in-flight probe lease；在证明取消、
-预算拒绝和并发完成都能释放 lease 前，不应仓促加锁。
+持久化。`HealthTracker` 现在提供原子准入和显式 in-flight probe lease；取消、预算拒绝、
+限速等待失败和并发完成均通过同一 lease 释放。`getAvailability()` 只读，运行时编排不再
+拥有 circuit 写方法。详细计划和完成记录见
+[`docs/plans/2026-08-07-provider-half-open-probe-lease.md`](../plans/2026-08-07-provider-half-open-probe-lease.md)。
 
 ### G. 安全和提取
 
@@ -323,11 +324,19 @@ family 合同有 13 个唯一值，而工具输入仍因兼容 capped at 12；�
    expansion 和 adapter；DDG/Wikipedia 使用已核对的区域/语言合同，Bing/Yandex 仅调整
    header，不猜测 HTML 市场参数。
 
-当前最终门禁为 build、lint、84 个测试文件（821 通过、2 跳过）、quality verify、
+P1 检查点门禁为 build、lint、84 个测试文件（821 通过、2 跳过）、quality verify、
 30-query validator、competitive dry-run、package check、format/Token regression、exact
 cache、intent-routing 和 capability drift check 全部通过。所有新增测试均离线；没有执行
-live search、竞品进程、模型调用、安装、发布或推送。前一轮 checkpoint 已提交为
-`7f628fc`；本轮 P1 改动仍在工作区，尚未二次提交。
+live search、竞品进程、模型调用、安装、发布或推送。检查点已提交为 `7f628fc` 和
+`2d2e7a4`；本地 `main` 领先 `origin/main` 2 个提交，尚未 push。
+
+### P1.5：已完成，未提交
+
+`HealthTracker` 已原子完成准入并返回一次逻辑尝试的幂等 lease；编排层只报告 success、
+failure、suspended 或 released。并发、取消、预算拒绝、限速等待失败、成功恢复、失败
+backoff 和 challenge suspension 均有离线回归。完整门禁为 84 个测试文件（831 通过、
+2 跳过），其余冻结检查全部通过。双语真实请求上下文 smoke 仍需单独确认和干净出口；
+它限制为英文、中文各一条，不能扩大为质量 capture。
 
 ### P2：真实需求出现后再做
 

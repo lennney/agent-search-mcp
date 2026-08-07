@@ -1,17 +1,33 @@
-# agent-search-mcp 迭代路线图 — v3.1.x → 下一可发布版本
+# agent-search-mcp 迭代路线图 — v3.2.0 → 下一可发布版本
 
-> **状态**: v3.1.0 已发布；仓库当前为 16 个搜索适配器（9 个零密钥 + 7 个可选 API）。
-> 当前工作先通过发布候选门禁，不预先承诺版本号或发布日期。
+> **状态**: v3.2.0 已发布到 npm `latest`；仓库当前为 16 个搜索适配器
+> （9 个零密钥 + 7 个可选 API）。本地 `main` 有两个尚未 push 的检查点，当前没有
+> 可发布 tarball。下一版本不预先承诺版本号或发布日期。
 > **旧 6 阶段路线图** (2026-07-16): ✅ Phase 1-6 全部完成 — 见尾部"旧路线图状态"表。
-> **本篇为新路线图**: 基于竞品调研和 v3.1.0 状态制定的 4 个迭代方向 + 持续分发。
+> 下方 Phase A-D 是通向 v3.2.0 的历史规划，继续保留作决策记录。当前执行顺序以本节
+> 和文末 P1.5/P1.6、P1.3、P2 条目为准。
 
 ---
 
-## 路线图概览
+## 当前执行顺序
+
+| 顺序 | 阶段 | 状态 | 完成条件 |
+|------|------|------|----------|
+| 1 | P1.5 half-open probe lease | 已完成，未提交 | 状态机、并发与所有退出路径已通过完整离线门禁 |
+| 2 | P1.6 双语 request-context smoke | 已完成 | Wikipedia 英中各一条成功；无原文 artifact |
+| 3 | P1.3 三系统正式 capture | 已批准，待干净 runner | 30 条预注册查询、完整 checkpoint、私有 artifact |
+| 4 | P2 双评审与分歧裁决 | 待完整 pool | 固定模型与预算完成合同验证，不静默替换 |
+| 5 | P1.1 relevance calibration | 待 completed qrels | 只生成内部校准证据，不自动修改生产阈值 |
+| 6 | 下一 release candidate | 待上述证据和发布决策 | 从最终提交生成唯一 tarball 并重跑发布矩阵 |
+
+push、真实 capture、模型调用、npm publish、GitHub Release、Registry 和推广均为独立
+授权门。P1.6 不是质量 capture，也不能用于搜索质量或可用率声明。
+
+## v3.2.0 历史路线图概览
 
 ```
            v3.1.0
-        (当前发布)
+        (历史起点)
             │
     ┌───────┼───────┬───────┬───────┐
     │       │       │       │       │
@@ -24,7 +40,7 @@
     └ A4             └ C4    └ D4    └ O4 V2EX/gh.l-web
             │       │       │       │
     └───────┴───────┴───────┴───────┘
-           v3.2.0 目标发布
+           v3.2.0 已发布
 ```
 
 | Phase | 内容 | 工作量 | 依赖 | 发布价值 |
@@ -881,9 +897,10 @@ Evidence:
 
 #### Release-candidate gate
 
-当前候选来自 `a1de485`。唯一 tarball 的 SHA-256 为
+历史候选来自 `a1de485`。唯一 tarball 的 SHA-256 为
 `002EBC7C7AC7E4B8330C1AB25288CD4DB71917ECBC4C2A5C7CB76BE08BFABAEA`；
-历史产物只保留作证据，不能发布。
+该产物只保留作证据，不能发布。当前源码已前进到新的本地检查点，尚未生成新的
+release candidate。
 
 - [x] `npm run build`、默认离线测试、lint、能力矩阵漂移检查和冻结 benchmark 全部通过。
 - [x] 从当前最终提交生成唯一 tarball；记录 commit、SHA-256、文件数和大小。
@@ -893,11 +910,45 @@ Evidence:
 - [x] 使用同一个当前 tarball 完成全部安装 smoke；发布时不得重新打包不同内容。
 - [x] 仅当受控 runner 合格时执行一次 bounded release live smoke；不合格时保留报告并停止
       质量声明，不从当前受限出口反复探测。
-      本次保留 `73c34969` 的一次有限证据；后续修改没有改变 DDG/Sogou 请求链，
-      因此未重复探测。这份证据只用于时间点非降级观察。
+      本次保留 `73c34969` 的一次有限历史证据。P1 双语请求上下文已改变编排后的
+      DDG 请求，因此这份证据不再覆盖当前精确请求链。重新验证必须使用干净出口和
+      单独授权，不能复用已触发 challenge 的出口。
 - [x] README、CHANGELOG、HANDOVER 和生成能力矩阵与运行时一致；发布说明不宣称未经
       adjudication 的准确率、可用率或付费渠道排名。
 - [x] 门禁完成后创建检查点 commit。版本 bump、npm publish、GitHub Release 和推广仍需
       分别获得明确授权。
+
+### P1.5 - provider half-open probe ownership
+
+目标是让 `HealthTracker` 独立拥有 Provider 尝试的原子准入、单个 half-open probe 和
+退出释放。编排层只结束 lease，不读取或拼装 circuit 状态。
+
+- [x] 用 `acquireAttempt()` 与幂等 lease 替换分离的 availability 检查和事后记录；
+- [x] 证明 half-open 并发最多一个调用进入 Provider，其余调用得到稳定拒绝；
+- [x] 覆盖成功、普通失败、challenge suspension、取消、预算拒绝和限速等待失败；
+- [x] 保持 `partialFailures`、重试、cooldown 持久化、runtime 隔离和公开输出合同不变；
+- [x] 通过定向测试、build、lint、完整离线测试及 quality/format benchmark；
+- [x] 本阶段不联网，不增加 Provider、依赖、请求次数或 MCP schema。
+
+详细计划：
+[`docs/plans/2026-08-07-provider-half-open-probe-lease.md`](../../plans/2026-08-07-provider-half-open-probe-lease.md)
+
+### P1.6 - bounded bilingual request-context smoke
+
+P1.5 离线门禁通过后，才验证 P1 双语请求上下文的真实出站行为。该阶段仍需用户单独
+确认，并且必须使用未触发 DDG/Sogou challenge 的干净出口。
+
+2026-08-08 已完成本阶段。构建后的 runtime dispatcher 对 Wikipedia 英文/中文入口各
+调用一次，分别解析为 `en/us-en` 与 `zh/cn-zh`，均返回 3 条；两次间隔至少 10 秒，
+没有重试、429、challenge 或原文 artifact。未调用已出现 challenge 的 DDG/Sogou/Yandex。
+详细执行合同和脱敏观察见
+[`docs/plans/2026-08-08-bounded-bilingual-live-smoke.md`](../../plans/2026-08-08-bounded-bilingual-live-smoke.md)。
+
+- [x] 英文、中文各一条查询，每条只选一个零密钥 Provider，Top-3；
+- [x] 串行执行，调用间隔至少 10 秒，单次硬超时，不重试、不 enrichment、不写 artifact；
+- [x] 只记录脱敏状态、语言上下文、结果数、延迟和失败类型，不保存结果原文；
+- [x] 任何 429 或 challenge 立即停止整轮，不切换出口或追加探测；
+- [x] 结果只证明请求上下文和失败合同的时间点可用性，不形成质量或可用率声明；
+- [x] 该阶段不授权 30-query × 3-system capture，后者仍需独立批准。
 
 ---

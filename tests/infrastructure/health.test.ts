@@ -127,6 +127,140 @@ describe('ServerMetrics edge cases', () => {
 });
 
 describe('HealthTracker', () => {
+  it('admits only one half-open probe after the circuit cooldown', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-07T00:00:00Z'));
+    try {
+      const health = new HealthTracker();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        health.recordFailure('test-provider');
+      }
+
+      vi.advanceTimersByTime(30_000);
+
+      const first = health.acquireAttempt('test-provider');
+      const second = health.acquireAttempt('test-provider');
+
+      expect(first.acquired).toBe(true);
+      expect(second).toEqual({
+        acquired: false,
+        failureType: 'unknown',
+        retryAt: null,
+      });
+      if (!first.acquired) throw new Error('expected the first probe lease');
+      first.lease.finish({ status: 'released' });
+      expect(health.acquireAttempt('test-provider').acquired).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('closes the circuit when the half-open probe succeeds', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-07T00:00:00Z'));
+    try {
+      const health = new HealthTracker();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        health.recordFailure('test-provider');
+      }
+      vi.advanceTimersByTime(30_000);
+
+      const admission = health.acquireAttempt('test-provider');
+      if (!admission.acquired) throw new Error('expected a probe lease');
+      admission.lease.finish({ status: 'success', latency: 125 });
+
+      expect(health.getHealth()[0]).toMatchObject({
+        circuitState: 'closed',
+        errorCount: 4,
+        avgLatency: 125,
+        isHealthy: true,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('reopens the circuit with backoff when the half-open probe fails', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-07T00:00:00Z'));
+    try {
+      const health = new HealthTracker();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        health.recordFailure('test-provider');
+      }
+      vi.advanceTimersByTime(30_000);
+
+      const admission = health.acquireAttempt('test-provider');
+      if (!admission.acquired) throw new Error('expected a probe lease');
+      admission.lease.finish({ status: 'failure', failureType: 'timeout' });
+
+      expect(health.getHealth()[0]).toMatchObject({
+        circuitState: 'open',
+        circuitCooldownMs: 60_000,
+        errorCount: 6,
+        lastFailureType: 'timeout',
+        isHealthy: false,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps provider suspension separate from the half-open probe lease', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-07T00:00:00Z'));
+    try {
+      const health = new HealthTracker();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        health.recordFailure('test-provider');
+      }
+      vi.advanceTimersByTime(30_000);
+
+      const admission = health.acquireAttempt('test-provider');
+      if (!admission.acquired) throw new Error('expected a probe lease');
+      admission.lease.finish({
+        status: 'suspended',
+        cooldownMs: 3_600_000,
+        failureType: 'bot_challenge',
+      });
+
+      expect(health.acquireAttempt('test-provider')).toEqual({
+        acquired: false,
+        failureType: 'bot_challenge',
+        retryAt: Date.parse('2026-08-07T01:00:30Z'),
+      });
+      vi.advanceTimersByTime(3_600_000);
+      expect(health.acquireAttempt('test-provider').acquired).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('finishes an attempt lease only once', () => {
+    const health = new HealthTracker();
+    const admission = health.acquireAttempt('test-provider');
+    if (!admission.acquired) throw new Error('expected an attempt lease');
+
+    admission.lease.finish({ status: 'failure', failureType: 'timeout' });
+    admission.lease.finish({ status: 'success', latency: 100 });
+
+    expect(health.getHealth()[0]).toMatchObject({
+      errorCount: 1,
+      avgLatency: 0,
+      lastFailureType: 'timeout',
+    });
+  });
+
+  it('does not create a health sample for an attempt released before dispatch', () => {
+    const health = new HealthTracker();
+    const admission = health.acquireAttempt('never-dispatched');
+    if (!admission.acquired) throw new Error('expected an attempt lease');
+
+    admission.lease.finish({ status: 'released' });
+
+    expect(health.getHealth()).toEqual([]);
+  });
+
   it('reports the first observed provider latency without halving it', () => {
     const health = new HealthTracker();
 

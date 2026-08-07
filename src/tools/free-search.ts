@@ -128,14 +128,14 @@ async function searchEngine(
     };
   }
 
-  // Skip unhealthy providers
-  const availability = runtime.healthTracker.getAvailability(engine);
-  if (!availability.available) {
-    const retryAt = availability.retryAt === null
+  // Acquire one logical provider attempt, including any internal retries.
+  const admission = runtime.healthTracker.acquireAttempt(engine);
+  if (!admission.acquired) {
+    const retryAt = admission.retryAt === null
       ? 'after provider recovery'
-      : new Date(availability.retryAt).toISOString();
+      : new Date(admission.retryAt).toISOString();
     logger.warn(
-      { engine, failureType: availability.failureType, retryAt: availability.retryAt },
+      { engine, failureType: admission.failureType, retryAt: admission.retryAt },
       'Skipping unavailable provider',
     );
     return {
@@ -143,7 +143,7 @@ async function searchEngine(
       status: 'failed',
       results: [],
       error: new EngineAdapterError(
-        availability.failureType,
+        admission.failureType,
         `${engine} is cooling down until ${retryAt}`,
         {
           retryable: true,
@@ -153,81 +153,86 @@ async function searchEngine(
     };
   }
 
-  // Rate limit before making the request
-  await runtime.rateLimiter.waitForSlot(engine, signal);
+  const { lease } = admission;
+  try {
+    // Rate limit before making the request
+    await runtime.rateLimiter.waitForSlot(engine, signal);
 
-  let lastError: Error | null = null;
+    let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (budget && !budget.claimEngineCall()) {
-      return { engine, status: 'skipped', results: [] };
-    }
-    const startTime = Date.now();
-    try {
-      const engineOptions = {
-        signal,
-        throwOnError: true,
-        requestContext,
-      };
-      const results = await runtime.searchProvider(engine, query, limit, engineOptions);
-      signal?.throwIfAborted();
-      const latency = Date.now() - startTime;
-      runtime.healthTracker.recordSuccess(engine, latency);
-      logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
-      return { engine, status: 'success', results };
-    } catch (err) {
-      callerSignal?.throwIfAborted();
-      if (budget?.isBudgetAbort()) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (budget && !budget.claimEngineCall()) {
         return { engine, status: 'skipped', results: [] };
       }
-      signal?.throwIfAborted();
-      lastError = err instanceof Error ? err : new Error(String(err));
-      const latency = Date.now() - startTime;
+      const startTime = Date.now();
+      try {
+        const engineOptions = {
+          signal,
+          throwOnError: true,
+          requestContext,
+        };
+        const results = await runtime.searchProvider(engine, query, limit, engineOptions);
+        signal?.throwIfAborted();
+        const latency = Date.now() - startTime;
+        lease.finish({ status: 'success', latency });
+        logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
+        return { engine, status: 'success', results };
+      } catch (err) {
+        callerSignal?.throwIfAborted();
+        if (budget?.isBudgetAbort()) {
+          return { engine, status: 'skipped', results: [] };
+        }
+        signal?.throwIfAborted();
+        lastError = err instanceof Error ? err : new Error(String(err));
+        const latency = Date.now() - startTime;
 
-      // Check if this is a retryable error (network, timeout, 5xx)
-      const isRetryable = isRetryableError(lastError);
+        // Check if this is a retryable error (network, timeout, 5xx)
+        const isRetryable = isRetryableError(lastError);
 
-      if (attempt < maxRetries && isRetryable) {
-        // Exponential backoff: 500ms, 1000ms, 2000ms...
-        const delay = Math.min(500 * Math.pow(2, attempt), 5000);
-        logger.warn({ engine, attempt, delay, err: lastError.message }, 'Retryable error, retrying...');
-        await abortableDelay(delay, signal);
-        continue;
-      }
+        if (attempt < maxRetries && isRetryable) {
+          // Exponential backoff: 500ms, 1000ms, 2000ms...
+          const delay = Math.min(500 * Math.pow(2, attempt), 5000);
+          logger.warn({ engine, attempt, delay, err: lastError.message }, 'Retryable error, retrying...');
+          await abortableDelay(delay, signal);
+          continue;
+        }
 
-      // Non-retryable or max retries exceeded
-      if (
-        isEngineAdapterError(lastError)
-        && lastError.cooldownMs
-        && lastError.failureType !== 'budget_exhausted'
-      ) {
-        runtime.healthTracker.suspend(
-          engine,
-          lastError.cooldownMs,
-          lastError.failureType,
-        );
-      } else {
-        runtime.healthTracker.recordFailure(
-          engine,
+        // Non-retryable or max retries exceeded
+        if (
           isEngineAdapterError(lastError)
-            && lastError.failureType !== 'budget_exhausted'
-            ? lastError.failureType
-            : 'unknown',
-        );
+          && lastError.cooldownMs
+          && lastError.failureType !== 'budget_exhausted'
+        ) {
+          lease.finish({
+            status: 'suspended',
+            cooldownMs: lastError.cooldownMs,
+            failureType: lastError.failureType,
+          });
+        } else {
+          lease.finish({
+            status: 'failure',
+            failureType: isEngineAdapterError(lastError)
+              && lastError.failureType !== 'budget_exhausted'
+              ? lastError.failureType
+              : 'unknown',
+          });
+        }
+        logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
+        return { engine, status: 'failed', results: [], error: lastError };
       }
-      logger.error({ engine, latency, attempt, err: lastError.message }, 'Search failed');
-      return { engine, status: 'failed', results: [], error: lastError };
     }
-  }
 
-  // All retries exhausted
-  logger.error({ engine, lastError: lastError?.message }, 'All retries exhausted');
-  return {
-    engine,
-    status: 'failed',
-    results: [],
-    error: lastError ?? new Error('All retries exhausted'),
-  };
+    // All retries exhausted
+    logger.error({ engine, lastError: lastError?.message }, 'All retries exhausted');
+    return {
+      engine,
+      status: 'failed',
+      results: [],
+      error: lastError ?? new Error('All retries exhausted'),
+    };
+  } finally {
+    lease.finish({ status: 'released' });
+  }
 }
 
 interface EngineOutcome {

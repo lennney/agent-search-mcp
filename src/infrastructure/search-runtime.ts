@@ -22,12 +22,9 @@ export interface SearchCachePort {
 
 export type HealthTrackerPort = Pick<
   HealthTracker,
-  | 'getAvailability'
+  | 'acquireAttempt'
   | 'getHealth'
   | 'isHealthy'
-  | 'recordFailure'
-  | 'recordSuccess'
-  | 'suspend'
 >;
 
 export type ServerMetricsPort = Pick<ServerMetrics, 'getMetrics' | 'recordRequest'>;

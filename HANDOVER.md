@@ -1,7 +1,7 @@
 ---
 type: HandoverDoc
 title: Agent Search MCP handover
-timestamp: '2026-07-26T23:52:28+08:00'
+timestamp: '2026-08-08'
 description: 当前状态、稳定契约和下一步
 tags:
 - agent-search-mcp
@@ -91,9 +91,12 @@ tags:
 
 ## 当前验证
 
-- 默认离线门禁：79 个测试文件，780 passed，2 个联网 E2E 按设计 skipped。
-- TypeScript/Windows build、能力矩阵漂移、冻结 Token benchmark 和 bootstrap
-  quality benchmark：通过；bootstrap 仍不具备质量声明资格。
+- 当前离线门禁：84 个测试文件，831 passed，2 个联网 E2E 按设计 skipped。
+- TypeScript/Windows build、lint、package manifest、能力矩阵漂移、冻结 Token/format
+  benchmark、quality verify、30-query validator、competitive dry-run、exact cache 和
+  intent-routing 全部通过；bootstrap 仍不具备质量声明资格。
+- 本地 `main` 包含 `7f628fc` 和 `2d2e7a4` 两个检查点，领先 `origin/main` 2 个提交；
+  尚未 push。P1.5 实现和本轮文档更新仍在工作区，尚未提交。
 - Lint：0 errors、0 warnings；`npm run lint` 通过 `--max-warnings 0`
   阻止 warning 回归。Server/adapter 日志统一写入结构化 stderr，CLI 的
   人类输出使用精确文件级例外。
@@ -101,7 +104,7 @@ tags:
   `package.json` 及引擎注册表一致；Registry 的 stdio 安装项不再暴露
   `MODE` / `PORT` 传输覆盖。
 - 外部导入、pooling、runner qualification 的纯函数与失败边界有单元测试。
-- 上一个精确候选来自
+- 上一个历史候选来自
   `a1de48515d84748d8bf40e66d8853266e0dd1268`；唯一 tarball 包含 77 个文件，
   大小 106,180 bytes，SHA-256 为
   `002EBC7C7AC7E4B8330C1AB25288CD4DB71917ECBC4C2A5C7CB76BE08BFABAEA`。
@@ -118,24 +121,21 @@ tags:
   `npm audit --omit=dev` 的 registry payload 仍用 `<2.0.5` 范围，因此继续报告
   2 个 moderate。保留该元数据差异，不降级 MCP SDK，也不强制引入要求
   Node 20 的 Hono 2.x；本项目不注册受影响的 `serve-static`。
-- 当前分支保留 `73c34969` 的一次有限 DDG Live E2E 作为时间点非降级观察；
-  DDG Web/HTML/Lite 主链没有改变；移除新闻工具不影响该主链。本轮未重复探测
-  DDG/Sogou，也不据此声明可用率或准确率。
+- 当前分支保留 `73c34969` 的一次有限 DDG Live E2E 作为历史时间点观察。P1 双语
+  `SearchRequestContext` 已改变编排后的 DDG 请求上下文，因此旧证据不再证明当前
+  精确请求链。当前曾触发 DDG challenge 的出口禁止复用，也不据此声明可用率或准确率。
 
 ## 下一步
 
-1. PR CI 通过后，从最终提交重新生成唯一 tarball 并重跑 Windows/Linux
-   Node 18/20/22 发布矩阵；npm publish、tag/Release 和 MCP Registry 仍需分别授权。
-2. Agent Search 上线后，再单独部署产品主页、把 GitHub Homepage 改到
-   `/en/agent-search-mcp`，随后刷新 Glama 等目录。
-3. 不为本次发布重复探测 DDG/Sogou；只有后续搜索主链发生变化，或进入单独的
-   低频质量采样任务时，才重新取得联网授权。
-4. 使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
+1. 在单独批准后，使用同一 query set 获取 Agent Search 与真实对照系统结果；对照系统通过
    离线 importer 进入 pooling，不能把配置级探针写成产品对比。
-5. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
+2. 完成两模型 pointwise review 与第三模型分歧裁决，再运行
    `benchmark:calibrate-relevance`；完成前保持内部阈值 `0.35` 不变。
-6. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
+3. 只有满足路线图的样本量、语言/类别切片和 adjudication gate 后，才可发布
    搜索质量或 DDG 可用率数字。
+4. 上述产品证据完成后，再从最终提交生成新的唯一 tarball 并重跑 Windows/Linux
+   Node 18/20/22 发布矩阵。push、npm publish、tag/Release、MCP Registry 和外部目录更新
+   仍需分别授权；当前没有可发布候选。
 
 ## 文档权威
 
@@ -145,7 +145,7 @@ tags:
 - 当前计划：`docs/superpowers/plans/2026-07-22-iteration-roadmap.md`。
 - 评测方法：`benchmarks/README.md`。
 - 历史变更：Git / `CHANGELOG.md`；plan/review/evidence 只作追溯，不复制到本文件。
-- 当前发布候选证据：
+- 历史发布候选证据：
   `docs/evidence/2026-07-26-release-candidate-a1de485.md`。
 
 ## 2026-08-07：三系统双语质量对照的离线准备
@@ -315,6 +315,50 @@ tags:
   语义变化升级为 `search-cache-key-v2`，旧缓存自然失效且不迁移。
 - ADR 见 `docs/decisions/ADR-20260807-bilingual-search-request-context.md`。本阶段只运行 mock
   HTTP 与离线测试，没有追加 live search。
-- 最终门禁：build、lint、84 个测试文件（821 通过、2 跳过）、package manifest、capability
+- P1 检查点门禁：build、lint、84 个测试文件（821 通过、2 跳过）、package manifest、capability
   drift、quality/format benchmark、30-query validator、competitive dry-run、exact cache 和
-  intent-routing 全部通过。P1 改动尚未提交或 push。
+  intent-routing 全部通过。P1 已提交为 `2d2e7a4`，尚未 push。
+
+## 2026-08-07：P1.5 Provider half-open probe lease
+
+- `HealthTracker.acquireAttempt()` 原子拥有 Provider 尝试准入，并返回幂等 lease；
+  `getAvailability()` 只读，不再隐式切换并占用 half-open probe。
+- 运行时健康 interface 不再向搜索编排暴露 `recordSuccess()`、`recordFailure()` 或
+  `suspend()`。编排层只报告 success、failure、suspended 或 released outcome。
+- lease 覆盖一次逻辑 Provider 尝试及其已有重试。`finally` 统一释放取消、预算拒绝、
+  限速等待失败和 dispatch 前异常，不把未执行的 Provider 记成成功或失败。
+- 离线回归证明 half-open 并发只进入一个 dispatcher；成功关闭 circuit，失败应用现有
+  backoff，challenge suspension 保持独立，重复 finish 不会重复计数。
+- 完整门禁为 84 个测试文件（831 通过、2 跳过），build、lint、package/capability、
+  quality/format、query-set validator、competitive dry-run、exact-cache 和 intent-routing
+  全部通过。没有执行 live search、模型调用、push 或发布。
+
+## 2026-08-08：P1.6 受限双语 request-context smoke
+
+- 从当前源码 build 后，通过 runtime dispatcher 对 Wikipedia 串行执行英文、中文各一次
+  Top-3 请求；直接 dispatcher 路径没有生产编排重试。
+- 英文解析为 `en/us-en`，返回 3 条，延迟 2,485 ms；中文解析为 `zh/cn-zh`，返回
+  3 条，延迟 3,931 ms。
+- 两次调用间隔至少 10 秒，实际请求数为 2；没有 429、challenge、timeout 或其他失败，
+  随后按计划停止联网测试。
+- 未保存结果标题、snippet、URL、原始响应或 live fixture，也未调用 DDG、Sogou、Yandex、
+  竞品系统或模型。该观察不形成质量、可用率或竞品胜负声明。
+
+## 2026-08-08：P1.3 正式 capture 批准与预检
+
+- 用户已批准 P1.3 的 30-query × 3-system 正式 capture；该批准不包含 AI reviewer、push、
+  publish 或公开质量声明。
+- 当前源码 build、query-set validator 和 competitive dry-run 均通过：查询集 SHA-256 为
+  `9afda7dbb09369ec98bdc7df5a27e41df4fc1747a3a717a2f5f2196398487cf4`，计划为
+  90 个 Top-5 样本、Latin-square 顺序、调用间隔 10 秒、零重试。
+- 预检没有发现外部竞品驱动、`ddgs` 安装或专用 runner 配置。当前机器所在出口有历史
+  DDG challenge，按合同不能作为正式 capture runner；因此本次没有启动正式采集，也没有
+  写入 raw、normalized、pool 或 reviewer artifact。
+- 后续只在新的干净 runner 上继续。驱动和固定版本安装保留在仓库外；结果内容按“仅限私有
+  研究留存、不再分发、不主张内容许可证、遵循上游条款”披露。任何 challenge/429 都在当次
+  checkpoint 后终止整轮。
+- 用户随后单独批准从当前出口重新测试 DDG。重新 build 后只执行一次直接 adapter 逻辑调用：
+  英文常青查询、Top-3、15 秒硬超时、无代理、无编排重试、无 artifact。该调用返回 3 条，
+  3 条 snippet 均非空，域名为 `developer.mozilla.org` 和 `jamdesk.com`，耗时 3,383 ms；没有
+  challenge、429、timeout 或其他失败。该单点观察只证明当前时点的 DDG 路径可用，不替代
+  10-query runner qualification，也不改变正式 capture 仍需受控 runner 的门禁。

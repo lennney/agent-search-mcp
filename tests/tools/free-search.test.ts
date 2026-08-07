@@ -4,11 +4,11 @@ const infrastructureState = vi.hoisted(() => ({
   cacheGet: vi.fn(() => null as unknown),
   cacheSet: vi.fn(),
   cacheMakeKey: vi.fn((q: string, c: number, e: string[]) => `${q}:${c}:${[...e].sort().join(',')}`),
-  getAvailability: vi.fn(() => ({ available: true } as
-    | { available: true }
-    | { available: false; failureType: 'bot_challenge'; retryAt: number })),
-  suspend: vi.fn(),
-  recordFailure: vi.fn(),
+  finishAttempt: vi.fn(),
+  acquireAttempt: vi.fn(() => ({
+    acquired: true,
+    lease: { finish: infrastructureState.finishAttempt },
+  } as const)),
   config: {
     ALLOWED_ENGINES: [] as string[],
     DENIED_ENGINES: [] as string[],
@@ -162,10 +162,8 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
     })),
     HealthTracker: vi.fn(() => ({
       isHealthy: vi.fn(() => true),
-      getAvailability: infrastructureState.getAvailability,
-      recordSuccess: vi.fn(),
-      recordFailure: infrastructureState.recordFailure,
-      suspend: infrastructureState.suspend,
+      acquireAttempt: infrastructureState.acquireAttempt,
+      getHealth: vi.fn(() => []),
     })),
     EnginePolicy: vi.fn(() => ({
       isAllowed: vi.fn(() => true),
@@ -248,10 +246,12 @@ describe('searchWithFallback — parallel', () => {
     vi.clearAllMocks();
     resetAggregationMocks();
     infrastructureState.cacheGet.mockReturnValue(null);
-    infrastructureState.getAvailability.mockReset();
-    infrastructureState.getAvailability.mockReturnValue({ available: true });
-    infrastructureState.suspend.mockReset();
-    infrastructureState.recordFailure.mockReset();
+    infrastructureState.finishAttempt.mockReset();
+    infrastructureState.acquireAttempt.mockReset();
+    infrastructureState.acquireAttempt.mockImplementation(() => ({
+      acquired: true,
+      lease: { finish: infrastructureState.finishAttempt },
+    }));
     infrastructureState.config.outputStyle = 'normal';
     infrastructureState.config.minConfidence = 0;
     infrastructureState.config.minSourceCount = 1;
@@ -561,6 +561,10 @@ describe('searchWithFallback — parallel', () => {
     expect(result.partialFailures).toEqual(expect.arrayContaining([
       expect.objectContaining({ engine: 'baidu', type: 'permission_denied' }),
     ]));
+    expect(infrastructureState.finishAttempt).toHaveBeenCalledWith({
+      status: 'failure',
+      failureType: 'unknown',
+    });
   });
 
   it('preserves a zero-key anti-bot challenge as its own failure type', async () => {
@@ -587,17 +591,25 @@ describe('searchWithFallback — parallel', () => {
         suggestion: 'Use another network runner',
       }),
     ]));
+    expect(infrastructureState.finishAttempt).toHaveBeenCalledWith({
+      status: 'suspended',
+      cooldownMs: 3_600_000,
+      failureType: 'bot_challenge',
+    });
   });
 
   it('reports a provider skipped by durable cooldown as a partial failure', async () => {
-    infrastructureState.getAvailability.mockImplementation((engine: string) => (
+    infrastructureState.acquireAttempt.mockImplementation((engine: string) => (
       engine === 'sogou'
         ? {
-            available: false,
+            acquired: false,
             failureType: 'bot_challenge',
             retryAt: Date.parse('2026-07-26T18:00:00Z'),
           }
-        : { available: true }
+        : {
+            acquired: true,
+            lease: { finish: infrastructureState.finishAttempt },
+          }
     ));
 
     const response = await searchWithFallback({
@@ -1004,8 +1016,7 @@ describe('searchWithFallback — parallel', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
     const engineOptions = vi.mocked(searchDuckDuckGo).mock.calls[0][2];
     expect(engineOptions?.signal?.aborted).toBe(true);
-    expect(infrastructureState.suspend).not.toHaveBeenCalled();
-    expect(infrastructureState.recordFailure).not.toHaveBeenCalled();
+    expect(infrastructureState.finishAttempt).toHaveBeenCalledWith({ status: 'released' });
   });
 
   it('resolves one bilingual request context for response and providers', async () => {
@@ -1377,11 +1388,8 @@ vi.mock('../../src/infrastructure/search-runtime.js', async () => {
     },
     healthTracker: {
       isHealthy: vi.fn(() => true),
-      getAvailability: infrastructureState.getAvailability,
+      acquireAttempt: infrastructureState.acquireAttempt,
       getHealth: vi.fn(() => []),
-      recordSuccess: vi.fn(),
-      recordFailure: infrastructureState.recordFailure,
-      suspend: infrastructureState.suspend,
     },
     serverMetrics: {
       getMetrics: vi.fn(),
