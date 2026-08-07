@@ -208,12 +208,6 @@ The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapte
 | `fetch_juejin_article` | Fetch a Juejin article | Chinese developer articles |
 | `search_with_synthesis` | Search evidence with an LLM synthesis hint | Agent-authored answers from cited evidence |
 
-`search_with_synthesis` uses the same canonical `structuredContent` evidence
-packet as the primary search tools and adds `prompt_hint`; its text content is
-only a compact compatibility view. Execution metadata distinguishes scheduled
-adapters from retry-inclusive adapter attempts. `http_requests` is `null` until
-all adapter transports can report it without false precision.
-
 ### Capability controls
 
 | Environment | Default | Purpose |
@@ -227,6 +221,12 @@ all adapter transports can report it without false precision.
 | `SEARCH_BUDGET_MAX_RESULTS` | 100 | Admitted raw-result budget |
 | `EVIDENCE_BUDGET_CHARS` | 1200 | Evidence-character budget |
 <!-- END GENERATED CAPABILITY MATRIX -->
+
+`search_with_synthesis` uses the same canonical `structuredContent` evidence
+packet as the primary search tools and adds `prompt_hint`; its text content is
+only a compact compatibility view. Execution metadata distinguishes scheduled
+adapters from retry-inclusive adapter attempts. `http_requests` is `null` until
+all adapter transports can report it without false precision.
 
 Wiby is a genuine zero-key source backed by its official JSON API and is used
 late in the free waterfall as an independent small-Web supplement. Optional

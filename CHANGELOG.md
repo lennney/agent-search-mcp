@@ -11,6 +11,11 @@ tags:
 
 ## Unreleased
 
+- refactor: Resolved one bilingual search request context per logical query and
+  propagated it through collapse/cache keys, retries, waterfall expansion, and
+  provider dispatch; DDG and Wikipedia now receive bounded language/region
+  intent while Bing/Yandex only consume the language header supported by the
+  current HTML contract. Exact search cache keys are versioned to v2.
 - refactor: Replaced import-time search infrastructure singletons with one
   injectable, lazily defaulted `SearchRuntime`; stdio/HTTP tool servers and
   health resources now share the process-owned cache, cooldown, rate-limit,

@@ -34,6 +34,7 @@
   "dist/engines/mojeek.js",
   "dist/engines/provider-catalog.js",
   "dist/engines/runtime-registry.js",
+  "dist/engines/search-request-context.js",
   "dist/engines/serper.js",
   "dist/engines/sogou.js",
   "dist/engines/startpage.js",

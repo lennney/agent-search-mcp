@@ -13,6 +13,10 @@ import {
   freeEngines,
   paidEngines,
 } from '../engines/provider-catalog.js';
+import {
+  resolveSearchRequestContext,
+  type SearchRequestContext,
+} from '../engines/search-request-context.js';
 import { getSecurityNote } from '../infrastructure/security.js';
 import {
   getDefaultSearchRuntime,
@@ -25,7 +29,6 @@ import {
   type SearchResult,
 } from '../types.js';
 import {
-  detectLanguage,
   enrichResults,
   createSearchEvidenceEvaluator,
   expandQuery,
@@ -82,6 +85,7 @@ async function searchEngine(
   engine: SearchProvider,
   query: string,
   limit: number,
+  requestContext: SearchRequestContext,
   maxRetries: number = 2,
   signal?: AbortSignal,
   budget?: SearchRequestBudget,
@@ -160,7 +164,11 @@ async function searchEngine(
     }
     const startTime = Date.now();
     try {
-      const engineOptions = { signal, throwOnError: true };
+      const engineOptions = {
+        signal,
+        throwOnError: true,
+        requestContext,
+      };
       const results = await runtime.searchProvider(engine, query, limit, engineOptions);
       signal?.throwIfAborted();
       const latency = Date.now() - startTime;
@@ -324,6 +332,10 @@ export interface SearchWithFallbackOptions {
   signal?: AbortSignal;
 }
 
+interface ResolvedSearchWithFallbackOptions extends SearchWithFallbackOptions {
+  requestContext: SearchRequestContext;
+}
+
 type FormattedSearchPayload = ReturnType<typeof formatResults>;
 
 interface SearchResponse {
@@ -374,10 +386,10 @@ function getPendingRequests(runtime: SearchRuntime): Map<string, Promise<SearchR
 /**
  * Generate cache key for request collapsing.
  */
-function makeCollapseKey(options: SearchWithFallbackOptions): string {
+function makeCollapseKey(options: ResolvedSearchWithFallbackOptions): string {
   const {
     query, count = 10, engines = [], minConfidence = 0, minSourceCount = 1,
-    language = 'auto', includeDomains = [], excludeDomains = [], waterfall = false,
+    requestContext, includeDomains = [], excludeDomains = [], waterfall = false,
     waterfallMinResults = 3, waterfallMinConfidence = 0.6,
     enrich = false, enrichMax, enrichMinConfidence, expandQueries = true,
   } = options;
@@ -387,7 +399,8 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
     engines: [...engines].sort(),
     minConfidence,
     minSourceCount,
-    language,
+    language: requestContext.language,
+    region: requestContext.region,
     includeDomains: [...includeDomains].sort(),
     excludeDomains: [...excludeDomains].sort(),
     waterfall,
@@ -402,7 +415,7 @@ function makeCollapseKey(options: SearchWithFallbackOptions): string {
 
 function makeSearchCacheKey(
   runtime: SearchRuntime,
-  options: SearchWithFallbackOptions,
+  options: ResolvedSearchWithFallbackOptions,
 ): string {
   const { config } = runtime;
   const count = options.count ?? 10;
@@ -414,7 +427,8 @@ function makeSearchCacheKey(
       query: options.query,
       count,
       engines: [...engines].sort(),
-      language: options.language ?? 'auto',
+      language: options.requestContext.language,
+      region: options.requestContext.region,
       include_domains: [...(options.includeDomains ?? [])].sort(),
       exclude_domains: [...(options.excludeDomains ?? [])].sort(),
       min_confidence: options.minConfidence ?? 0,
@@ -520,10 +534,14 @@ export async function searchWithFallback(
   if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 50) {
     throw new RangeError('count must be an integer between 1 and 50');
   }
+  const resolvedOptions: ResolvedSearchWithFallbackOptions = {
+    ...options,
+    requestContext: resolveSearchRequestContext(options.query, options.language),
+  };
   if (options.signal) {
-    return executeSearch(options, runtime);
+    return executeSearch(resolvedOptions, runtime);
   }
-  const collapseKey = makeCollapseKey(options);
+  const collapseKey = makeCollapseKey(resolvedOptions);
   const pendingRequests = getPendingRequests(runtime);
   
   // Check if same request is already in-flight
@@ -534,7 +552,7 @@ export async function searchWithFallback(
   }
   
   // Start new request and track it
-  const searchPromise = executeSearch(options, runtime);
+  const searchPromise = executeSearch(resolvedOptions, runtime);
   pendingRequests.set(collapseKey, searchPromise);
 
   try {
@@ -548,7 +566,7 @@ export async function searchWithFallback(
  * Execute the actual search logic (internal).
  */
 async function executeSearch(
-  options: SearchWithFallbackOptions,
+  options: ResolvedSearchWithFallbackOptions,
   runtime: SearchRuntime,
 ): Promise<SearchResponse> {
   const { config } = runtime;
@@ -644,7 +662,7 @@ function getEffectiveResultThresholds(
 }
 
 async function executeParallelSearch(
-  options: SearchWithFallbackOptions,
+  options: ResolvedSearchWithFallbackOptions,
   budget: SearchRequestBudget,
   runtime: SearchRuntime,
 ): Promise<SearchResponse> {
@@ -656,7 +674,7 @@ async function executeParallelSearch(
     engines: explicitEngines,
     minConfidence = 0,
     minSourceCount = 1,
-    language,
+    requestContext,
     includeDomains,
     excludeDomains,
   } = options;
@@ -669,8 +687,11 @@ async function executeParallelSearch(
     minSourceCount,
   );
 
-  const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
-  logger.info({ query, detectedLang, explicitLang: language }, 'Language detection');
+  logger.info({
+    query,
+    requestContext,
+    explicitLang: options.language,
+  }, 'Search request context resolved');
 
   // Check cache first
   const cacheKey = makeSearchCacheKey(runtime, options);
@@ -761,6 +782,7 @@ async function executeParallelSearch(
         engine,
         query,
         limit,
+        requestContext,
         2,
         budget.signal,
         budget,
@@ -944,7 +966,7 @@ async function executeParallelSearch(
       },
     },
     security_note: formatted.security_note,
-    detected_language: detectedLang,
+    detected_language: requestContext.language,
     ...(config.outputStyle !== 'compact' ? {
       rate_limits: rateLimiter.getAllRateLimits(searchedEngines),
     } : {}),
@@ -1055,7 +1077,7 @@ function selectWaterfallPhase(
 }
 
 async function executeWaterfallSearch(
-  options: SearchWithFallbackOptions,
+  options: ResolvedSearchWithFallbackOptions,
   depth: number = 0,
   budget: SearchRequestBudget,
   runtime: SearchRuntime,
@@ -1077,7 +1099,7 @@ async function executeWaterfallSearch(
   const {
     query,
     count = 10,
-    language,
+    requestContext,
     includeDomains,
     excludeDomains,
     minConfidence = 0,
@@ -1091,8 +1113,11 @@ async function executeWaterfallSearch(
     minSourceCount,
   );
 
-  const detectedLang = (!language || language === 'auto') ? detectLanguage(query) : language;
-  logger.info({ query, detectedLang, explicitLang: language }, 'Language detection (waterfall)');
+  logger.info({
+    query,
+    requestContext,
+    explicitLang: options.language,
+  }, 'Search request context resolved (waterfall)');
 
   const cacheKey = makeSearchCacheKey(runtime, options);
   const cached = cache.get(cacheKey);
@@ -1203,6 +1228,7 @@ async function executeWaterfallSearch(
             engine,
             query,
             count,
+            requestContext,
             2,
             budget.signal,
             budget,
@@ -1351,7 +1377,7 @@ async function executeWaterfallSearch(
         ...(lastBasket ? { quality_gate: lastBasket } : {}),
       },
     },
-    detected_language: detectedLang,
+    detected_language: requestContext.language,
     ...(config.outputStyle !== 'compact' ? { rate_limits: rateLimiter.getAllRateLimits(searchedEngines) } : {}),
     ...(allFailures.length > 0 ? { partialFailures: allFailures } : {}),
   } as SearchResponse;

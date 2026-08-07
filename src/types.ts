@@ -1,3 +1,5 @@
+import type { SearchRequestContext } from './engines/search-request-context.js';
+
 export interface SearchResult {
   title: string;
   url: string;
@@ -15,6 +17,8 @@ export interface EngineSearchOptions {
   signal?: AbortSignal;
   /** Orchestrators set this to preserve upstream failures for partialFailures. */
   throwOnError?: boolean;
+  /** Stable language and region context resolved once by the orchestrator. */
+  requestContext?: SearchRequestContext;
 }
 
 export { SEARCH_PROVIDERS } from './engines/provider-catalog.js';

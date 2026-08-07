@@ -61,15 +61,16 @@ tags:
 ```
 Agent → free_search(query, engines?, limit?)
          │
-         ├── 1. 解析配置、缓存与 engine allow/deny
-         ├── 2. 只选择请求中的 adapter（默认 DDG + Sogou）
-         ├── 3. 按 upstream provider family 分组
+         ├── 1. 一次性解析 en/zh 语言与区域上下文
+         ├── 2. 解析配置、缓存与 engine allow/deny
+         ├── 3. 只选择请求中的 adapter（默认 DDG + Sogou）
+         ├── 4. 按 upstream provider family 分组
          │      └── 同 family adapter 只在前一个失败或无可用结果时顺序回退
-         ├── 4. 零密钥 adapter 有界批处理
-         ├── 5. 数量 + relevance + confidence + provider-family 质量门
-         ├── 6. 仅在短缺/门未过时调用已显式选择且有凭证的可选 API
-         ├── 7. 去重、评分、过滤与可选内容丰富化
-         ├── 8. 格式化输出并附 stop_reason / partialFailures
+         ├── 5. 零密钥 adapter 有界批处理
+         ├── 6. 数量 + relevance + confidence + provider-family 质量门
+         ├── 7. 仅在短缺/门未过时调用已显式选择且有凭证的可选 API
+         ├── 8. 去重、评分、过滤与可选内容丰富化
+         ├── 9. 格式化输出并附 stop_reason / partialFailures
          │
          └── Agent ← 结构化搜索结果 + 安全元数据
 ```
@@ -156,11 +157,21 @@ metadata 名称保留兼容，但值直接引用 catalog，不形成第二份事
 | 引擎 | 直调可软失败为空数组；编排路径用 `throwOnError` 收集 `partialFailures` 后继续 |
 | 内容丰富化 | Jina Reader 超时 → 使用原始摘要 |
 | 查询扩展 | 扩展失败 → 使用原始查询 |
-| 语言检测 | 检测失败 → 默认英文 |
+| 请求上下文 | 非 en/zh 或检测不确定 → 使用稳定英文 profile |
 | DDG 搜索 | 页面签发 Web preload → cheerio HTML → 同源 Lite 机会性尝试 → 显式失败/空数组 |
 | 付费引擎 | 无 API key → 自动跳过（不报错） |
 
-### 5. 惰性初始化 (Lazy Initialization)
+### 5. 双语请求上下文
+
+`engines/search-request-context.ts` 是语言/区域意图的唯一 owner。每个逻辑搜索只解析一次
+`auto | en | zh`，再把同一 `SearchRequestContext` 传给请求合并、exact cache、重试、
+waterfall/query expansion 和 adapter。cache key v2 绑定解析后的 `language + region`，因此
+中文与英文请求不能误共享；相同 query 的 auto-English 与显式 English 可以共享。
+
+DDG 使用 `us-en` / `cn-zh`，Wikipedia 使用 `en` / `zh` 子域。Bing/Yandex 目前只消费
+`Accept-Language`，不猜测 HTML 市场参数。adapter 直调不传上下文时保留旧默认行为。
+
+### 6. 惰性初始化 (Lazy Initialization)
 
 进程入口解析一次配置并创建一个 `SearchRuntime`。stdio server 与 HTTP 模式下每个无状态
 transport server 都复用它，因此缓存、Provider 冷却、指标和限速不会按 HTTP 请求重置。
@@ -188,7 +199,7 @@ DOM 结果解析。严格编排会收到类型化失败并记录 `partialFailure
 按兼容合同软失败为空数组。该共享层不读取系统代理，也不添加重试、分页或第二请求。
 Startpage/Mojeek 仍保留既有实现，待同一接口在真实调用者中稳定后再评估迁移。
 
-### 6. 运行控制面不占默认工具槽位
+### 7. 运行控制面不占默认工具槽位
 
 运行状态通过 MCP Resource 和 HTTP probe 暴露，而不是再注册一个默认可见的
 `status` 工具：
@@ -204,7 +215,7 @@ Startpage/Mojeek 仍保留既有实现，待同一接口在真实调用者中稳
 未来若增加 `fasm doctor`，只显示配置项是否存在、来源和修复建议，所有 key/token
 都必须脱敏。
 
-### 7. 预算分层
+### 8. 预算分层
 
 当前稳定核心已经有三类不同预算，不能合并成一个含义模糊的“Budget Manager”：
 
@@ -221,7 +232,7 @@ Startpage/Mojeek 仍保留既有实现，待同一接口在真实调用者中稳
 机器可读的 `BUDGET_EXCEEDED`；不能把拒绝伪装成零结果，也不能用进程级计数冒充
 per-task 限额。
 
-### 8. URL canonicalization 版本边界
+### 9. URL canonicalization 版本边界
 
 `aggregation/url-canonicalization.ts` 是 dedup 与 scorer 的共同 owner。生产固定为 `v1`，
 保持现有 cache/evidence key：去协议、去 query/fragment、路径转小写。合成校准集已经
@@ -229,7 +240,7 @@ per-task 限额。
 `v2-candidate` 只删除明确 tracking 参数、排序其余 query 并保留路径大小写；它通过当前
 合成校准，但在 pooled qrels、cache migration 和 evidence contract 评审完成前不启用。
 
-### 9. MCP Web Hound 对照后的边界
+### 10. MCP Web Hound 对照后的边界
 
 对
 [`mcp-web-hound@f468da9`](https://github.com/ilgizar-valiullin/mcp-web-hound/tree/f468da9943952fddc1ed71ca977b18b60f40ca11)

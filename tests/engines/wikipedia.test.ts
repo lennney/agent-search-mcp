@@ -110,6 +110,40 @@ describe('Wikipedia engine', () => {
     }
   });
 
+  it('honors explicit request language independently of query script', async () => {
+    const requestedUrls: string[] = [];
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async (input) => {
+        requestedUrls.push(String(input));
+        return {
+          ok: true,
+          json: async () => ({ query: { pages: [] } }),
+        } as unknown as Response;
+      };
+
+      await searchWikipedia('TypeScript narrowing', 5, {
+        requestContext: {
+          language: 'zh',
+          region: 'cn-zh',
+          acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      });
+      await searchWikipedia('自注意力', 5, {
+        requestContext: {
+          language: 'en',
+          region: 'us-en',
+          acceptLanguage: 'en-US,en;q=0.9',
+        },
+      });
+
+      expect(requestedUrls[0]).toMatch(/^https:\/\/zh\.wikipedia\.org\//);
+      expect(requestedUrls[1]).toMatch(/^https:\/\/en\.wikipedia\.org\//);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('preserves HTTP 429 as a rate-limit suspension in strict mode', async () => {
     const originalFetch = global.fetch;
     try {

@@ -228,7 +228,8 @@ tracking、query 顺序、fragment 等同一性，以及 identity/pagination/lan
 
 ### F. 缓存、健康和状态
 
-缓存 key 已绑定请求、路由、semantic、输出、policy、TTL 和 evidence contract，且不会把
+缓存 key v2 已绑定解析后的语言/区域、请求、路由、semantic、输出、policy、TTL 和
+evidence contract，且不会把
 空结果或预算耗尽响应作为普通成功长期缓存。这比只用 `query + count + engines` 的旧
 `SearchCache.makeKey()` 更可靠；旧方法当前只剩测试/兼容价值，应在下一次破坏性清理时
 删除，而不是形成第二套 key 规则。
@@ -315,14 +316,18 @@ family 合同有 13 个唯一值，而工具输入仍因兼容 capped at 12；�
 1. Provider catalog/runtime registry 已替换 switch/weight/phase/family 的分散事实；
 2. `search_with_synthesis` 已复用 canonical evidence packet 并只添加 `prompt_hint`；
 3. 已增加 `scheduled_adapters` / `adapter_attempts`，`http_requests` 在未统一埋点前为 null；
-4. 可注入 `SearchRuntime` 尚未实施；它需要单独迁移 config/cache/health/metrics/rate limiter，
-   不在本轮 registry/output 重构中增加半成品 service locator；
+4. 可注入 `SearchRuntime` 已统一拥有 config/cache/health/metrics/rate limiter、policy 和
+   Provider dispatch；stdio/HTTP server 复用同一 process runtime；
 5. URL canonicalization 已版本化并通过合成校准；切换 v2 仍等待 pooled qrels。
+6. 双语 `SearchRequestContext` 已一次性解析并贯穿 collapse/cache、重试、waterfall、query
+   expansion 和 adapter；DDG/Wikipedia 使用已核对的区域/语言合同，Bing/Yandex 仅调整
+   header，不猜测 HTML 市场参数。
 
-本轮最终门禁为 build、lint、82 个测试文件（806 通过、2 跳过）、quality verify、
+当前最终门禁为 build、lint、84 个测试文件（821 通过、2 跳过）、quality verify、
 30-query validator、competitive dry-run、package check、format/Token regression、exact
-cache 和 intent-routing 全部通过。所有新增测试和 fixture 均离线；没有执行 live search、
-竞品进程、模型调用、安装、发布、提交或推送。
+cache、intent-routing 和 capability drift check 全部通过。所有新增测试均离线；没有执行
+live search、竞品进程、模型调用、安装、发布或推送。前一轮 checkpoint 已提交为
+`7f628fc`；本轮 P1 改动仍在工作区，尚未二次提交。
 
 ### P2：真实需求出现后再做
 

@@ -48,10 +48,13 @@ export async function searchDuckDuckGoWeb(
     homeUrl.searchParams.set('q', query);
     homeUrl.searchParams.set('t', 'h_');
     homeUrl.searchParams.set('ia', 'web');
+    if (options?.requestContext) {
+      homeUrl.searchParams.set('kl', options.requestContext.region);
+    }
 
     const homeResponse = await fetchForEngine('duckduckgo', homeUrl, {
       method: 'GET',
-      headers: navigationHeaders(),
+      headers: navigationHeaders(options?.requestContext?.acceptLanguage),
       redirect: 'error',
       signal,
     });
@@ -66,7 +69,7 @@ export async function searchDuckDuckGoWeb(
       buildJsonApiUrl(preloadUrl),
       {
       method: 'GET',
-      headers: scriptHeaders(),
+      headers: scriptHeaders(options?.requestContext?.acceptLanguage),
       redirect: 'error',
       signal,
       },
@@ -101,11 +104,11 @@ export async function searchDuckDuckGoWeb(
   }
 }
 
-function navigationHeaders(): Record<string, string> {
+function navigationHeaders(acceptLanguage = 'en-US,en;q=0.9'): Record<string, string> {
   return {
     'User-Agent': USER_AGENT,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Language': acceptLanguage,
     'Referer': `${DDG_HOME_ORIGIN}/`,
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
@@ -115,11 +118,11 @@ function navigationHeaders(): Record<string, string> {
   };
 }
 
-function scriptHeaders(): Record<string, string> {
+function scriptHeaders(acceptLanguage = 'en-US,en;q=0.9'): Record<string, string> {
   return {
     'User-Agent': USER_AGENT,
     'Accept': '*/*',
-    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Language': acceptLanguage,
     'Referer': `${DDG_HOME_ORIGIN}/`,
     'Sec-Fetch-Dest': 'script',
     'Sec-Fetch-Mode': 'no-cors',

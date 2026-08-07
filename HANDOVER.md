@@ -300,3 +300,21 @@ tags:
 - 新增离线测试证明跨 runtime 隔离和 `free_only` dispatch 前拒绝；发布文件清单已显式纳入
   `dist/infrastructure/search-runtime.js`。ADR 见
   `docs/decisions/ADR-20260807-search-runtime-ownership.md`。
+
+## 2026-08-07：P1 双语 SearchRequestContext
+
+- 新增 `engines/search-request-context.ts`，每个逻辑搜索只解析一次 `auto | en | zh`，并将
+  同一 `language`、`region`、`Accept-Language` 贯穿 pending collapse、exact cache、重试、
+  parallel/waterfall、query expansion 和 Provider dispatch。范围外或不确定语言按当前双语
+  产品边界回退英文。
+- DDG Web bootstrap 使用官方公开的 `kl=us-en|cn-zh`，不改写页面签发的 preload URL；
+  HTML/Lite 沿用已有 `l` 字段并共享上下文。Wikipedia 使用显式语言子域；Bing/Yandex 仅
+  调整 `Accept-Language`，没有把 API 市场参数猜成 HTML 合同。
+- 直调 adapter 未传上下文时保留旧默认行为；未改变 MCP schema、Provider 集合、family、
+  路由顺序、请求数、重试、代理、依赖或 challenge 停止规则。exact cache key 因上游请求
+  语义变化升级为 `search-cache-key-v2`，旧缓存自然失效且不迁移。
+- ADR 见 `docs/decisions/ADR-20260807-bilingual-search-request-context.md`。本阶段只运行 mock
+  HTTP 与离线测试，没有追加 live search。
+- 最终门禁：build、lint、84 个测试文件（821 通过、2 跳过）、package manifest、capability
+  drift、quality/format benchmark、30-query validator、competitive dry-run、exact cache 和
+  intent-routing 全部通过。P1 改动尚未提交或 push。

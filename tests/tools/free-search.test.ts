@@ -191,7 +191,6 @@ import { searchSerper } from '../../src/engines/serper.js';
 import { EngineAdapterError } from '../../src/engines/engine-error.js';
 import {
   checkConfidenceBasket,
-  detectLanguage,
   enrichResults,
   expandQuery,
   filterLowQuality,
@@ -490,6 +489,64 @@ describe('searchWithFallback — parallel', () => {
       searchWithFallback({ query: 'filter-variant', minSourceCount: 2 }),
     ]);
     expect(a).not.toBe(b);
+  });
+
+  it('does not collapse languages and passes each resolved context to providers', async () => {
+    (searchDuckDuckGo as any).mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return makeResults(3, 'ddg');
+    });
+
+    await Promise.all([
+      searchWithFallback({
+        query: 'same-query',
+        engines: ['duckduckgo'],
+        language: 'en',
+      }),
+      searchWithFallback({
+        query: 'same-query',
+        engines: ['duckduckgo'],
+        language: 'zh',
+      }),
+    ]);
+
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(searchDuckDuckGo).mock.calls.map(call => call[2]?.requestContext))
+      .toEqual(expect.arrayContaining([
+        {
+          language: 'en',
+          region: 'us-en',
+          acceptLanguage: 'en-US,en;q=0.9',
+        },
+        {
+          language: 'zh',
+          region: 'cn-zh',
+          acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      ]));
+  });
+
+  it('collapses auto and explicit language when they resolve identically', async () => {
+    (searchDuckDuckGo as any).mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return makeResults(3, 'ddg');
+    });
+
+    const [automatic, explicit] = await Promise.all([
+      searchWithFallback({
+        query: 'same English query',
+        engines: ['duckduckgo'],
+        language: 'auto',
+      }),
+      searchWithFallback({
+        query: 'same English query',
+        engines: ['duckduckgo'],
+        language: 'en',
+      }),
+    ]);
+
+    expect(automatic).toBe(explicit);
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(1);
   });
 
   it('continues fallback and reports a thrown engine failure', async () => {
@@ -951,11 +1008,15 @@ describe('searchWithFallback — parallel', () => {
     expect(infrastructureState.recordFailure).not.toHaveBeenCalled();
   });
 
-  it('detects language in search', async () => {
-    (detectLanguage as any).mockReturnValue('zh');
+  it('resolves one bilingual request context for response and providers', async () => {
     const res = await searchWithFallback({ query: '中文' });
-    expect(detectLanguage).toHaveBeenCalled();
     expect(res.detected_language).toBe('zh');
+    expect(vi.mocked(searchDuckDuckGo).mock.calls[0][2]?.requestContext)
+      .toEqual({
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      });
   });
 
   it('returns empty when all engines blocked', async () => {
@@ -1008,6 +1069,24 @@ describe('searchWithFallback — waterfall', () => {
     expect(res.meta.execution?.adapter_attempts)
       .toBe(res.meta.execution?.budget?.observed.engine_calls);
     expect(res.meta.execution?.http_requests).toBeNull();
+  });
+
+  it('passes the same resolved context through waterfall dispatch', async () => {
+    const res = await searchWithFallback({
+      query: '技术文档',
+      engines: ['duckduckgo'],
+      language: 'zh',
+      waterfall: true,
+      expandQueries: false,
+    });
+
+    expect(res.detected_language).toBe('zh');
+    expect(vi.mocked(searchDuckDuckGo).mock.calls[0][2]?.requestContext)
+      .toEqual({
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      });
   });
 
   it('runs the paid stage before free stages in paid_first waterfall mode', async () => {
@@ -1186,7 +1265,7 @@ describe('searchWithFallback — waterfall', () => {
     expect(result.cache_hit).toBe(true);
     expect(searchDuckDuckGo).not.toHaveBeenCalled();
     expect(infrastructureState.cacheGet).toHaveBeenCalledWith(
-      expect.stringMatching(/^search-cache-key-v1:[a-f0-9]{64}$/),
+      expect.stringMatching(/^search-cache-key-v2:[a-f0-9]{64}$/),
     );
   });
 

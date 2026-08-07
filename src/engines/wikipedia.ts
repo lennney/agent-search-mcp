@@ -27,7 +27,8 @@ interface WikipediaQueryResponse {
 export async function searchWikipedia(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const maxLimit = Math.min(limit, 10);
-    const language = /[\u3400-\u9fff]/u.test(query) ? 'zh' : 'en';
+    const language = options?.requestContext?.language
+      ?? (/[\u3400-\u9fff]/u.test(query) ? 'zh' : 'en');
     const url = new URL(`https://${language}.wikipedia.org/w/api.php`);
     url.search = new URLSearchParams({
       action: 'query',

@@ -75,7 +75,7 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
     const body = new URLSearchParams({
       q: query,
       b: '',         // first-page marker (ddgs pattern)
-      l: 'us-en',    // region
+      l: options?.requestContext?.region ?? 'us-en',
     });
     const signal = withTimeout(options?.signal, 10000);
 
@@ -84,7 +84,8 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
       headers: {
         'User-Agent': USER_AGENT,
         'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Language': options?.requestContext?.acceptLanguage
+          ?? 'en-US,en;q=0.9',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': 'https://html.duckduckgo.com/html/',
       },
@@ -151,7 +152,7 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
     const body = new URLSearchParams({
       q: query,
       b: '',
-      l: 'us-en',
+      l: options?.requestContext?.region ?? 'us-en',
     });
 
     const res = await fetchForEngine('duckduckgo', 'https://lite.duckduckgo.com/lite/', {
@@ -159,7 +160,8 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
       headers: {
         'User-Agent': USER_AGENT,
         'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Language': options?.requestContext?.acceptLanguage
+          ?? 'en-US,en;q=0.9',
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': 'https://lite.duckduckgo.com/lite/',
       },

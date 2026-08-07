@@ -50,6 +50,28 @@ describe('Yandex engine', () => {
       .resolves.toEqual([]);
   });
 
+  it('uses the resolved language header without changing the search URL contract', async () => {
+    const fetchMock = vi.fn(async () => new Response(
+      '<html><body><ul class="serp-list"></ul></body></html>',
+      { status: 200 },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await searchYandex('缓存穿透', 5, {
+      throwOnError: true,
+      requestContext: {
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+    });
+
+    const [input, init] = fetchMock.mock.calls[0];
+    expect(new URL(String(input)).searchParams.get('text')).toBe('缓存穿透');
+    expect(new Headers(init?.headers).get('accept-language'))
+      .toBe('zh-CN,zh;q=0.9,en;q=0.8');
+  });
+
   it('reports changed successful HTML instead of a successful empty result', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
       '<html><head><title>Yandex Search</title></head><body>changed</body></html>',

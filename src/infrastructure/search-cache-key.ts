@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const SEARCH_CACHE_KEY_VERSION = 'search-cache-key-v1';
+export const SEARCH_CACHE_KEY_VERSION = 'search-cache-key-v2';
 export const SEARCH_EVIDENCE_SCHEMA_VERSION = 'search-evidence-packet-v1';
 export const PROVIDER_POLICY_VERSION = 'provider-families-v1';
 
@@ -10,6 +10,7 @@ export interface SearchCacheKeyInput {
     count: number;
     engines: string[];
     language: string;
+    region: string;
     include_domains: string[];
     exclude_domains: string[];
     min_confidence: number;

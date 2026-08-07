@@ -198,11 +198,6 @@ commit。更早的[源码级产品对比](./docs/research/2026-07-26-agent-searc
 | `fetch_juejin_article` | 获取掘金文章 | 中文开发者文章 |
 | `search_with_synthesis` | 搜索证据和 LLM 综合提示 | 基于引用证据生成回答 |
 
-`search_with_synthesis` 与主搜索工具复用同一份 canonical `structuredContent`
-证据包，并额外提供 `prompt_hint`；文本通道只保留紧凑兼容视图。执行元数据区分计划
-adapter 数量和包含 retry 的 adapter attempt；在所有 adapter transport 都能准确计数前，
-`http_requests` 保持 `null`，不输出伪精确数字。
-
 ### 能力控制
 
 | 环境变量 | 默认值 | 作用 |
@@ -216,6 +211,11 @@ adapter 数量和包含 retry 的 adapter attempt；在所有 adapter transport 
 | `SEARCH_BUDGET_MAX_RESULTS` | 100 | 接纳原始结果数量预算 |
 | `EVIDENCE_BUDGET_CHARS` | 1200 | 证据字符预算 |
 <!-- END GENERATED CAPABILITY MATRIX -->
+
+`search_with_synthesis` 与主搜索工具复用同一份 canonical `structuredContent`
+证据包，并额外提供 `prompt_hint`；文本通道只保留紧凑兼容视图。执行元数据区分计划
+adapter 数量和包含 retry 的 adapter attempt；在所有 adapter transport 都能准确计数前，
+`http_requests` 保持 `null`，不输出伪精确数字。
 
 Wiby 使用官方 JSON API，是无需账号和 API Key 的真实零密钥来源，只在免费瀑布
 后段补充独立小型网页。可选 Provider 需要用户自带凭证；注册送额度或试用配额由

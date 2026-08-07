@@ -93,7 +93,7 @@ describe('provider runtime registry', () => {
     );
 
     expect(source).not.toMatch(
-      /from ['"]\.\.\/engines\/(?!engine-error|provider-catalog|runtime-registry)/,
+      /from ['"]\.\.\/engines\/(?!engine-error|provider-catalog|runtime-registry|search-request-context)/,
     );
     expect(source).not.toMatch(/switch\s*\(engine\)/);
   });

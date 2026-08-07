@@ -51,6 +51,30 @@ describe('Bing engine', () => {
       .resolves.toEqual([]);
   });
 
+  it('uses the resolved language header without speculative market parameters', async () => {
+    const fetchMock = vi.fn(async () => new Response(
+      '<html><body><ol id="b_results"></ol></body></html>',
+      { status: 200 },
+    ));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await searchBing('AbortSignal cancel fetch', 5, {
+      throwOnError: true,
+      requestContext: {
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+    });
+
+    const [input, init] = fetchMock.mock.calls[0];
+    const url = new URL(String(input));
+    expect(url.searchParams.has('mkt')).toBe(false);
+    expect(url.searchParams.has('setlang')).toBe(false);
+    expect(new Headers(init?.headers).get('accept-language'))
+      .toBe('zh-CN,zh;q=0.9,en;q=0.8');
+  });
+
   it('reports changed successful HTML instead of a successful empty result', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(
       '<html><head><title>Bing</title></head><body>changed</body></html>',
