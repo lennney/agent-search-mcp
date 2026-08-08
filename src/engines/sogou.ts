@@ -5,22 +5,20 @@ import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
+import { providerCatalog } from './provider-catalog.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const SOGOU_ORIGIN = 'https://www.sogou.com';
 const SOGOU_SEARCH_URL = `${SOGOU_ORIGIN}/web`;
 const MAX_REDIRECTS = 5;
 const CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-  + 'AppleWebKit/537.36 (KHTML, like Gecko) '
-  + 'Chrome/136.0.0.0 Safari/537.36';
+// Sogou's antispider challenge is a 403 (plus a 302 -> /antispider redirect,
+// which stays outside the status-based rotation set). Rotate exits once on the
+// status before conceding to the provider cooldown.
+const SOGOU_ROTATE_STATUS = Object.freeze([403, 429] as const);
+const MAX_STATUS_ROTATIONS = 1;
 
-export const sogouProvider = {
-  id: 'sogou' as const,
-  name: 'Sogou Search',
-  isFree: true,
-  languages: ['zh'],
-};
+export const sogouProvider = providerCatalog.sogou;
 
 export function parseSogouHtml(html: string): SearchResult[] {
   if (looksLikeChallengePage(html)) throw sogouChallenge();
@@ -102,20 +100,29 @@ async function fetchSogouHtml(
   let currentUrl = initialUrl;
   const cookies = new Map<string, string>();
   const signal = withTimeout(callerSignal, 10_000);
+  const profile = resolveRequestProfile(
+    initialUrl.searchParams.get('query') ?? '',
+    currentProfileWindowKey(),
+  );
 
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
     signal.throwIfAborted();
     const response = await fetchForEngine('sogou', currentUrl, {
       method: 'GET',
       headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Referer': `${SOGOU_ORIGIN}/`,
+        ...profileHeaders(profile, {
+          acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+          referer: `${SOGOU_ORIGIN}/`,
+          kind: 'navigation',
+        }),
         ...(cookies.size > 0 ? { 'Cookie': serializeCookies(cookies) } : {}),
       },
       redirect: 'manual',
       signal,
+    }, {
+      affinityKey: initialUrl.searchParams.get('query') ?? '',
+      rotateOnStatus: SOGOU_ROTATE_STATUS,
+      maxStatusRotations: MAX_STATUS_ROTATIONS,
     });
     mergeResponseCookies(cookies, response.headers);
 

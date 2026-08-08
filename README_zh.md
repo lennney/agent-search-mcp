@@ -1,10 +1,11 @@
-# Agent Search MCP：给 AI Agent 的免费网页搜索
+# Agent Search MCP：免费网页搜索与可检查证据
 
 **轻量、免费优先的 MCP 网页搜索路由器，返回紧凑的多源证据。**
 
-Agent Search MCP 是开源、自托管的 MCP Server 和 CLI。无需 API Key
-即可启动，直接搜索中英文来源；付费渠道受显式策略控制；每次请求都可以限制
-渠道调用、搜索时间、结果数量和证据体积。
+Agent Search MCP 是开源、自托管的 MCP Server 和 CLI，为 AI Agent 提供免费的
+Tavily 替代方案或本地搜索路径。默认路径无需 API Key，直接搜索中英文来源。
+可选付费渠道受显式策略控制；共享预算限制渠道调用、搜索时间、接纳结果数和
+证据体积。
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -13,7 +14,7 @@ Agent Search MCP 是开源、自托管的 MCP Server 和 CLI。无需 API Key
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Glama](https://glama.ai/mcp/servers/lennney/agent-search-mcp/badges/score.svg)](https://glama.ai/mcp/servers/lennney/agent-search-mcp)
 
-[English](README.md) · [Benchmarks](./benchmarks/) · [架构](./docs/architecture.md) · [CHANGELOG](./CHANGELOG.md)
+[English](README.md) · [产品页](https://take-a-deep-breath0.com/zh/agent-search-mcp) · [Benchmarks](./benchmarks/) · [架构](./docs/architecture.md) · [CHANGELOG](./CHANGELOG.md)
 
 ---
 
@@ -45,6 +46,33 @@ Claude Desktop、Cursor、VS Code 和 Windsurf 等接受 `mcpServers` JSON 的
 Claude Code 和 Codex 也可以在各自的 MCP 设置中注册同一条
 `npx -y agent-search-mcp` stdio 命令。
 
+### 添加可选 Agent Skill
+
+连接 MCP Server 后，兼容 Agent Skills 的客户端可以安装仓库自带的路由指南：
+
+```bash
+npx skills add lennney/agent-search-mcp --skill agent-search
+```
+
+例如使用 `Use $agent-search to verify this claim with official sources.`
+显式调用。[Agent Search Skill](./skills/agent-search/SKILL.md) 会在快速发现、严格
+验证、中文来源搜索和选定 URL 提取四条有界路径中选择一条。它会先检查所需 MCP
+工具是否存在，并在安装或修改配置前征求同意。安装 Skill 不会启动或配置 MCP
+Server。
+
+### 示例：检查有界搜索结果
+
+构建本地包后，可以不配置 Provider API Key，直接运行 CLI 查询：
+
+```bash
+npm run build
+fasm search "不需要 API Key 的 MCP 搜索服务器" --json
+```
+
+返回合同会把结果证据、`meta.execution` 和 `partialFailures` 分开保留。
+Provider 超时或 challenge 会继续作为可见信息交给 Agent，而不是被转换成无法
+解释的空结果。这是合同示例，不是实时可用率或搜索质量基准。
+
 全局安装后，可以在不发起搜索请求的情况下检查本地配置：
 
 ```bash
@@ -62,6 +90,31 @@ fasm doctor
 | 多源证据 | 结果保留来源、相关性、provider-family 数量和部分失败 |
 | 中文网页搜索 | 搜狗和百度直接处理中文查询，无需翻译层 |
 | 轻量自托管 | 纯 Node.js 运行时，支持 stdio、Streamable HTTP 和 CLI |
+
+### 检查搜索证据
+
+每个 JSON 响应都包含一份 Search Evidence Packet，回答 Agent 使用结果前需要了解的
+路由问题：
+
+| 问题 | 响应字段 |
+|---|---|
+| 实际运行了哪些适配器？ | `meta.execution.searched_engines` |
+| 路由为什么停止？ | `meta.execution.stop_reason` 和 `meta.execution.quality_gate` |
+| 请求是否触及工作预算？ | `meta.execution.budget` |
+| 证据是否被截断？ | `meta.evidence_budget` |
+| 上游 Provider 是否失败？ | `partialFailures` |
+| 多个适配器是否代表独立来源？ | `results[].source_count` 按 provider family 而不是适配器名称计数 |
+
+运行一分钟离线合同 Demo：
+
+```bash
+npm run demo:evidence
+npm run demo:evidence -- --json
+```
+
+它使用三个合成场景，通过生产证据评分器、格式化器和 MCP 输出 helper 重放：
+同 family 适配器重叠、可见的 fallback 失败，以及有界的质量门停止。整个过程不联网，
+也不形成真实可用率或搜索质量声明。
 
 默认 `free_first` 策略不会消耗已经配置的 API 凭证。`free_only` 禁止付费渠道；
 `quality_escalation` 在免费证据未通过质量门时调用一个已配置付费渠道；
@@ -102,10 +155,10 @@ flowchart LR
 路由停止后续批次，并在 `meta.execution` 中公开决策。Provider 失败保留在
 `partialFailures` 中，空结果不会掩盖上游异常。
 
-[源码级产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md)
-说明 Agent Search MCP 与 Tavily、Exa、Brave Search、Firecrawl 和 MCP Web Hound
-在路由、证据、本地运行、付费渠道边界和中文搜索方面的差异。文档不使用容易过期的
-价格和热度数字。
+[竞品格局调研（2026-08-07）](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md)
+梳理了已经拥挤的基础能力和当前产品缺口，并为容易变化的事实记录来源日期和固定
+commit。更早的[源码级产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md)
+保留架构层面的详细证据。
 
 ---
 
@@ -159,6 +212,11 @@ flowchart LR
 | `EVIDENCE_BUDGET_CHARS` | 1200 | 证据字符预算 |
 <!-- END GENERATED CAPABILITY MATRIX -->
 
+`search_with_synthesis` 与主搜索工具复用同一份 canonical `structuredContent`
+证据包，并额外提供 `prompt_hint`；文本通道只保留紧凑兼容视图。执行元数据区分计划
+adapter 数量和包含 retry 的 adapter attempt；在所有 adapter transport 都能准确计数前，
+`http_requests` 保持 `null`，不输出伪精确数字。
+
 Wiby 使用官方 JSON API，是无需账号和 API Key 的真实零密钥来源，只在免费瀑布
 后段补充独立小型网页。可选 Provider 需要用户自带凭证；注册送额度或试用配额由
 上游控制，本项目不把它们宣传成永久免费的渠道。
@@ -182,7 +240,8 @@ Wiby 使用官方 JSON API，是无需账号和 API Key 的真实零密钥来源
 | 选择费用策略 | `SEARCH_PROVIDER_MODE`、`PAID_ENGINE_ORDER` |
 | 减少响应 Token | `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`EVIDENCE_BUDGET_CHARS` |
 | 限制工具或引擎 | `ENABLED_TOOLS`、`DISABLED_TOOLS`、`ALLOWED_ENGINES`、`DENIED_ENGINES` |
-| 使用显式代理 | `DUCKDUCKGO_PROXY_URL`、`SOGOU_PROXY_URL`，或 `USE_PROXY=true` 配合 `PROXY_URL` |
+| 使用显式代理 | `DUCKDUCKGO_PROXY_URL`、`SOGOU_PROXY_URL`、`MOJEEK_PROXY_URL`、`WIBY_PROXY_URL`，或 `USE_PROXY=true` 配合 `PROXY_URL` |
+| 使用用户自持代理池 | `DUCKDUCKGO_PROXY_URLS`、`SOGOU_PROXY_URLS`、`MOJEEK_PROXY_URLS` 或 `WIBY_PROXY_URLS`，JSON 数组 2-16 个 HTTP(S) 代理 URL |
 | 持久化精确结果缓存 | `SEARCH_CACHE_DIRECTORY`、`SEARCH_CACHE_TTL_MS`、`SEARCH_CACHE_MAX_ENTRIES` |
 | 开启可选语义处理 | `SEMANTIC_DEDUP`、`SEMANTIC_RERANK`、`DEDUP_THRESHOLD`、`RERANK_TOP_K` |
 
@@ -222,6 +281,7 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 | 文档 | 内容 |
 |---|---|
 | [系统架构](./docs/architecture.md) | 路由、证据、provider family 和配置 |
+| [竞品格局](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md) | 当前竞品、基础预期和产品缺口 |
 | [产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md) | Agent 搜索产品的源码级调查 |
 | [基准测试](./benchmarks/) | Token fixture、真实运行边界和质量评测方法 |
 | [v3.2.0 发布说明](./docs/releases/v3.2.0.md) | 渠道策略、预算和迁移说明 |

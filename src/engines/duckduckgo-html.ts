@@ -4,6 +4,7 @@ import { logger } from '../infrastructure/logger.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { EngineAdapterError } from './engine-error.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 export const duckduckgoHtmlProvider = {
   id: 'duckduckgo' as const,
@@ -24,12 +25,11 @@ export class DuckDuckGoFallbackError extends EngineAdapterError {
   }
 }
 
-// Keep one identity across same-provider representations. Rotating inside one
-// logical query creates an inconsistent session fingerprint.
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-  'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-  'Chrome/136.0.0.0 Safari/537.36';
+// Keep one identity across same-provider representations. The profile is
+// derived deterministically from the query, so HTML + Lite fallback share one
+// identity while different queries rotate among coherent browser profiles.
+const DDG_ROTATE_STATUS = Object.freeze([202, 403, 429] as const);
+const MAX_STATUS_ROTATIONS = 1;
 
 /**
  * Extract the real URL from a DuckDuckGo redirect link.
@@ -75,21 +75,28 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
     const body = new URLSearchParams({
       q: query,
       b: '',         // first-page marker (ddgs pattern)
-      l: 'us-en',    // region
+      l: options?.requestContext?.region ?? 'us-en',
     });
     const signal = withTimeout(options?.signal, 10000);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
 
     const res = await fetchForEngine('duckduckgo', 'https://html.duckduckgo.com/html/', {
       method: 'POST',
       headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
+        ...profileHeaders(profile, {
+          acceptLanguage: options?.requestContext?.acceptLanguage
+            ?? 'en-US,en;q=0.9',
+          referer: 'https://html.duckduckgo.com/html/',
+          kind: 'form',
+        }),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://html.duckduckgo.com/html/',
       },
       body: body.toString(),
       signal,
+    }, {
+      affinityKey: query,
+      rotateOnStatus: DDG_ROTATE_STATUS,
+      maxStatusRotations: MAX_STATUS_ROTATIONS,
     });
 
     // DDG returns 202 for rate limits (gajae-code pattern)
@@ -151,20 +158,27 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
     const body = new URLSearchParams({
       q: query,
       b: '',
-      l: 'us-en',
+      l: options?.requestContext?.region ?? 'us-en',
     });
 
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const res = await fetchForEngine('duckduckgo', 'https://lite.duckduckgo.com/lite/', {
       method: 'POST',
       headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
+        ...profileHeaders(profile, {
+          acceptLanguage: options?.requestContext?.acceptLanguage
+            ?? 'en-US,en;q=0.9',
+          referer: 'https://lite.duckduckgo.com/lite/',
+          kind: 'form',
+        }),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://lite.duckduckgo.com/lite/',
       },
       body: body.toString(),
       signal: withTimeout(options?.signal, 10000),
+    }, {
+      affinityKey: query,
+      rotateOnStatus: DDG_ROTATE_STATUS,
+      maxStatusRotations: MAX_STATUS_ROTATIONS,
     });
 
     if (res.status === 202) {

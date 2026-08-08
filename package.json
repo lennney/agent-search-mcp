@@ -2,7 +2,7 @@
   "name": "agent-search-mcp",
   "mcpName": "io.github.lennney/agent-search-mcp",
   "version": "3.2.0",
-  "description": "Free, lightweight MCP search for AI agents — no API keys required, 8 zero-key engines, compact multi-source evidence.",
+  "description": "Free-first web search MCP with zero-key English and Chinese sources and compact evidence.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -11,6 +11,7 @@
   },
   "files": [
     "dist/**",
+    "skills/**",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -27,6 +28,30 @@
     "url": "https://github.com/lennney/agent-search-mcp/issues"
   },
   "license": "Apache-2.0",
+  "distributionMetadata": {
+    "githubTopics": [
+      "mcp",
+      "mcp-server",
+      "model-context-protocol",
+      "web-search",
+      "metasearch",
+      "search-aggregator",
+      "zero-api-key",
+      "privacy-first",
+      "zero-config",
+      "web-scraping",
+      "chinese-search",
+      "self-hosted",
+      "typescript",
+      "ai-agent",
+      "claude",
+      "cursor",
+      "codex",
+      "streamable-http",
+      "token-efficient",
+      "open-source"
+    ]
+  },
   "keywords": [
     "mcp",
     "mcp-server",
@@ -43,6 +68,11 @@
     "search-router",
     "multi-source",
     "multi-engine",
+    "metasearch",
+    "search-aggregator",
+    "privacy-first",
+    "zero-config",
+    "web-scraping",
     "chinese-search",
     "self-hosted",
     "open-source",
@@ -67,6 +97,9 @@
     "benchmark:pool": "node benchmarks/pool.mjs",
     "benchmark:import-external": "node benchmarks/import-external-capture.mjs",
     "benchmark:ai-review": "node benchmarks/ai-review.mjs",
+    "benchmark:competitive:validate": "node benchmarks/validate-competitive-query-set.mjs",
+    "benchmark:competitive:dry-run": "node benchmarks/competitive-capture.mjs --dry-run",
+    "demo:evidence": "npm run build && node benchmarks/evidence-demo.mjs",
     "benchmark:calibrate-relevance": "node benchmarks/calibrate-relevance.mjs",
     "benchmark:qualify-runner": "npm run build && node benchmarks/qualify-runner.mjs",
     "benchmark:reviewer-pilot:capture": "npm run build && node benchmarks/run.mjs --capture benchmarks/fixtures/live-reviewer-pilot.json --query-set benchmarks/queries/reviewer-pilot.json --engines wikipedia",
@@ -85,7 +118,12 @@
     "cli": "tsc && node dist/cli.js",
     "start": "node dist/index.js",
     "start:http": "MODE=http PORT=3000 node dist/index.js",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "npm run release:check-worktree && npm run distribution:check && npm run build && npm run package:check",
+    "release:check-worktree": "node scripts/release-policy.mjs --worktree-only",
+    "package:check": "node scripts/release-policy.mjs --package-only",
+    "distribution:check": "node scripts/distribution-metadata.mjs",
+    "distribution:check:live": "node scripts/distribution-metadata.mjs --live-github",
+    "distribution:sync:github": "node scripts/distribution-metadata.mjs --sync-github",
     "bench": "node benchmarks/run.cjs"
   },
   "dependencies": {

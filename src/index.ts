@@ -4,13 +4,15 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from './infrastructure/config.js';
 import { createHttpServer } from './infrastructure/http.js';
 import { logger } from './infrastructure/logger.js';
+import { createSearchRuntime } from './infrastructure/search-runtime.js';
 import { createAgentSearchServer } from './server.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
+  const searchRuntime = createSearchRuntime({ config });
 
   if (config.mode === 'stdio' || config.mode === 'both') {
-    const server = createAgentSearchServer(config);
+    const server = createAgentSearchServer(searchRuntime);
     logger.info('agent-search-mcp starting in STDIO mode');
     const transport = new StdioServerTransport();
     await server.connect(transport);
@@ -29,7 +31,7 @@ async function main(): Promise<void> {
       );
     }
     const httpServer = createHttpServer(
-      () => createAgentSearchServer(config),
+      () => createAgentSearchServer(searchRuntime),
       {
         port: config.port,
         enableCors: config.enableCors,

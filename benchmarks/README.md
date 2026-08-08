@@ -69,12 +69,13 @@ candidate/ranking shapes differ:
 
 ```bash
 npm run benchmark:qualify-runner -- \
-  --system duckduckgo-web=duckduckgo \
+  --system agent-search-free-waterfall=duckduckgo,sogou,bing,baidu,wikipedia,startpage,yandex,mojeek,wiby \
   --system wikipedia=wikipedia \
   --limit 10 \
   --minimum-queries 10 \
   --query-delay-ms 10000 \
-  --output benchmarks/reports/runner-qualification-2026-07-26-local.json
+  --implementation-revision git:<exact-commit> \
+  --output D:/private-search-artifacts/runner-qualification.json
 ```
 
 The checked-in local observation was `ready` for 10/10 bilingual calibration
@@ -87,6 +88,12 @@ still writing the privacy-preserving diagnostic report. Capture/review
 automation must stop on that non-zero exit.
 The probe waits 10 seconds between query groups by default and accepts only
 `1000..60000` milliseconds. It never retries a failed query automatically.
+Each adapter invocation also uses a zero-retry override. A `bot_challenge` or
+rate-limit observation fills the uncalled systems with local aborted markers,
+writes an `aborted` privacy-preserving report, and stops further network probes.
+Qualification also rejects configured DDG/Sogou proxy transports before the
+first request and binds its profile hash to the declared implementation
+revision. Formal capture must declare the same Agent Search revision.
 
 External comparison systems stay outside the product runtime. Export their
 already-captured results as `external-search-results` JSON, disclose the
@@ -101,13 +108,91 @@ npm run benchmark:import-external -- \
 
 The export contains `system: { id, version }`, `captured_at`,
 `content_licenses`, and ordered `samples`. Each sample has the query-set `id`,
-`duration_ms`, and exactly one of `results` or an enumerated `failure_type`
-(`timeout`, `rate_limited`, `permission_denied`, `upstream_error`,
-`unavailable`, or `unknown`); a result contains only `title`, HTTP(S) `url`, and
+`duration_ms`, and exactly one of `results` or an enumerated `failure_type`.
+Failures may additionally include a validated `failure_scope` and, only when the
+driver has direct evidence, a stable `failure_source` adapter ID. Raw provider
+messages are never part of this interface. Allowed failures are `timeout`,
+`bot_challenge`, `rate_limited`, `permission_denied`, `upstream_error`,
+`unavailable`, or `unknown`; a result contains only `title`, HTTP(S) `url`, and
 optional `snippet`. Arbitrary provider error text is never retained. The
 importer takes query text and review metadata from the repository query set,
 bounds retained fields, hashes the source export, and emits the same traced
 `live-capture` contract used by pooling. It performs no provider request.
+
+## Offline Search Evidence Demo
+
+Run the public, deterministic contract demo without contacting a search source:
+
+```bash
+npm run demo:evidence
+npm run demo:evidence -- --json
+```
+
+The fixture in `fixtures/evidence-demo.json` is entirely synthetic and passes
+three bounded scenarios through the production evidence evaluator, result
+formatter, and MCP output helper. It demonstrates that DuckDuckGo and Bing do
+not count as two provider families for the same URL, fallback failures remain
+visible, and a satisfied quality gate can stop later work. The text
+compatibility view is measured against canonical `structuredContent` and must
+retain every displayed URL, the provider-family signals of non-compacted
+results, and every partial-failure type. Full routing and evidence metadata
+remains in canonical `structuredContent`.
+
+The runner reads checked-in files only. It does not import an engine adapter,
+launch a subprocess, install a competitor, call a model, write an artifact, or
+perform a network request. Its report is fixed to
+`quality_claim_eligible: false`; it is evidence of response-contract behavior,
+not live availability or search quality.
+
+## Three-system bilingual comparison contract
+
+The offline preparation suite preregisters 30 evergreen developer queries in
+[`queries/competitive-comparison-v1.json`](./queries/competitive-comparison-v1.json):
+15 English and 15 Chinese, with ten factual, ten technical, and ten
+navigational cases. Every item includes a stable ID, a judgment question, an
+original paraphrased reference answer, and at least one HTTP(S) official
+reference source.
+
+```bash
+npm run benchmark:competitive:validate
+npm run benchmark:competitive:dry-run
+```
+
+The validator rejects stratum drift, duplicate normalized queries, missing
+reference fields, non-HTTP(S) sources, years, freshness/news terms, and the
+compared systems' brands. The dry run performs no network request, subprocess
+launch, competitor install, or artifact write. It prints the fixed
+three-system manifest and 90-call Latin-square schedule.
+
+On a separately approved clean runner, `--execute` requires one executable
+driver, one result-content license disclosure, and one printable
+`--implementation-revision system-id=value` per system, a fresh complete
+`--qualification-report` for the exact formal Agent Search profile, plus an
+absolute `--output-root` outside the repository. Drivers receive one bounded JSON
+request on stdin and return one pinned-version JSON result on stdout. The
+controller never invokes a shell, does not forward API keys or proxy variables,
+does not retry, and writes a private checkpoint after every call. Competitor
+installation and driver implementation remain outside this repository.
+The checkpoint and each raw export retain the declared implementation revision,
+the exact driver SHA-256, the system-configuration SHA-256, the qualification
+artifact SHA-256, and its formal-profile SHA-256.
+
+The formal Agent Search profile is derived from the runtime engine registry
+and fixes `free_only`, all nine zero-key adapters, waterfall routing, Top-5,
+no enrichment, no query expansion, a 10-second inter-call delay, and no retry.
+External profiles pin Open-WebSearch `2.1.9` at its annotated tag commit
+`84695b392ca03ffc68fbd406f1d7937b7151e4b6` and DDGS `9.14.4`. The pinned
+Open-WebSearch build uses its nine packaged executors: Bing, Baidu, Linux.do,
+CSDN, DuckDuckGo, Exa, Brave, Juejin, and Startpage. A
+`bot_challenge` or `rate_limited` result checkpoints and aborts the round;
+timeouts and empty results remain ordinary samples. Formal pooling adds
+`--require-complete` and accepts only complete capture-contract-v2 inputs;
+legacy fixtures remain replayable without that flag.
+
+Raw exports, normalized captures, pools, and review packets belong in a
+private directory outside the repository. The repository may retain the query
+set, code, synthetic tests, and aggregate candidates containing no retrieved
+text. See [`DATA_LICENSES.md`](./DATA_LICENSES.md).
 
 ## Review-gated search quality
 
@@ -152,35 +237,52 @@ node benchmarks/quality.mjs \
   --output benchmarks/reviews/search-pool.reviewer-b.pending.json
 ```
 
-For automated judging, set `OPENAI_API_KEY` outside command history and run two
-different model families. The driver evaluates one blinded candidate per
-request, uses strict JSON Schema, disables tools, sends `store: false`, and
-checkpoints the artifact after every verdict:
+For automated judging, set `OPENAI_API_KEY` outside command history. The fixed
+profiles use `gpt-4.1-2025-04-14` for Judge A,
+`gpt-4o-mini-2024-07-18` for Judge B, and `gpt-4o-2024-11-20` only for
+disagreements. The driver evaluates one blinded candidate per request, uses
+strict JSON Schema, limits output to 384 tokens, disables tools, sends
+`store: false`, and checkpoints before the first call and after every verdict:
 
 ```bash
-npm run benchmark:ai-review -- \
-  --review benchmarks/fixtures/search-pool.json \
-  --provider openai \
-  --model MODEL_A_SNAPSHOT \
-  --model-family FAMILY_A \
-  --reviewer-slot judge-a \
-  --output benchmarks/reviews/search-pool.judge-a.completed.json
+# Verify all three pinned schemas before a full paid stage:
+npm run benchmark:ai-review -- --schema-smoke --profile judge-a --output private/smoke-a.json
+npm run benchmark:ai-review -- --schema-smoke --profile judge-b --output private/smoke-b.json
+npm run benchmark:ai-review -- --schema-smoke --profile adjudicator --output private/smoke-c.json
 
 npm run benchmark:ai-review -- \
-  --review benchmarks/fixtures/search-pool.json \
-  --provider openai \
-  --model MODEL_B_SNAPSHOT \
-  --model-family FAMILY_B \
-  --reviewer-slot judge-b \
-  --output benchmarks/reviews/search-pool.judge-b.completed.json
+  --review private/search-pool.json \
+  --profile judge-a \
+  --output private/search-pool.judge-a.json
+
+npm run benchmark:ai-review -- \
+  --review private/search-pool.json \
+  --profile judge-b \
+  --output private/search-pool.judge-b.json
+
+# Resume a checkpoint with the exact same policy:
+npm run benchmark:ai-review -- \
+  --review private/search-pool.json \
+  --profile judge-a \
+  --resume private/search-pool.judge-a.json \
+  --output private/search-pool.judge-a.json
 ```
 
-`reviewer-slot` controls only deterministic candidate permutation. AI
-independence is enforced through distinct `model_family` values, and every
-verdict retains prompt/request/response/verdict hashes plus a short rationale.
-For snapshot IDs ending in `-YYYY-MM-DD`, `model_family` must be exactly the
-model ID with that trailing date removed; aliases without a date use the full
-model ID as their family. Use pinned snapshots for auditable runs.
+Resume accepts only verdicts whose request, verdict, response, model, prompt,
+pool, budget, pricing, and configuration evidence still match. Each profile
+has a stage budget ($12, $3, and $15 respectively); the application reserves
+the next bounded call before sending it and records actual token usage and
+estimated cost. Budget exhaustion, HTTP 429, or API failure retains the last
+checkpoint and exits without retrying, changing models, or increasing cost.
+The OpenAI project used for the run must separately enforce a US$30 hard
+spending limit. If a snapshot or price no longer matches the recorded policy,
+stop and update the evidence snapshot instead of substituting silently.
+
+The fixed execution order is: three schema smokes, both full pointwise review
+stages, pending-adjudication generation, third-model disagreement
+adjudication, contract verification, pooled comparison, then internal
+relevance calibration.
+
 Create the disagreement artifact after both reviews complete:
 
 ```bash
@@ -194,10 +296,7 @@ node benchmarks/pool.mjs \
 npm run benchmark:ai-review -- \
   --adjudicate benchmarks/reviews/search-pool.adjudication.pending.json \
   --pool benchmarks/fixtures/search-pool.json \
-  --provider openai \
-  --model MODEL_C_SNAPSHOT \
-  --model-family FAMILY_C \
-  --reviewer-slot adjudicator \
+  --profile adjudicator \
   --output benchmarks/reviews/search-pool.adjudication.completed.json
 
 node benchmarks/pool.mjs \
@@ -316,18 +415,29 @@ results prove a quality gain.
 | File | Description |
 |------|-------------|
 | [`queries.json`](./queries.json) | 30 bilingual live-search queries |
+| [`queries/competitive-comparison-v1.json`](./queries/competitive-comparison-v1.json) | Preregistered 30-query bilingual evergreen comparison contract |
 | [`run.mjs`](./run.mjs) | Current capture/replay runner |
+| [`evidence-demo.mjs`](./evidence-demo.mjs) | Zero-network synthetic Search Evidence Packet demo |
+| [`competitive-capture.mjs`](./competitive-capture.mjs) | Fail-closed zero-network competitive plan dry run |
+| [`validate-competitive-query-set.mjs`](./validate-competitive-query-set.mjs) | Competitive query contract validator |
 | [`quality.mjs`](./quality.mjs) | Label preparation and quality evaluator |
 | [`pool.mjs`](./pool.mjs) | Deterministic multi-system pooling and same-mode adjudication gate |
 | [`ai-review.mjs`](./ai-review.mjs) | OpenAI Responses executor for two-model review and third-model adjudication |
 | [`calibrate-relevance.mjs`](./calibrate-relevance.mjs) | Completed-qrels calibration for the internal routing relevance floor |
 | [`intent-routing.mjs`](./intent-routing.mjs) | Advisory classifier and candidate-route regression gate |
 | [`lib/ai-review.mjs`](./lib/ai-review.mjs) | Provider-neutral pointwise judge contract and evidence hashing |
+| [`lib/competitive-ai-policy.mjs`](./lib/competitive-ai-policy.mjs) | Fixed three-model snapshots, pricing evidence, and stage budgets |
+| [`lib/competitive-capture.mjs`](./lib/competitive-capture.mjs) | Latin-square controller with injectable clean-runner adapters |
+| [`lib/competitive-driver.mjs`](./lib/competitive-driver.mjs) | Pinned subprocess protocol and private-output boundary |
+| [`lib/evidence-demo.mjs`](./lib/evidence-demo.mjs) | Deterministic evidence-demo builder and contract verifier |
+| [`lib/capture-contract.mjs`](./lib/capture-contract.mjs) | Complete-capture and terminal-failure contract |
 | [`lib/pooling.mjs`](./lib/pooling.mjs) | Pool URL normalization, trace preservation, and completed-review validation |
 | [`lib/relevance-calibration.mjs`](./lib/relevance-calibration.mjs) | Deterministic threshold curve, readiness gate, and recommendation policy |
 | [`lib/comparison-metrics.mjs`](./lib/comparison-metrics.mjs) | Per-system pooled-qrels comparison metrics and evidence gates |
 | [`lib/quality-metrics.mjs`](./lib/quality-metrics.mjs) | Trace, validation, and independent metrics |
 | [`fixtures/format-regression.json`](./fixtures/format-regression.json) | Frozen deterministic regression fixture |
+| [`fixtures/evidence-demo.json`](./fixtures/evidence-demo.json) | Synthetic provider-family, failure, and bounded-stop demo scenarios |
+| [`fixtures/url-canonicalization-calibration-v1.json`](./fixtures/url-canonicalization-calibration-v1.json) | Synthetic URL-identity calibration; v2 candidate evidence only, not a production switch |
 | [`fixtures/quality-bootstrap.json`](./fixtures/quality-bootstrap.json) | Synthetic metric regression; never quality evidence |
 | [`fixtures/live-p2-pilot.json`](./fixtures/live-p2-pilot.json) | Real zero-result failure pilot with raw traces |
 | [`fixtures/live-reviewer-pilot.json`](./fixtures/live-reviewer-pilot.json) | Real non-empty single-engine reviewer-pipeline qualification capture |

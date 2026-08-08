@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "description": "Synthetic URL identity pairs. No retrieved text or live capture.",
+  "cases": [
+    {
+      "id": "host-case-and-trailing-slash",
+      "left": "HTTPS://Example.COM/docs/",
+      "right": "https://example.com/docs",
+      "relation": "same"
+    },
+    {
+      "id": "tracking-parameters",
+      "left": "https://example.com/docs?id=42&utm_source=test&fbclid=abc",
+      "right": "https://example.com/docs?id=42",
+      "relation": "same"
+    },
+    {
+      "id": "query-order",
+      "left": "https://example.com/search?lang=zh&q=mcp",
+      "right": "https://example.com/search?q=mcp&lang=zh",
+      "relation": "same"
+    },
+    {
+      "id": "fragment-only",
+      "left": "https://example.com/docs#install",
+      "right": "https://example.com/docs#usage",
+      "relation": "same"
+    },
+    {
+      "id": "identity-parameter",
+      "left": "https://example.com/item?id=41",
+      "right": "https://example.com/item?id=42",
+      "relation": "different"
+    },
+    {
+      "id": "pagination-parameter",
+      "left": "https://example.com/search?q=mcp&page=1",
+      "right": "https://example.com/search?q=mcp&page=2",
+      "relation": "different"
+    },
+    {
+      "id": "language-parameter",
+      "left": "https://example.com/docs?lang=en",
+      "right": "https://example.com/docs?lang=zh",
+      "relation": "different"
+    },
+    {
+      "id": "case-sensitive-path",
+      "left": "https://example.com/Release/Notes",
+      "right": "https://example.com/release/notes",
+      "relation": "different"
+    }
+  ]
+}

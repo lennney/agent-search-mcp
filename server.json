@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.lennney/agent-search-mcp",
-  "description": "Free, lightweight MCP search for AI agents — no API keys required, 8 zero-key engines, compact multi-source evidence.",
+  "description": "Free-first web search MCP with zero-key English and Chinese sources and compact evidence.",
   "repository": {
     "url": "https://github.com/lennney/agent-search-mcp",
     "source": "github"

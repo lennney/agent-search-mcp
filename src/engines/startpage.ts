@@ -2,13 +2,13 @@ import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
+import { EngineAdapterError } from './engine-error.js';
+import { providerCatalog } from './provider-catalog.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
-export const startpageProvider = {
-  id: 'startpage' as const,
-  name: 'Startpage',
-  isFree: true,
-  languages: ['en', 'auto'],
-};
+export const startpageProvider = providerCatalog.startpage;
+
+const STARTPAGE_CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
 
 async function getScValue(options?: EngineSearchOptions): Promise<string> {
   try {
@@ -46,12 +46,16 @@ export async function searchStartpage(query: string, limit: number = 10, options
       segment: 'organic',
     }).toString();
 
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const res = await fetch('https://www.startpage.com/sp/search', {
       method: 'POST',
       headers: {
+        ...profileHeaders(profile, {
+          acceptLanguage: 'en-US,en;q=0.9',
+          referer: 'https://www.startpage.com/',
+          kind: 'form',
+        }),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://www.startpage.com/',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       body,
       signal: withTimeout(options?.signal, 15000),
@@ -64,6 +68,7 @@ export async function searchStartpage(query: string, limit: number = 10, options
     }
 
     const html = await res.text();
+    throwIfStartpageChallenge(html);
     return parseStartpageHTML(html, limit);
   } catch (error) {
     options?.signal?.throwIfAborted();
@@ -75,6 +80,30 @@ export async function searchStartpage(query: string, limit: number = 10, options
       logger.warn({ err: msg.slice(0, 200) }, 'Startpage search failed');
     }
     return [];
+  }
+}
+
+/**
+ * Startpage serves an anti-bot verification page as HTTP 200 with no result
+ * blocks. Surface it as bot_challenge instead of silently parsing an empty
+ * result page, mirroring the Mojeek Altcha fix.
+ */
+function throwIfStartpageChallenge(html: string): void {
+  if (/<div[^>]*class="[^"]*result[^"]*"[^>]*>/i.test(html)) return;
+  const normalized = html.toLowerCase();
+  if (normalized.includes('altcha-widget')
+    || normalized.includes('captcha')
+    || normalized.includes('unusual traffic')
+    || normalized.includes('verification required')) {
+    throw new EngineAdapterError(
+      'bot_challenge',
+      'Startpage returned an anti-bot challenge',
+      {
+        retryable: false,
+        cooldownMs: STARTPAGE_CHALLENGE_COOLDOWN_MS,
+        suggestion: 'Wait for the provider cooldown or use another network runner',
+      },
+    );
   }
 }
 

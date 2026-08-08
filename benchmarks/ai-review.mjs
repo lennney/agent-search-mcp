@@ -6,40 +6,53 @@ import {
   createOpenAiResponsesJudge,
   runAiAdjudication,
   runAiReview,
+  runAiSchemaSmoke,
 } from './lib/ai-review.mjs';
+import { competitiveAiProfile } from './lib/competitive-ai-policy.mjs';
 
 const argv = process.argv.slice(2);
 
 try {
   const reviewPath = optionValue('--review');
   const adjudicatePath = optionValue('--adjudicate');
-  if ((reviewPath === undefined) === (adjudicatePath === undefined)) usage();
+  const schemaSmoke = argv.includes('--schema-smoke');
+  const selectedModes = [reviewPath !== undefined, adjudicatePath !== undefined, schemaSmoke]
+    .filter(Boolean).length;
+  if (selectedModes !== 1) usage();
 
-  const poolPath = reviewPath ?? requiredOption('--pool');
+  const poolPath = schemaSmoke ? null : reviewPath ?? requiredOption('--pool');
   const outputPath = requiredOption('--output');
-  const provider = requiredOption('--provider');
+  const profileName = optionValue('--profile');
+  const profile = profileName === undefined ? null : competitiveAiProfile(profileName);
+  const provider = profile?.provider ?? requiredOption('--provider');
   if (provider !== 'openai') {
     throw new Error('Only --provider openai is currently supported');
   }
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error('OPENAI_API_KEY is required');
-  const config = {
+  const config = profile ?? {
     reviewerSlot: requiredOption('--reviewer-slot'),
     provider,
     model: requiredOption('--model'),
     modelFamily: requiredOption('--model-family'),
     temperature: 0,
   };
-  const pool = await readJson(poolPath);
+  const pool = poolPath === null ? null : await readJson(poolPath);
+  const resumePath = optionValue('--resume');
+  const resumePacket = resumePath === undefined ? undefined : await readJson(resumePath);
   const callJudge = createOpenAiResponsesJudge({ apiKey });
   const onProgress = value => writeJson(outputPath, value);
 
-  if (reviewPath !== undefined) {
-    await runAiReview(pool, config, callJudge, { onProgress });
+  if (schemaSmoke) {
+    if (resumePacket !== undefined) throw new Error('--resume is not valid for schema smoke');
+    await writeJson(outputPath, await runAiSchemaSmoke(config, callJudge));
+    console.error(`Wrote completed AI schema smoke to ${resolve(outputPath)}`);
+  } else if (reviewPath !== undefined) {
+    await runAiReview(pool, config, callJudge, { onProgress, resumePacket });
     console.error(`Wrote completed AI review to ${resolve(outputPath)}`);
   } else {
     const pending = await readJson(adjudicatePath);
-    await runAiAdjudication(pool, pending, config, callJudge, { onProgress });
+    await runAiAdjudication(pool, pending, config, callJudge, { onProgress, resumePacket });
     console.error(`Wrote completed AI adjudication to ${resolve(outputPath)}`);
   }
 } catch (error) {
@@ -87,7 +100,9 @@ async function writeJson(path, value) {
 function usage() {
   throw new Error([
     'Usage:',
-    '  node benchmarks/ai-review.mjs --review pool.json --provider openai --model MODEL --model-family FAMILY --reviewer-slot judge-a --output review.json',
-    '  node benchmarks/ai-review.mjs --adjudicate pending.json --pool pool.json --provider openai --model MODEL --model-family FAMILY --reviewer-slot adjudicator --output completed.json',
+    '  node benchmarks/ai-review.mjs --schema-smoke --profile judge-a --output smoke.json',
+    '  node benchmarks/ai-review.mjs --review pool.json --profile judge-a --output review.json [--resume review.json]',
+    '  node benchmarks/ai-review.mjs --adjudicate pending.json --pool pool.json --profile adjudicator --output completed.json [--resume completed.json]',
+    '  Profiles: judge-a, judge-b, adjudicator. Explicit --provider/--model/--model-family/--reviewer-slot remains supported.',
   ].join('\n'));
 }

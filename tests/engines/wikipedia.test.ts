@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { searchWikipedia, wikipediaProvider } from '../../src/engines/wikipedia.js';
+import { scoreAndRank } from '../../src/aggregation/scorer.js';
 
 describe('Wikipedia engine', () => {
   it('has correct provider metadata', () => {
@@ -39,6 +40,50 @@ describe('Wikipedia engine', () => {
     }
   });
 
+  it('preserves the matched search passage for downstream relevance ranking', async () => {
+    const originalFetch = global.fetch;
+    let requestedUrl = '';
+    try {
+      global.fetch = async (input) => {
+        requestedUrl = String(input);
+        return {
+          ok: true,
+          json: async () => ({
+            query: {
+              pages: [
+                {
+                  index: 1,
+                  title: 'HMAC',
+                  extract: 'HMAC is a keyed-hash message authentication code.',
+                  snippet: 'A keyed-hash message authentication code.',
+                  fullurl: 'https://en.wikipedia.org/wiki/HMAC',
+                },
+                {
+                  index: 2,
+                  title: 'OAuth',
+                  extract: 'OAuth is an open standard for access delegation.',
+                  snippet: '<span class="searchmatch">Proof Key for Code Exchange</span> is an OAuth extension.',
+                  fullurl: 'https://en.wikipedia.org/wiki/OAuth',
+                },
+              ],
+            },
+          }),
+        } as unknown as Response;
+      };
+
+      const query = 'Proof Key for Code Exchange';
+      const results = await searchWikipedia(query, 3);
+      const ranked = scoreAndRank(results, query, { wikipedia: 0.93 });
+
+      expect(new URL(requestedUrl).searchParams.get('gsrprop')).toBe('snippet');
+      expect(results.find(result => result.title === 'OAuth')?.snippet)
+        .toContain('Proof Key for Code Exchange');
+      expect(ranked[0].title).toBe('OAuth');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('uses Chinese Wikipedia for a Chinese query', async () => {
     const originalFetch = global.fetch;
     let requestedUrl = '';
@@ -60,6 +105,40 @@ describe('Wikipedia engine', () => {
       expect(requestHeaders.get('api-user-agent')).toContain(
         'github.com/lennney/agent-search-mcp',
       );
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('honors explicit request language independently of query script', async () => {
+    const requestedUrls: string[] = [];
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async (input) => {
+        requestedUrls.push(String(input));
+        return {
+          ok: true,
+          json: async () => ({ query: { pages: [] } }),
+        } as unknown as Response;
+      };
+
+      await searchWikipedia('TypeScript narrowing', 5, {
+        requestContext: {
+          language: 'zh',
+          region: 'cn-zh',
+          acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      });
+      await searchWikipedia('自注意力', 5, {
+        requestContext: {
+          language: 'en',
+          region: 'us-en',
+          acceptLanguage: 'en-US,en;q=0.9',
+        },
+      });
+
+      expect(requestedUrls[0]).toMatch(/^https:\/\/zh\.wikipedia\.org\//);
+      expect(requestedUrls[1]).toMatch(/^https:\/\/en\.wikipedia\.org\//);
     } finally {
       global.fetch = originalFetch;
     }

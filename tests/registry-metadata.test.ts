@@ -6,6 +6,10 @@ import { engines } from '../src/engines/index.js';
 
 interface PackageMetadata {
   description: string;
+  distributionMetadata: {
+    githubTopics: string[];
+  };
+  keywords: string[];
   mcpName: string;
   version: string;
 }
@@ -44,6 +48,23 @@ describe('release registry metadata', () => {
     expect(registryMetadata.version).toBe(packageMetadata.version);
     expect(registryPackage.identifier).toBe('agent-search-mcp');
     expect(registryPackage.version).toBe(packageMetadata.version);
+  });
+
+  it('uses durable discovery metadata instead of volatile inventory claims', () => {
+    expect(packageMetadata.description).toContain('Free-first web search MCP');
+    expect(packageMetadata.description).toContain('zero-key English and Chinese sources');
+    expect(packageMetadata.description.length).toBeLessThanOrEqual(100);
+    expect(packageMetadata.description).not.toMatch(/\b\d+\s+(?:zero-key|free)\s+engines?\b/i);
+    expect(packageMetadata.description).not.toMatch(/\b(?:only|best|unique)\b/i);
+    expect(packageMetadata.keywords).toEqual(expect.arrayContaining([
+      'metasearch',
+      'privacy-first',
+      'search-aggregator',
+      'web-scraping',
+      'zero-config',
+    ]));
+    expect(packageMetadata.distributionMetadata.githubTopics).toHaveLength(20);
+    expect(new Set(packageMetadata.distributionMetadata.githubTopics).size).toBe(20);
   });
 
   it('publishes every optional provider credential as an optional secret', () => {

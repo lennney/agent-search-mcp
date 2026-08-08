@@ -2,25 +2,39 @@ import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
+import { EngineAdapterError } from './engine-error.js';
+import { providerCatalog } from './provider-catalog.js';
+import { resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
-export const baiduProvider = {
-  id: 'baidu' as const,
-  name: 'Baidu',
-  isFree: true,
-  languages: ['zh'],
-};
+const BAIDU_CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
+
+export const baiduProvider = providerCatalog.baidu;
 
 export async function searchBaidu(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
-    const url = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}&rn=${limit}`;
+    const url = new URL('https://www.baidu.com/s');
+    url.searchParams.set('wd', query);
+    url.searchParams.set('rn', String(limit));
+    url.searchParams.set('pn', '0');
+    url.searchParams.set('tn', 'json');
+    url.searchParams.set('ie', 'utf-8');
+
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
+        'User-Agent': profile.userAgent,
+        ...profile.clientHints,
+        'Accept': 'application/json,text/html,application/xhtml+xml',
         'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Accept-Encoding': profile.acceptEncoding,
       },
+      redirect: 'manual',
       signal: withTimeout(options?.signal, 10000),
     });
+
+    if (isBaiduCaptchaRedirect(res.headers.get('location'))) {
+      throw createBaiduChallengeError();
+    }
 
     if (!res.ok) {
       if (options?.throwOnError) throw new Error(`Baidu HTTP ${res.status}`);
@@ -28,8 +42,14 @@ export async function searchBaidu(query: string, limit: number = 10, options?: E
       return [];
     }
 
-    const html = await res.text();
-    return parseBaiduHTML(html, limit);
+    const body = await res.text();
+    const jsonResults = parseBaiduJSON(body, limit);
+    if (jsonResults !== null) return jsonResults;
+
+    if (looksLikeBaiduChallenge(body)) {
+      throw createBaiduChallengeError();
+    }
+    return parseBaiduHTML(body, limit);
   } catch (error) {
     options?.signal?.throwIfAborted();
     if (options?.throwOnError) throw error;
@@ -41,6 +61,89 @@ export async function searchBaidu(query: string, limit: number = 10, options?: E
     }
     return [];
   }
+}
+
+function parseBaiduJSON(body: string, limit: number): SearchResult[] | null {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    return null;
+  }
+
+  if (!isRecord(payload)) return [];
+  const feed = payload.feed;
+  if (!isRecord(feed) || !Array.isArray(feed.entry)) return [];
+
+  const results: SearchResult[] = [];
+  for (const candidate of feed.entry) {
+    if (results.length >= limit) break;
+    if (!isRecord(candidate)) continue;
+
+    const rawTitle = typeof candidate.title === 'string' ? candidate.title : '';
+    const rawUrl = typeof candidate.url === 'string' ? candidate.url : '';
+    if (!rawTitle || !isUsableBaiduResultUrl(rawUrl)) continue;
+
+    results.push({
+      title: decodeHTMLTags(rawTitle),
+      url: rawUrl,
+      snippet: decodeHTMLTags(typeof candidate.abs === 'string' ? candidate.abs : ''),
+      source: 'baidu',
+      engines: ['baidu'],
+    });
+  }
+
+  return results;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isUsableBaiduResultUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    const hostname = url.hostname.toLowerCase();
+    return hostname !== 'baidu.com' && !hostname.endsWith('.baidu.com');
+  } catch {
+    return false;
+  }
+}
+
+function createBaiduChallengeError(): EngineAdapterError {
+  return new EngineAdapterError(
+    'bot_challenge',
+    'Baidu returned an anti-bot verification page',
+    {
+      retryable: false,
+      cooldownMs: BAIDU_CHALLENGE_COOLDOWN_MS,
+      suggestion: 'Wait for the provider cooldown or use another network runner',
+    },
+  );
+}
+
+function isBaiduCaptchaRedirect(location: string | null): boolean {
+  if (!location) return false;
+  try {
+    const url = new URL(location, 'https://www.baidu.com');
+    return url.protocol === 'https:'
+      && url.hostname === 'wappass.baidu.com'
+      && url.pathname.startsWith('/static/captcha');
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeBaiduChallenge(html: string): boolean {
+  const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? decodeHTMLTags(titleMatch[1]) : '';
+  if (title.includes('百度安全验证')) return true;
+  if (getResultBlocks(html).length > 0) return false;
+
+  const text = decodeHTMLTags(html).replace(/\s+/g, '');
+  return text.includes('请完成验证后继续访问')
+    || (text.includes('访问异常') && text.includes('验证码'));
 }
 
 /**
@@ -128,7 +231,7 @@ export function parseBaiduHTML(html: string, limit: number = 10): SearchResult[]
     const url = h3Match[1];
     const title = decodeHTMLTags(h3Match[2]);
 
-    if (!url || !title || url.includes('baidu.com')) continue;
+    if (!url || !title || !isUsableBaiduResultUrl(url)) continue;
 
     const snippet = extractBaiduSnippet(block);
 

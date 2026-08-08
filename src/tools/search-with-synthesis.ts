@@ -5,8 +5,18 @@ import type { SearchWithFallbackOptions } from './free-search.js';
 import { buildPromptHint } from '../synthesis/prompt-builder.js';
 import type { SynthesisResult } from '../synthesis/prompt-builder.js';
 import { logger } from '../infrastructure/logger.js';
+import {
+  type SearchRuntime,
+} from '../infrastructure/search-runtime.js';
+import {
+  createSynthesisToolResult,
+  searchWithSynthesisOutputSchema,
+} from './search-output.js';
 
-export function registerSearchWithSynthesis(server: McpServer) {
+export function registerSearchWithSynthesis(
+  server: McpServer,
+  runtime?: SearchRuntime,
+) {
   server.registerTool(
     'search_with_synthesis',
     {
@@ -23,8 +33,9 @@ export function registerSearchWithSynthesis(server: McpServer) {
         min_confidence: z.number().min(0).max(3).optional().default(0)
           .describe('Minimum source-reliability confidence (0-1). Legacy values 2-3 are treated as min_source_count.'),
         min_source_count: z.number().int().min(1).max(12).optional().default(1)
-          .describe('Minimum independent upstream provider families; accepts 1-12 for compatibility, current adapters expose at most 12.'),
+          .describe('Minimum independent upstream provider families; the input contract accepts 1-12 for compatibility.'),
       },
+      outputSchema: searchWithSynthesisOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
     async (input, extra) => {
@@ -40,7 +51,9 @@ export function registerSearchWithSynthesis(server: McpServer) {
           language: input.language,
           signal: extra?.signal,
         };
-        const response = await searchWithFallback(options);
+        const response = runtime
+          ? await searchWithFallback(options, runtime)
+          : await searchWithFallback(options);
 
         const rawResults = response.results || [];
         const results: SynthesisResult[] = rawResults.map((r) => ({
@@ -53,17 +66,10 @@ export function registerSearchWithSynthesis(server: McpServer) {
 
         const promptHint = buildPromptHint(input.query, results);
 
-        return {
-          content: [{
-            type: 'text',
-            text: JSON.stringify({
-              query: input.query,
-              results,
-              prompt_hint: promptHint,
-              meta: response.meta,
-            }, null, 2),
-          }],
-        };
+        return createSynthesisToolResult({
+          ...response,
+          prompt_hint: promptHint,
+        });
       } catch (error) {
         if (extra?.signal.aborted) throw error;
         logger.error({ err: error instanceof Error ? error.message : String(error) }, 'search_with_synthesis failed');

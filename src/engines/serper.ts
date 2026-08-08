@@ -1,6 +1,5 @@
 import type {
   EngineSearchOptions,
-  SearchProviderInfo,
   SearchResult,
 } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
@@ -10,13 +9,9 @@ import {
   isWebUrl,
   readString,
 } from './json-search-api.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const serperProvider: SearchProviderInfo = {
-  id: 'serper',
-  name: 'Serper Google Search',
-  isFree: false,
-  languages: ['en', 'zh', 'auto'],
-};
+export const serperProvider = providerCatalog.serper;
 
 function parseSerperResult(value: unknown): SearchResult | null {
   const item = asJsonObject(value);

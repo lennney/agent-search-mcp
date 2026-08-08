@@ -1,10 +1,22 @@
 import { withTimeout } from '../infrastructure/abort.js';
 import {
+  fetchForEngine,
+  type ProxyAwareEngine,
+} from '../infrastructure/engine-http.js';
+import {
   EngineAdapterError,
   isEngineAdapterError,
 } from './engine-error.js';
 
 export type JsonObject = Record<string, unknown>;
+
+/** Optional proxy-aware transport for JSON endpoints that support a proxy pool. */
+export interface JsonSearchProxyTransport {
+  engine: ProxyAwareEngine;
+  affinityKey: string;
+  rotateOnStatus?: readonly number[];
+  maxStatusRotations?: number;
+}
 
 interface FetchSearchJsonOptions {
   provider: string;
@@ -13,6 +25,7 @@ interface FetchSearchJsonOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
   retryServerErrors?: boolean;
+  transport?: JsonSearchProxyTransport;
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -103,13 +116,23 @@ export async function fetchSearchJson(
   options: FetchSearchJsonOptions,
 ): Promise<unknown> {
   try {
-    const response = await fetch(options.url, {
-      ...options.init,
-      signal: withTimeout(
-        options.signal,
-        options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      ),
-    });
+    const signal = withTimeout(
+      options.signal,
+      options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    );
+    const response = options.transport
+      ? await fetchForEngine(options.transport.engine, options.url, {
+          ...options.init,
+          signal,
+        }, {
+          affinityKey: options.transport.affinityKey,
+          rotateOnStatus: options.transport.rotateOnStatus,
+          maxStatusRotations: options.transport.maxStatusRotations,
+        })
+      : await fetch(options.url, {
+          ...options.init,
+          signal,
+        });
     if (!response.ok) {
       throw createHttpError(
         options.provider,

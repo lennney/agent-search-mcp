@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import { engines } from '../../src/engines/index.js';
+
 import {
   parseEngineSelection,
+  parseIntegerOption,
+  deriveCaptureRegistry,
   selectBenchmarkQueries,
 } from '../../benchmarks/lib/capture-options.mjs';
 
@@ -61,5 +65,31 @@ describe('benchmark capture options', () => {
     expect(() => selectBenchmarkQueries([], 1)).toThrow(/non-empty/);
     expect(() => selectBenchmarkQueries([{ id: 'q1' }], 0)).toThrow(/integer/);
     expect(() => selectBenchmarkQueries([{ id: 'q1' }], 2)).toThrow(/integer/);
+  });
+
+  it('parses bounded integer capture options', () => {
+    const options = { name: '--result-limit', defaultValue: 5, minimum: 1, maximum: 50 };
+    expect(parseIntegerOption(undefined, options)).toBe(5);
+    expect(parseIntegerOption('10', options)).toBe(10);
+    expect(() => parseIntegerOption('5.5', options)).toThrow(/integer/);
+    expect(() => parseIntegerOption('51', options)).toThrow(/integer/);
+  });
+
+  it('derives provider inventory and credentials from the runtime registry shape', () => {
+    expect(deriveCaptureRegistry({
+      free: { id: 'free', isFree: true },
+      paid: { id: 'paid', isFree: false, credentialEnvironment: 'PAID_KEY' },
+    })).toEqual({
+      allEngines: ['free', 'paid'],
+      freeEngines: ['free'],
+      optionalCredentialEnvironment: { paid: 'PAID_KEY' },
+    });
+  });
+
+  it('uses the live registry as the benchmark inventory authority', () => {
+    const registry = deriveCaptureRegistry(engines);
+    expect(registry.allEngines).toHaveLength(16);
+    expect(registry.freeEngines).toHaveLength(9);
+    expect(Object.keys(registry.optionalCredentialEnvironment)).toHaveLength(7);
   });
 });

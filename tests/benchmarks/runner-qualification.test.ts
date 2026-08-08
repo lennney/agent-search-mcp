@@ -6,6 +6,7 @@ import {
   observeSearchResponse,
   qualificationQueryDelayMs,
   runnerQualificationExitCode,
+  terminalQualificationFailure,
 } from '../../benchmarks/lib/runner-qualification.mjs';
 
 function response(
@@ -63,6 +64,25 @@ describe('benchmark runner qualification', () => {
     expect(serialized).not.toContain('Third-party');
     expect(serialized).not.toContain('secret query');
     expect(serialized).not.toContain('raw failure');
+  });
+
+  it('detects challenge and rate-limit observations as terminal', () => {
+    expect(terminalQualificationFailure(observeSearchResponse(
+      response('https://example.com/a', ['duckduckgo'], [
+        { engine: 'duckduckgo', type: 'bot_challenge' },
+      ]),
+      10,
+    ))).toBe('bot_challenge');
+    expect(terminalQualificationFailure(observeSearchResponse(
+      response('https://example.com/b', ['wikipedia'], [
+        { engine: 'wikipedia', type: 'rate_limit' },
+      ]),
+      10,
+    ))).toBe('rate_limited');
+    expect(terminalQualificationFailure(observeSearchResponse(
+      response('https://example.com/c', ['wikipedia']),
+      10,
+    ))).toBeNull();
   });
 
   it('marks a diverse two-system probe ready', () => {

@@ -64,6 +64,8 @@ describe('search configuration doctor', () => {
       TAVILY_API_KEY: '   ',
       DUCKDUCKGO_PROXY_URL:
         'http://proxy-user:proxy-secret@proxy.example:8080',
+      MOJEEK_PROXY_URL:
+        'http://mojeek-user:mojeek-secret@proxy.example:8080',
     };
     const report = createDoctorReport({
       environment,
@@ -88,10 +90,17 @@ describe('search configuration doctor', () => {
         status: 'present',
         provenance: ['environment:DUCKDUCKGO_PROXY_URL'],
       });
+    expect(report.configuration.find(check => check.id === 'mojeek-proxy'))
+      .toMatchObject({
+        status: 'present',
+        provenance: ['environment:MOJEEK_PROXY_URL'],
+      });
     for (const secret of [
       'brave-secret-value',
       'proxy-user',
       'proxy-secret',
+      'mojeek-user',
+      'mojeek-secret',
       'proxy.example',
     ]) {
       expect(serialized).not.toContain(secret);
@@ -120,6 +129,30 @@ describe('search configuration doctor', () => {
     expect(JSON.stringify(report)).not.toContain('secret');
   });
 
+  it('reports proxy-pool provenance without exposing pool members', () => {
+    const environment = {
+      SOGOU_PROXY_URLS: JSON.stringify([
+        'http://first-user:first-secret@first.example:8080',
+        'https://second-user:second-secret@second.example:8443',
+      ]),
+    };
+    const report = createDoctorReport({
+      environment,
+      nodeVersion: '22.0.0',
+      platform: 'win32',
+    });
+    const rendered = `${JSON.stringify(report)}\n${formatDoctorReport(report)}`;
+
+    expect(report.configuration.find(check => check.id === 'sogou-proxy'))
+      .toMatchObject({
+        status: 'present',
+        provenance: ['environment:SOGOU_PROXY_URLS'],
+      });
+    for (const secret of ['first-user', 'first-secret', 'first.example', 'second.example']) {
+      expect(rendered).not.toContain(secret);
+    }
+  });
+
   it('flags an invalid shared proxy switch without reading ambient proxies', () => {
     const report = createDoctorReport({
       environment: {
@@ -141,6 +174,11 @@ describe('search configuration doctor', () => {
         }),
         expect.objectContaining({
           id: 'sogou-proxy',
+          status: 'invalid',
+          provenance: ['environment:USE_PROXY'],
+        }),
+        expect.objectContaining({
+          id: 'mojeek-proxy',
           status: 'invalid',
           provenance: ['environment:USE_PROXY'],
         }),

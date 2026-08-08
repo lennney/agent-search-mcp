@@ -5,6 +5,7 @@ import {
   isWebUrl,
   readString,
 } from './json-search-api.js';
+import { providerCatalog } from './provider-catalog.js';
 
 function parseTavilyResult(value: unknown): SearchResult | null {
   const result = asJsonObject(value);
@@ -23,10 +24,10 @@ function parseTavilyResult(value: unknown): SearchResult | null {
 }
 
 export class TavilyProvider {
-  id = 'tavily';
-  name = 'Tavily Search';
-  isFree = false;
-  languages = ['en', 'zh'];
+  readonly id = providerCatalog.tavily.id;
+  readonly name = providerCatalog.tavily.name;
+  readonly isFree = providerCatalog.tavily.isFree;
+  readonly languages = providerCatalog.tavily.languages;
 
   async search(query: string, count: number, options?: EngineSearchOptions): Promise<SearchResult[]> {
     const apiKey = process.env.TAVILY_API_KEY;

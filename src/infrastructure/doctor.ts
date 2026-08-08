@@ -48,6 +48,7 @@ export interface DoctorReport {
       | 'zero-key-search'
       | 'duckduckgo-proxy'
       | 'sogou-proxy'
+      | 'mojeek-proxy'
       | 'semantic-flags'
       | 'request-budget'
       | 'provider-cooldown-store'
@@ -113,6 +114,11 @@ export function createDoctorReport(
     {
       id: 'sogou-proxy',
       ...inspectEngineProxyConfiguration('sogou', environment),
+      required: false,
+    },
+    {
+      id: 'mojeek-proxy',
+      ...inspectEngineProxyConfiguration('mojeek', environment),
       required: false,
     },
     {
