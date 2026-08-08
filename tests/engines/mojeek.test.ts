@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { searchMojeek, mojeekProvider } from '../../src/engines/mojeek.js';
-import { resolveRequestProfile } from '../../src/engines/request-profiles.js';
+import { resolveRequestProfile, currentProfileWindowKey } from '../../src/engines/request-profiles.js';
 
 describe('Mojeek engine', () => {
   it('has correct provider metadata', () => {
@@ -71,7 +71,7 @@ describe('Mojeek engine', () => {
 
       const query = 'profile header check';
       await searchMojeek(query, 5);
-      const profile = resolveRequestProfile(query);
+      const profile = resolveRequestProfile(query, currentProfileWindowKey());
 
       expect(capturedHeaders).toBeDefined();
       expect(capturedHeaders!['User-Agent']).toBe(profile.userAgent);

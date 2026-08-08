@@ -7,7 +7,7 @@ import {
   type RequestInit as UndiciRequestInit,
 } from 'undici';
 
-export type ProxyAwareEngine = 'duckduckgo' | 'sogou' | 'mojeek';
+export type ProxyAwareEngine = 'duckduckgo' | 'sogou' | 'mojeek' | 'wiby';
 export type ProxyConfigurationStatus = 'present' | 'missing' | 'invalid';
 
 export interface EngineProxyInspection {
@@ -33,11 +33,13 @@ const ENGINE_PROXY_ENV: Record<ProxyAwareEngine, string> = {
   duckduckgo: 'DUCKDUCKGO_PROXY_URL',
   sogou: 'SOGOU_PROXY_URL',
   mojeek: 'MOJEEK_PROXY_URL',
+  wiby: 'WIBY_PROXY_URL',
 };
 const ENGINE_PROXY_POOL_ENV: Record<ProxyAwareEngine, string> = {
   duckduckgo: 'DUCKDUCKGO_PROXY_URLS',
   sogou: 'SOGOU_PROXY_URLS',
   mojeek: 'MOJEEK_PROXY_URLS',
+  wiby: 'WIBY_PROXY_URLS',
 };
 const DEFAULT_PROXY_URL = 'http://127.0.0.1:7890';
 const DEFAULT_ATTEMPT_TIMEOUT_MS = 6_000;
@@ -51,6 +53,44 @@ const ATTEMPT_TIMEOUT_REASON = new DOMException(
 const proxyAgents = new Map<string, ProxyAgent>();
 const failedProxyUntil = new Map<string, number>();
 const consecutiveFailures = new Map<string, number>();
+const proxyStats = new Map<string, ProxyHealthStats>();
+
+interface ProxyHealthStats {
+  successCount: number;
+  failureCount: number;
+  latencySum: number;
+}
+
+const DEGRADED_CONSECUTIVE_THRESHOLD = 2;
+
+function isProxyCooled(cacheKey: string, now: number): boolean {
+  return (failedProxyUntil.get(cacheKey) ?? 0) > now;
+}
+
+/**
+ * A proxy that has failed several consecutive attempts is degraded even after
+ * its transport cooldown expires, so ordering prefers a healthier exit until it
+ * records a success again.
+ */
+function isProxyDegraded(cacheKey: string): boolean {
+  return (consecutiveFailures.get(cacheKey) ?? 0)
+    >= DEGRADED_CONSECUTIVE_THRESHOLD;
+}
+
+function recordProxySuccess(proxy: ProxyConfiguration, latencyMs: number): void {
+  const stats = proxyStats.get(proxy.cacheKey)
+    ?? { successCount: 0, failureCount: 0, latencySum: 0 };
+  stats.successCount += 1;
+  stats.latencySum += latencyMs;
+  proxyStats.set(proxy.cacheKey, stats);
+}
+
+function recordProxyFailure(proxy: ProxyConfiguration): void {
+  const stats = proxyStats.get(proxy.cacheKey)
+    ?? { successCount: 0, failureCount: 0, latencySum: 0 };
+  stats.failureCount += 1;
+  proxyStats.set(proxy.cacheKey, stats);
+}
 
 /**
  * Shared outbound HTTP seam for the core zero-key engines.
@@ -78,6 +118,7 @@ export async function fetchForEngine(
 
   let statusRotations = 0;
   for (const [index, proxy] of ordered.entries()) {
+    const attemptStart = Date.now();
     const attemptController = new AbortController();
     const timer = setTimeout(() => {
       attemptController.abort(ATTEMPT_TIMEOUT_REASON);
@@ -121,6 +162,7 @@ export async function fetchForEngine(
       }
       failedProxyUntil.delete(proxy.cacheKey);
       consecutiveFailures.delete(proxy.cacheKey);
+      recordProxySuccess(proxy, Date.now() - attemptStart);
       return response;
     } catch (error) {
       if (callerSignal?.aborted) throw error;
@@ -135,6 +177,7 @@ export async function fetchForEngine(
 }
 
 function coolProxy(proxy: ProxyConfiguration): void {
+  recordProxyFailure(proxy);
   const failures = (consecutiveFailures.get(proxy.cacheKey) ?? 0) + 1;
   consecutiveFailures.set(proxy.cacheKey, failures);
   failedProxyUntil.set(
@@ -167,7 +210,29 @@ export async function closeEngineHttpTransport(): Promise<void> {
   proxyAgents.clear();
   failedProxyUntil.clear();
   consecutiveFailures.clear();
+  proxyStats.clear();
   await Promise.all(agents.map(agent => agent.destroy()));
+}
+
+export interface ProxyHealthEntry {
+  cacheKey: string;
+  successCount: number;
+  failureCount: number;
+  avgLatencyMs: number;
+  degraded: boolean;
+}
+
+/** Passive per-exit health telemetry for pool-quality observability. */
+export function getProxyHealthSnapshot(): ProxyHealthEntry[] {
+  return [...proxyStats.entries()].map(([cacheKey, stats]) => ({
+    cacheKey,
+    successCount: stats.successCount,
+    failureCount: stats.failureCount,
+    avgLatencyMs: stats.successCount > 0
+      ? stats.latencySum / stats.successCount
+      : 0,
+    degraded: isProxyDegraded(cacheKey),
+  }));
 }
 
 interface ProxyConfiguration {
@@ -286,8 +351,13 @@ function orderProxyPool(
   const start = digest.readUInt32BE(0) % proxies.length;
   const rotated = [...proxies.slice(start), ...proxies.slice(0, start)];
   const now = Date.now();
-  const healthy = rotated.filter(proxy => (failedProxyUntil.get(proxy.cacheKey) ?? 0) <= now);
-  return healthy.length > 0 ? healthy : rotated;
+  const usable = rotated.filter(proxy =>
+    !isProxyCooled(proxy.cacheKey, now) && !isProxyDegraded(proxy.cacheKey));
+  if (usable.length > 0) return usable;
+  // Every exit is degraded/cooled: fall back to non-cooled exits so a degraded
+  // proxy can still record a success and rejoin the healthy set.
+  const notCooled = rotated.filter(proxy => !isProxyCooled(proxy.cacheKey, now));
+  return notCooled.length > 0 ? notCooled : rotated;
 }
 
 function parseProxy(

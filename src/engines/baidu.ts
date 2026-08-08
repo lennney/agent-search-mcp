@@ -4,7 +4,7 @@ import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
 import { EngineAdapterError } from './engine-error.js';
 import { providerCatalog } from './provider-catalog.js';
-import { resolveRequestProfile } from './request-profiles.js';
+import { resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const BAIDU_CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
 
@@ -19,7 +19,7 @@ export async function searchBaidu(query: string, limit: number = 10, options?: E
     url.searchParams.set('tn', 'json');
     url.searchParams.set('ie', 'utf-8');
 
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const res = await fetch(url, {
       headers: {
         'User-Agent': profile.userAgent,

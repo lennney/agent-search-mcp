@@ -58,6 +58,8 @@ const TITLE_CHALLENGE_MARKERS = [
 
 const BODY_CHALLENGE_MARKERS = [
   'captcha',
+  'altcha-widget',
+  'captcha-note',
   'verify you are human',
   'unusual traffic',
   'access denied',

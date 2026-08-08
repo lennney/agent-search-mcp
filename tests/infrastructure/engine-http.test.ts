@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   closeEngineHttpTransport,
   fetchForEngine,
+  getProxyHealthSnapshot,
   transportBackoffMs,
 } from '../../src/infrastructure/engine-http.js';
 
@@ -100,6 +101,24 @@ describe('engine HTTP transport', () => {
 
     expect(await response.text()).toBe('proxied');
     expect(observedRequestPath).toBe('/search?q=test');
+  });
+
+  it('routes a wiby request through its explicit proxy', async () => {
+    let observedRequestPath = '';
+    const proxy = await listen(createTunnelProxy((_request, socket, rawRequest) => {
+      observedRequestPath = rawRequest.split(' ')[1] ?? '';
+      respondThroughTunnel(socket, 200, 'proxied');
+    }));
+    servers.push(proxy.server);
+    vi.stubEnv('WIBY_PROXY_URL', `http://127.0.0.1:${proxy.port}`);
+
+    const response = await fetchForEngine(
+      'wiby',
+      'http://target.example/json/?q=test',
+    );
+
+    expect(await response.text()).toBe('proxied');
+    expect(observedRequestPath).toBe('/json/?q=test');
   });
 
   it('keeps a query sticky and cools only a transport-failed proxy', async () => {
@@ -296,6 +315,85 @@ describe('engine HTTP transport', () => {
     expect(await response.text()).toBe('challenge-two');
     expect(firstProxyRequests).toBe(1);
     expect(secondProxyRequests).toBe(1);
+  });
+
+  it('skips a degraded exit after its cooldown expires while a healthier exit exists', async () => {
+    let degradedRequests = 0;
+    let healthyRequests = 0;
+    const degradedProxy = await listen(createTunnelProxy((_request, socket) => {
+      degradedRequests += 1;
+      socket.destroy();
+    }));
+    const healthyProxy = await listen(createTunnelProxy((_request, socket) => {
+      healthyRequests += 1;
+      respondThroughTunnel(socket, 200, 'healthy');
+    }));
+    servers.push(degradedProxy.server, healthyProxy.server);
+    vi.stubEnv('SOGOU_PROXY_URLS', JSON.stringify([
+      `http://127.0.0.1:${degradedProxy.port}`,
+      `http://127.0.0.1:${healthyProxy.port}`,
+    ]));
+    const affinityKey = affinityForIndex('sogou', 0, 2);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-08T00:00:00Z'));
+    try {
+      // First failure cools the exit for ~30s.
+      const first = await fetchForEngine(
+        'sogou',
+        'http://target.example/search',
+        undefined,
+        { affinityKey, attemptTimeoutMs: 100 },
+      );
+      expect(await first.text()).toBe('healthy');
+      expect(degradedRequests).toBe(1);
+
+      // Advance past the first cooldown so the exit is tried a second time.
+      vi.setSystemTime(new Date('2026-08-08T00:01:00Z'));
+      const second = await fetchForEngine(
+        'sogou',
+        'http://target.example/search',
+        undefined,
+        { affinityKey, attemptTimeoutMs: 100 },
+      );
+      expect(await second.text()).toBe('healthy');
+      expect(degradedRequests).toBe(2);
+
+      // Expire the second, longer cooldown: consecutive failures persist, so
+      // the exit is degraded (not cooled) and must be skipped for the healthy.
+      vi.setSystemTime(new Date('2026-08-08T00:10:00Z'));
+      const third = await fetchForEngine(
+        'sogou',
+        'http://target.example/search',
+        undefined,
+        { affinityKey, attemptTimeoutMs: 100 },
+      );
+      expect(await third.text()).toBe('healthy');
+      expect(degradedRequests).toBe(2);
+      expect(healthyRequests).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tracks passive per-exit health telemetry', async () => {
+    const proxy = await listen(createTunnelProxy((_request, socket) => {
+      respondThroughTunnel(socket, 200, 'ok');
+    }));
+    servers.push(proxy.server);
+    vi.stubEnv('SOGOU_PROXY_URL', `http://127.0.0.1:${proxy.port}`);
+
+    const response = await fetchForEngine('sogou', 'http://target.example/search');
+    expect(await response.text()).toBe('ok');
+
+    const entry = getProxyHealthSnapshot()
+      .find(item => item.cacheKey.includes(String(proxy.port)));
+    expect(entry).toMatchObject({
+      successCount: 1,
+      failureCount: 0,
+      degraded: false,
+    });
+    expect(entry!.avgLatencyMs).toBeGreaterThan(0);
   });
 
   describe('transportBackoffMs', () => {

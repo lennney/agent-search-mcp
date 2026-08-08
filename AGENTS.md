@@ -75,9 +75,9 @@ fasm extract "https://..."
   Web preload、HTML 和 Lite；Web preload 只接受精确 HTTPS host/path。
   `cheerio` 固定为 `1.0.0`，代理 transport
   固定使用 Node 18.17+ 兼容的 Undici 6。
-- DDG/Sogou/Mojeek 出站代理只读取 `DUCKDUCKGO_PROXY_URL` / `SOGOU_PROXY_URL` /
-  `MOJEEK_PROXY_URL` 或显式的 `USE_PROXY=true` + `PROXY_URL`；不要静默读取系统
-  `HTTP_PROXY` / `HTTPS_PROXY`。代理凭证不得进入错误、日志或 fixture。
+- DDG/Sogou/Mojeek/Wiby 出站代理只读取 `DUCKDUCKGO_PROXY_URL` / `SOGOU_PROXY_URL` /
+  `MOJEEK_PROXY_URL` / `WIBY_PROXY_URL` 或显式的 `USE_PROXY=true` + `PROXY_URL`；
+  不要静默读取系统 `HTTP_PROXY` / `HTTPS_PROXY`。代理凭证不得进入错误、日志或 fixture。
 - 取消信号必须传入限速、重试、HTTP 和丰富化；带信号请求不得共享全局 pending
   promise。parallel/waterfall 必须使用同一搜索选项缓存键。
 - 正文提取只能改善 snippet，不得增加 `confidence` 或 `source_count`；

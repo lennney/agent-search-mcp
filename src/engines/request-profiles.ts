@@ -150,13 +150,26 @@ const PROFILES: readonly RequestProfile[] = Object.freeze([
 /**
  * Deterministically pick one coherent profile for a logical query, so every
  * request of the same query (bootstrap, preload, HTML, Lite) shares one identity
- * while different queries vary. Keeps exact-cache keys consistent because the
- * selection depends only on the query, not on call order.
+ * while different queries vary. An optional `windowKey` (e.g. a coarse time
+ * bucket from `currentProfileWindowKey`) rotates the identity for the same query
+ * across windows while staying deterministic within one window. Keeps exact-cache
+ * keys consistent because the cache is keyed by query, not by profile.
  */
-export function resolveRequestProfile(query: string): RequestProfile {
-  const digest = createHash('sha256').update(query).digest();
+export function resolveRequestProfile(
+  query: string,
+  windowKey?: string,
+): RequestProfile {
+  const key = windowKey === undefined ? query : `${query}\0${windowKey}`;
+  const digest = createHash('sha256').update(key).digest();
   const index = digest.readUInt32BE(0) % PROFILES.length;
   return PROFILES[index];
+}
+
+const PROFILE_WINDOW_MS = 3_600_000;
+
+/** Coarse time bucket so repeated queries rotate identity across windows. */
+export function currentProfileWindowKey(now: number = Date.now()): string {
+  return String(Math.floor(now / PROFILE_WINDOW_MS));
 }
 
 /** Default coherent identity (Chrome/136 Windows) for non-query fetches. */

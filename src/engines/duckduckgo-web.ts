@@ -5,7 +5,7 @@ import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
-import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const DDG_HOME_ORIGIN = 'https://duckduckgo.com';
 const DDG_PRELOAD_ORIGIN = 'https://links.duckduckgo.com';
@@ -44,7 +44,7 @@ export async function searchDuckDuckGoWeb(
     }
     options?.signal?.throwIfAborted();
     const signal = withTimeout(options?.signal, 10_000);
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const homeUrl = new URL('/', DDG_HOME_ORIGIN);
     homeUrl.searchParams.set('q', query);
     homeUrl.searchParams.set('t', 'h_');

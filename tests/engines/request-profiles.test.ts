@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  currentProfileWindowKey,
   profileHeaders,
   resolveDefaultProfile,
   resolveRequestProfile,
@@ -10,6 +11,24 @@ describe('resolveRequestProfile', () => {
   it('is deterministic for the same query', () => {
     expect(resolveRequestProfile('climate change policy'))
       .toBe(resolveRequestProfile('climate change policy'));
+  });
+
+  it('rotates the same query across time windows while staying stable within one', () => {
+    const query = 'high frequency query';
+    const windowA = '20260808T00';
+    expect(resolveRequestProfile(query, windowA))
+      .toBe(resolveRequestProfile(query, windowA));
+    const ids = new Set<string>();
+    for (let index = 0; index < 16; index += 1) {
+      ids.add(resolveRequestProfile(query, `window-${index}`).id);
+    }
+    expect(ids.size).toBeGreaterThan(1);
+  });
+
+  it('produces coarse hourly window keys from an injectable clock', () => {
+    expect(currentProfileWindowKey(0)).toBe('0');
+    expect(currentProfileWindowKey(3_600_000)).toBe('1');
+    expect(currentProfileWindowKey(7_200_000)).toBe('2');
   });
 
   it('rotates across the coherent profile set for different queries', () => {

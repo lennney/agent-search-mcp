@@ -9,7 +9,7 @@ import {
   resolveHtmlResultUrl,
 } from './html-search.js';
 import { providerCatalog } from './provider-catalog.js';
-import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const YANDEX_SEARCH_URL = 'https://yandex.com/search/';
 
@@ -23,7 +23,7 @@ export async function searchYandex(
   try {
     const url = new URL(YANDEX_SEARCH_URL);
     url.searchParams.set('text', query);
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const page = await fetchSearchHtml('yandex', url, {
       signal: options?.signal,
       headers: profileHeaders(profile, {

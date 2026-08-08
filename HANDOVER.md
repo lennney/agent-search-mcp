@@ -51,12 +51,28 @@ tags:
   `docs/research/2026-08-08-tls-impersonation-survey.md`，结论**不采用**（Node 端
   选项全为 alpha、Windows 仅 curl-cffi-node 有预编译、impers 首启下载 native、
   打破零依赖定位、DDG/Sogou 边际收益未验证）；条件性接入路径已记录。
-- 离线门禁：85 个测试文件、862 通过、2 跳过；build/lint/package manifest 通过。
+- 离线门禁：85 个测试文件、869 通过、2 跳过；build/lint/package manifest 通过。
 - 用户授权后的有限 live smoke（每引擎单查询、count=3、间隔≥10 秒）：mojeek 实
   为 Altcha 验证码页（见上）、DDG 返回 3 条真实结果（该出口此前有 202 challenge
   历史）、sogou 返回 3 条真实结果（含一例命中既有 prompt-injection 门禁的 CSDN
   片段）。未保存结果、未写 artifact；单查询观察不构成可用率或质量声明，也不能
   反推 profile 与结果的因果。未配置代理池，传输层轮换/超时改动未在 live 中触发。
+
+## 2026-08-08: 后续可靠性优化（challenge 审计 / 健康分 / Wiby / 时间窗口）
+
+- 静默 challenge 审计：Baidu（wappass→bot_challenge）与 Wiby（JSON 非解析
+  →parse_error）已覆盖；**Startpage 是第二个静默吞验证码的引擎**（HTTP 200、
+  无 result 块被当空解析），已加 `bot_challenge` 检测。`html-search.ts` 共享
+  检测器补 `altcha-widget`/`captcha-note` 标记。
+- A5 per-exit 被动健康分：`engine-http.ts` 跟踪每出口成功/失败/延迟并暴露
+  `getProxyHealthSnapshot()`；连续失败 ≥2 的降级出口在冷却过期后、存在更健康
+  替代时被跳过（全部降级时回退，避免永久排除）。
+- Wiby 接入 `fetchForEngine`：`WIBY_PROXY_URL`/`WIBY_PROXY_URLS` + status 轮换
+  [403,429]；`fetchSearchJson` 增加可选 transport，bocha/serper/tencent-wsa 保持
+  直连。
+- 时间窗口轮换：`resolveRequestProfile(query, windowKey?)` 加可选窗口参数 +
+  `currentProfileWindowKey()` 小时桶，8 个 HTML 引擎按小时轮换同一查询的 profile，
+  查询内稳定、缓存键不变（跨窗口缓存命中仍服务旧结果）。
 
 # Agent Search MCP — Handover
 

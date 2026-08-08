@@ -9,7 +9,7 @@ import {
   resolveHtmlResultUrl,
 } from './html-search.js';
 import { providerCatalog } from './provider-catalog.js';
-import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const BING_SEARCH_URL = 'https://www.bing.com/search';
 
@@ -24,7 +24,7 @@ export async function searchBing(
     const url = new URL(BING_SEARCH_URL);
     url.searchParams.set('q', query);
     url.searchParams.set('count', String(limit));
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const page = await fetchSearchHtml('bing', url, {
       signal: options?.signal,
       headers: profileHeaders(profile, {

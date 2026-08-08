@@ -76,6 +76,12 @@ export async function searchWiby(
       signal: options?.signal,
       timeoutMs: 8_000,
       retryServerErrors: false,
+      transport: {
+        engine: 'wiby',
+        affinityKey: query,
+        rotateOnStatus: [403, 429],
+        maxStatusRotations: 1,
+      },
     });
     return parseWibyResponse(data, Math.max(1, count));
   } catch (error) {

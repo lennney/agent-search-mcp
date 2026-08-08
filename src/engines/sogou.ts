@@ -6,7 +6,7 @@ import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
 import { providerCatalog } from './provider-catalog.js';
-import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const SOGOU_ORIGIN = 'https://www.sogou.com';
 const SOGOU_SEARCH_URL = `${SOGOU_ORIGIN}/web`;
@@ -102,6 +102,7 @@ async function fetchSogouHtml(
   const signal = withTimeout(callerSignal, 10_000);
   const profile = resolveRequestProfile(
     initialUrl.searchParams.get('query') ?? '',
+    currentProfileWindowKey(),
   );
 
   for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {

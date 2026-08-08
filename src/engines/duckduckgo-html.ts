@@ -4,7 +4,7 @@ import { logger } from '../infrastructure/logger.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { EngineAdapterError } from './engine-error.js';
-import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 export const duckduckgoHtmlProvider = {
   id: 'duckduckgo' as const,
@@ -78,7 +78,7 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
       l: options?.requestContext?.region ?? 'us-en',
     });
     const signal = withTimeout(options?.signal, 10000);
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
 
     const res = await fetchForEngine('duckduckgo', 'https://html.duckduckgo.com/html/', {
       method: 'POST',
@@ -161,7 +161,7 @@ export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10
       l: options?.requestContext?.region ?? 'us-en',
     });
 
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const res = await fetchForEngine('duckduckgo', 'https://lite.duckduckgo.com/lite/', {
       method: 'POST',
       headers: {

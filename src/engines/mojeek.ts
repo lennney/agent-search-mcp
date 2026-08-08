@@ -5,7 +5,7 @@ import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import { EngineAdapterError } from './engine-error.js';
 import { providerCatalog } from './provider-catalog.js';
-import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 export const mojeekProvider = providerCatalog.mojeek;
 
@@ -19,7 +19,7 @@ const MAX_STATUS_ROTATIONS = 1;
 export async function searchMojeek(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   try {
     const url = `https://www.mojeek.com/search?q=${encodeURIComponent(query)}`;
-    const profile = resolveRequestProfile(query);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const res = await fetchForEngine('mojeek', url, {
       headers: profileHeaders(profile, {
         acceptLanguage: 'en-US,en;q=0.9',
