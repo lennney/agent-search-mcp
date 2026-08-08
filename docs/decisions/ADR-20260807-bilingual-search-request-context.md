@@ -1,6 +1,7 @@
 # ADR-20260807：统一双语搜索请求上下文
 
-状态：Accepted
+状态：Accepted（「保持稳定 User-Agent / challenge 立即停止回退」约束已被
+      ADR-20260808-egress-fingerprint-flexibility 取代）
 日期：2026-08-07
 
 ## Context

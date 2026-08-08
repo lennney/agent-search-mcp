@@ -9,6 +9,7 @@ import {
   resolveHtmlResultUrl,
 } from './html-search.js';
 import { providerCatalog } from './provider-catalog.js';
+import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
 
 const YANDEX_SEARCH_URL = 'https://yandex.com/search/';
 
@@ -22,16 +23,15 @@ export async function searchYandex(
   try {
     const url = new URL(YANDEX_SEARCH_URL);
     url.searchParams.set('text', query);
+    const profile = resolveRequestProfile(query);
     const page = await fetchSearchHtml('yandex', url, {
       signal: options?.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-          + 'AppleWebKit/537.36 (KHTML, like Gecko) '
-          + 'Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': options?.requestContext?.acceptLanguage
+      headers: profileHeaders(profile, {
+        acceptLanguage: options?.requestContext?.acceptLanguage
           ?? 'en-US,en;q=0.9',
-      },
+        referer: 'https://yandex.com/',
+        kind: 'navigation',
+      }),
     });
 
     const results = parseYandexHTML(page.html, limit);

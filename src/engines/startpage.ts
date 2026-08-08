@@ -3,6 +3,7 @@ import { decodeHTMLTags } from '../infrastructure/html-utils.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
 import { providerCatalog } from './provider-catalog.js';
+import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
 
 export const startpageProvider = providerCatalog.startpage;
 
@@ -42,12 +43,16 @@ export async function searchStartpage(query: string, limit: number = 10, options
       segment: 'organic',
     }).toString();
 
+    const profile = resolveRequestProfile(query);
     const res = await fetch('https://www.startpage.com/sp/search', {
       method: 'POST',
       headers: {
+        ...profileHeaders(profile, {
+          acceptLanguage: 'en-US,en;q=0.9',
+          referer: 'https://www.startpage.com/',
+          kind: 'form',
+        }),
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': 'https://www.startpage.com/',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
       body,
       signal: withTimeout(options?.signal, 15000),

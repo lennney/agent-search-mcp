@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Accepted. The "cannot rotate after challenge/403/429" clause below is
+superseded by ADR-20260808-egress-fingerprint-flexibility.
 
 ## Context
 

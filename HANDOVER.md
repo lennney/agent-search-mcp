@@ -29,6 +29,35 @@ tags:
 - Architecture decision: `docs/decisions/ADR-20260808-sticky-proxy-pools.md`.
   No new live search was performed in this change.
 
+## 2026-08-08: Egress reliability and HTTP-layer fingerprint profiles
+
+- `engine-http.ts` 增加 per-attempt 超时（挂死代理快速失败并轮换）、407 视为
+  传输失败、challenge/403/429 后有界换出口（`rotateOnStatus`，默认关）、传输
+  失败指数退避 + jitter（`transportBackoffMs`，30s 起、5min 封顶）。轮换预算
+  按 fetch 计，challenge 在有界轮换后仍返回 provider 并悬挂。
+- 新增 `engines/request-profiles.ts`：4 个自洽浏览器 profile（Chrome/136 Windows、
+  Chrome/120 macOS、Firefox/135、Safari/17），按查询确定性选择、查询内稳定，
+  header 顺序 best-effort 对齐。接入 DDG web/html、Sogou，并迁移
+  bing/yandex/mojeek/startpage（profileHeaders）+ baidu（自洽 UA + client hints）。
+- 架构决策：`docs/decisions/ADR-20260808-egress-fingerprint-flexibility.md`
+  取代 sticky-proxy-pools 与双语 request-context 中禁止轮换/稳定 UA 的条款。
+- `fetch-tools.ts` 的 CSDN 抓取改用 `resolveDefaultProfile()`，补全此前截断的 UA。
+- Mojeek 诊断：其「空结果」根因是 **Altcha 验证码页（HTTP 200）被静默当空解析**。
+  已加 `bot_challenge` 检测（1h 冷却，编排层正常上报 partialFailures）；并把
+  mojeek 接入 `fetchForEngine`（`MOJEEK_PROXY_URL`/`MOJEEK_PROXY_URLS` +
+  status 轮换 [403,429]），干净出口可能避免触发 Altcha。解析器正则与真实结构
+  （`ul.results-standard > li > a.ob > h2 > a.title > p.s`）一致，无需改。
+- native TLS 模仿独立调研见
+  `docs/research/2026-08-08-tls-impersonation-survey.md`，结论**不采用**（Node 端
+  选项全为 alpha、Windows 仅 curl-cffi-node 有预编译、impers 首启下载 native、
+  打破零依赖定位、DDG/Sogou 边际收益未验证）；条件性接入路径已记录。
+- 离线门禁：85 个测试文件、862 通过、2 跳过；build/lint/package manifest 通过。
+- 用户授权后的有限 live smoke（每引擎单查询、count=3、间隔≥10 秒）：mojeek 实
+  为 Altcha 验证码页（见上）、DDG 返回 3 条真实结果（该出口此前有 202 challenge
+  历史）、sogou 返回 3 条真实结果（含一例命中既有 prompt-injection 门禁的 CSDN
+  片段）。未保存结果、未写 artifact；单查询观察不构成可用率或质量声明，也不能
+  反推 profile 与结果的因果。未配置代理池，传输层轮换/超时改动未在 live 中触发。
+
 # Agent Search MCP — Handover
 
 ## 当前状态
@@ -108,7 +137,9 @@ tags:
   不自动重试；`insufficient-runner` 写出脱敏报告后以退出码 2 失败关闭。
 - 当前出口最近一次 DDG/Wikipedia qualification 为 8/10，DDG 已出现
   HTTP 202 challenge；不要从该出口继续探测或捕获质量 fixture。
-- 不使用指纹轮换、挑战规避或高频重试来获取 DDG/Sogou 结果。
+- 同一查询内保持一个自洽浏览器 profile（web/html/lite 共享），跨查询确定性轮换；
+  challenge/403/429 后有界轮换出口再进入冷却；代理传输失败按指数退避 + jitter
+  冷却（见 ADR-20260808-egress-fingerprint-flexibility）。
 
 ## 当前验证
 

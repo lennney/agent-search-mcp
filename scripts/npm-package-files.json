@@ -33,6 +33,7 @@
   "dist/engines/json-search-api.js",
   "dist/engines/mojeek.js",
   "dist/engines/provider-catalog.js",
+  "dist/engines/request-profiles.js",
   "dist/engines/runtime-registry.js",
   "dist/engines/search-request-context.js",
   "dist/engines/serper.js",

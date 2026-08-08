@@ -9,6 +9,7 @@ import {
   resolveHtmlResultUrl,
 } from './html-search.js';
 import { providerCatalog } from './provider-catalog.js';
+import { profileHeaders, resolveRequestProfile } from './request-profiles.js';
 
 const BING_SEARCH_URL = 'https://www.bing.com/search';
 
@@ -23,16 +24,15 @@ export async function searchBing(
     const url = new URL(BING_SEARCH_URL);
     url.searchParams.set('q', query);
     url.searchParams.set('count', String(limit));
+    const profile = resolveRequestProfile(query);
     const page = await fetchSearchHtml('bing', url, {
       signal: options?.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-          + 'AppleWebKit/537.36 (KHTML, like Gecko) '
-          + 'Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': options?.requestContext?.acceptLanguage
+      headers: profileHeaders(profile, {
+        acceptLanguage: options?.requestContext?.acceptLanguage
           ?? 'en-US,en;q=0.9,zh-CN;q=0.8',
-      },
+        referer: 'https://www.bing.com/',
+        kind: 'navigation',
+      }),
     });
 
     const results = parseBingHTML(page.html, limit);

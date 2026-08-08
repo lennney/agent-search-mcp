@@ -64,6 +64,8 @@ describe('search configuration doctor', () => {
       TAVILY_API_KEY: '   ',
       DUCKDUCKGO_PROXY_URL:
         'http://proxy-user:proxy-secret@proxy.example:8080',
+      MOJEEK_PROXY_URL:
+        'http://mojeek-user:mojeek-secret@proxy.example:8080',
     };
     const report = createDoctorReport({
       environment,
@@ -88,10 +90,17 @@ describe('search configuration doctor', () => {
         status: 'present',
         provenance: ['environment:DUCKDUCKGO_PROXY_URL'],
       });
+    expect(report.configuration.find(check => check.id === 'mojeek-proxy'))
+      .toMatchObject({
+        status: 'present',
+        provenance: ['environment:MOJEEK_PROXY_URL'],
+      });
     for (const secret of [
       'brave-secret-value',
       'proxy-user',
       'proxy-secret',
+      'mojeek-user',
+      'mojeek-secret',
       'proxy.example',
     ]) {
       expect(serialized).not.toContain(secret);
@@ -165,6 +174,11 @@ describe('search configuration doctor', () => {
         }),
         expect.objectContaining({
           id: 'sogou-proxy',
+          status: 'invalid',
+          provenance: ['environment:USE_PROXY'],
+        }),
+        expect.objectContaining({
+          id: 'mojeek-proxy',
           status: 'invalid',
           provenance: ['environment:USE_PROXY'],
         }),

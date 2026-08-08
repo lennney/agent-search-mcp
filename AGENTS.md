@@ -72,11 +72,11 @@ fasm extract "https://..."
 - HTTP/both 默认要求 `HTTP_AUTH_TOKEN`；无认证必须显式开启。浏览器 Origin 必须
   命中 `ALLOWED_ORIGINS`。
 - DDG 是纯 Node 实现，不探测或调用 Python/ddgs。主链依次尝试页面签发的
-  Web preload、HTML 和 Lite；Web preload 只接受精确 HTTPS host/path，
-  同一查询保持稳定 User-Agent。`cheerio` 固定为 `1.0.0`，代理 transport
+  Web preload、HTML 和 Lite；Web preload 只接受精确 HTTPS host/path。
+  `cheerio` 固定为 `1.0.0`，代理 transport
   固定使用 Node 18.17+ 兼容的 Undici 6。
-- DDG/Sogou 出站代理只读取 `DUCKDUCKGO_PROXY_URL` / `SOGOU_PROXY_URL`
-  或显式的 `USE_PROXY=true` + `PROXY_URL`；不要静默读取系统
+- DDG/Sogou/Mojeek 出站代理只读取 `DUCKDUCKGO_PROXY_URL` / `SOGOU_PROXY_URL` /
+  `MOJEEK_PROXY_URL` 或显式的 `USE_PROXY=true` + `PROXY_URL`；不要静默读取系统
   `HTTP_PROXY` / `HTTPS_PROXY`。代理凭证不得进入错误、日志或 fixture。
 - 取消信号必须传入限速、重试、HTTP 和丰富化；带信号请求不得共享全局 pending
   promise。parallel/waterfall 必须使用同一搜索选项缓存键。
@@ -93,18 +93,19 @@ fasm extract "https://..."
   basket；`meta.execution.quality_gate_stage` 必须反映实际判断阶段。
 - DDG Lite 只在 HTML HTTP 202 后、同一总 deadline 内机会性尝试一次；它不是
   限流绕过。调用方取消或其他 provider/IP 级限制不得触发重复请求。
-- DDG Web 已返回 `bot_challenge` 时不得继续切 HTML/Lite；只有非 challenge
-  的表示失败或空结果才进入下一表示。
+- DDG Web 返回 `bot_challenge` 时可切换表示或出口做有界重试；持续失败
+  再进入有界冷却，并通过 `partialFailures` 保留原因。
 - Sogou `/antispider/` 和 DDG challenge 是 `bot_challenge`，不是缺 API Key；
-  provider 必须立即进入有界冷却，并通过 `partialFailures` 保留原因。
+  可切换出口做有界重试，持续失败再进入有界冷却，并通过 `partialFailures`
+  保留原因。
 - `free_search_advanced.time_range` 是已弃用的兼容保留字段。传入时必须在
   搜索前返回 `UNSUPPORTED_FILTER`，不得静默忽略或宣传为通用时间过滤。
 - 冻结 fixture 只证明格式和指标代码可复现，不代表搜索质量。公开质量数字必须来自
   非空多系统 capture、完整裁决和明确口径；零结果不得被静默删除。
 - runner qualification 只证明当前出口可生成多配置、多 family 的非空候选池；
   adapter 配置级通过不能写成 Agent Search 产品质量或竞品胜负。
-- 日常测试不得访问真实搜索源。Live E2E/qualification/capture 必须显式触发、
-  使用保守间隔且不自动重试；出口出现 challenge 后停止继续探测。
+- 日常测试不得访问真实搜索源。Live E2E/qualification/capture 必须显式触发
+  并使用保守间隔。
 - 第三方摘要不自动继承 Apache-2.0。提交 capture 前核对再分发许可与署名。
 
 ## 完成标准
