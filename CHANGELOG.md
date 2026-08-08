@@ -11,10 +11,26 @@ tags:
 
 ## Unreleased
 
+- feat: Hardened the shared engine transport with per-attempt timeouts (hung
+  proxies fail fast and rotate), proxy 407 treated as a transport failure,
+  optional bounded exit rotation on challenge/403/429 (`rotateOnStatus`), and
+  exponential transport-failure backoff with jitter.
+- feat: Added query-deterministic coherent browser request profiles
+  (`request-profiles.ts`), applied to all zero-key HTML engines and the CSDN
+  fetch tool, so each query presents one self-consistent browser identity while
+  different queries vary.
+- fix: Mojeek "empty results" were an undetected Altcha captcha served as HTTP
+  200; the adapter now surfaces it as `bot_challenge`, joins the proxy-aware
+  transport (`MOJEEK_PROXY_URL`/`MOJEEK_PROXY_URLS`), and `fasm doctor` adds a
+  `mojeek-proxy` check.
+- docs: Relaxed the no-rotation contract via
+  `ADR-20260808-egress-fingerprint-flexibility`; surveyed HTTP-layer profiles
+  and concluded native TLS impersonation is not yet production-ready.
 - feat: Added opt-in, user-owned DDG and Sogou HTTP(S) proxy pools with
   deterministic query affinity and a 60-second transport-failure cooldown;
   HTTP challenge/rate-limit responses never rotate exits, and single-proxy
-  settings retain precedence.
+  settings retain precedence. (The fixed cooldown and "never rotate" rule are
+  superseded by the transport-hardening entry above.)
 - fix: Bound formal competitive execution to a fresh, complete qualification
   report for the exact runtime-derived nine-adapter profile, and preserved
   validated provider-level failure attribution in private checkpoints.

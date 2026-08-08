@@ -829,6 +829,10 @@ Research:
 - [x] Add query-sticky, user-owned DDG/Sogou proxy pools at the shared transport
       seam. Fail over only on transport exceptions, cool failed transports for
       60 seconds, and never switch exits after HTTP challenge/403/429 evidence.
+      (2026-08-08: bounded exit rotation on challenge/403/429 and exponential
+      cooldown supersede the fixed 60s / never-rotate rule; Mojeek joined via
+      `MOJEEK_PROXY_URL(S)`. See
+      `docs/decisions/ADR-20260808-egress-fingerprint-flexibility.md`.)
 - [x] Bind formal competitive execution to a fresh exact-profile qualification
       hash, exact implementation revision, and direct-transport preflight;
       retain validated provider-level failure attribution in private
@@ -836,8 +840,9 @@ Research:
       evidence and cannot authorize the nine-adapter formal profile.
 - [x] Verify the packed Windows `fasm.cmd` entry against live native DDG search,
       and bound fallback query expansion to one generation.
-- [ ] Capture a non-empty Sogou fixture from a legitimate alternate exit. Do
-      not add fingerprint rotation or challenge-evasion behavior.
+- [ ] Capture a non-empty Sogou fixture from a legitimate alternate exit.
+      HTTP-layer profile rotation and bounded exit rotation now exist per
+      `ADR-20260808-egress-fingerprint-flexibility`; the fixture gate stands.
 - [ ] Capture actual Agent Search and comparison-system results on the qualified
       runner, then run the small blinded AI review. Adapter readiness is not a
       product-quality claim.

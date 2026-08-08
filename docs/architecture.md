@@ -177,15 +177,16 @@ DDG 使用 `us-en` / `cn-zh`，Wikipedia 使用 `en` / `zh` 子域。Bing/Yandex
 transport server 都复用它，因此缓存、Provider 冷却、指标和限速不会按 HTTP 请求重置。
 CLI 等直接调用路径只在首次搜索时创建默认 runtime，避免模块导入阶段过早读取环境：
 
-- **代理连接池**: DDG/Sogou 首次代理请求时按脱敏配置创建
+- **代理连接池**: DDG/Sogou/Mojeek 首次代理请求时按脱敏配置创建
 - **搜索运行时**: 聚合 config、cache、health、metrics、rate limiter、engine policy 与
   Provider dispatch；工具和健康资源接收同一个实例
 - **请求合并**: 只在同一 runtime 内复用相同 pending 请求，不跨测试/server runtime 串线
 
 DDG 不再探测 Python 或启动子进程；Web、HTML 与 Lite 是同一 provider
 family。Web 表示只接受
-`links.duckduckgo.com/d.js` 的精确 HTTPS 路径，并在同一查询会话中保持
-一致 User-Agent。Lite 只在 HTML 202 后、同一总 deadline 内尝试一次；
+`links.duckduckgo.com/d.js` 的精确 HTTPS 路径，并在同一查询会话中保持一个
+自洽的浏览器 profile（按查询确定性选择，跨查询轮换，见 `engines/request-profiles.ts`）。
+Lite 只在 HTML 202 后、同一总 deadline 内尝试一次；
 组合失败标记为不可重试，避免外层再次运行整条 Lite 链。任何表示都不增加
 `source_count`，也不被描述为限流绕过。
 
@@ -197,7 +198,9 @@ Bing/Yandex 共用 `engines/html-search.ts` 的单请求传输边界：该模块
 超时、HTTP/`Retry-After`、challenge 和成功页面结构漂移分类；adapter 只负责各自的
 DOM 结果解析。严格编排会收到类型化失败并记录 `partialFailures`，直接 adapter 仍可
 按兼容合同软失败为空数组。该共享层不读取系统代理，也不添加重试、分页或第二请求。
-Startpage/Mojeek 仍保留既有实现，待同一接口在真实调用者中稳定后再评估迁移。
+Startpage 仍保留既有直接实现；Mojeek 已接入 `fetchForEngine` 代理传输
+（`MOJEEK_PROXY_URL`/`MOJEEK_PROXY_URLS`）。各 HTML 引擎现都按查询使用自洽
+浏览器 profile（`engines/request-profiles.ts`）。
 
 ### 7. 运行控制面不占默认工具槽位
 
