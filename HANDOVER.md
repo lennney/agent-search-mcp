@@ -51,7 +51,7 @@ tags:
   `docs/research/2026-08-08-tls-impersonation-survey.md`，结论**不采用**（Node 端
   选项全为 alpha、Windows 仅 curl-cffi-node 有预编译、impers 首启下载 native、
   打破零依赖定位、DDG/Sogou 边际收益未验证）；条件性接入路径已记录。
-- 离线门禁：85 个测试文件、869 通过、2 跳过；build/lint/package manifest 通过。
+- 离线门禁：85 个测试文件、872 通过、2 跳过；build/lint/package manifest 通过。
 - 用户授权后的有限 live smoke（每引擎单查询、count=3、间隔≥10 秒）：mojeek 实
   为 Altcha 验证码页（见上）、DDG 返回 3 条真实结果（该出口此前有 202 challenge
   历史）、sogou 返回 3 条真实结果（含一例命中既有 prompt-injection 门禁的 CSDN
@@ -73,6 +73,14 @@ tags:
 - 时间窗口轮换：`resolveRequestProfile(query, windowKey?)` 加可选窗口参数 +
   `currentProfileWindowKey()` 小时桶，8 个 HTML 引擎按小时轮换同一查询的 profile，
   查询内稳定、缓存键不变（跨窗口缓存命中仍服务旧结果）。
+- 词边界相关匹配：`passage-selector.ts` 新增 `termMatches`，scorer 与 passage 选择
+  的 Latin 词从子串 `includes` 改为词边界匹配（`cat` 不再命中 `catalog`、
+  `signal` 不再命中 `signals`）；CJK bigram 保持连续匹配。evidence-demo 冻结
+  fixture 的 `structured_tokens`/`text_savings_percent` 按新分数同步（523→517、
+  62.3→61.9，gate/结果数不变）。
+- 评估结论：`free_extract` 仍依赖 Jina Reader（免费、零密钥、服务端真实渲染 +
+  Readability 级提取），**不自建原生提取器**——朴素自建在真实页面大概率质量更差，
+  属重复造轮子。
 
 # Agent Search MCP — Handover
 

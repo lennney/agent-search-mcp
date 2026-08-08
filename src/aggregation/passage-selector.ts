@@ -7,6 +7,23 @@ export interface PassageSelection {
 const CJK_SEQUENCE = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+/gu;
 const CJK_ONLY = /^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]+$/u;
 const LATIN_TERM = /[\p{L}\p{N}]+/gu;
+const REGEXP_ESCAPE = /[.*+?^${}()|[\]\\]/g;
+
+function escapeRegExp(value: string): string {
+  return value.replace(REGEXP_ESCAPE, '\\$&');
+}
+
+/**
+ * Match a query term at word boundaries for Latin terms, while CJK bigrams keep
+ * contiguous substring matching. Prevents false positives such as "cat" matching
+ * "catalog" and keeps Chinese bigram semantics intact.
+ */
+export function termMatches(text: string, term: string): boolean {
+  if (CJK_ONLY.test(term)) return text.includes(term);
+  const escaped = escapeRegExp(term);
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, 'u')
+    .test(text);
+}
 
 export function extractQueryTerms(query: string): string[] {
   const normalized = query.toLowerCase();
@@ -69,7 +86,7 @@ export function selectRelevantPassage(
 
   for (const passage of passages) {
     const normalized = passage.toLowerCase();
-    const matched = terms.filter(term => normalized.includes(term));
+    const matched = terms.filter(term => termMatches(normalized, term));
     const coverage = terms.length > 0 ? matched.length / terms.length : 0;
     const density = matched.length / Math.max(passage.length / 80, 1);
     const exactBonus = query.trim() && normalized.includes(query.trim().toLowerCase()) ? 0.5 : 0;
