@@ -23,6 +23,9 @@ tags:
   whose profile hash matches the runtime-derived nine zero-key adapters,
   Top-5, waterfall, no enrichment/query expansion, and zero retry. The earlier
   DDG/Wikipedia report cannot satisfy this gate.
+- Qualification now also requires an explicit implementation revision and
+  rejects configured DDG/Sogou proxy transports before its first request. The
+  formal Agent Search revision must match exactly.
 - Architecture decision: `docs/decisions/ADR-20260808-sticky-proxy-pools.md`.
   No new live search was performed in this change.
 

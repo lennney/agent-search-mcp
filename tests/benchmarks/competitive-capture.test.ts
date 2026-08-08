@@ -15,6 +15,7 @@ import {
   validateDriverResponse,
 } from '../../benchmarks/lib/competitive-driver.mjs';
 import {
+  assertDirectQualificationTransport,
   assertCompetitiveQualification,
   competitiveProfileSha256,
   createAgentSearchQualificationProfile,
@@ -213,6 +214,7 @@ describe('competitive capture controller', () => {
     const profile = createAgentSearchQualificationProfile(
       'agent-search-free-waterfall',
       ['duckduckgo', 'sogou', 'wikipedia'],
+      'git:a05ca5e25afaebe149e59a1cb126dd7118ae85dd',
     );
     const report = {
       kind: 'search-runner-qualification',
@@ -235,9 +237,29 @@ describe('competitive capture controller', () => {
       ...profile,
       result_limit: 10,
     }, { now })).toThrow(/profile differs/);
+    expect(() => assertCompetitiveQualification(
+      report,
+      createAgentSearchQualificationProfile(
+        'agent-search-free-waterfall',
+        ['duckduckgo', 'sogou', 'wikipedia'],
+        'git:different-revision',
+      ),
+      { now },
+    )).toThrow(/profile differs/);
     expect(() => assertCompetitiveQualification(report, profile, {
       now: Date.parse('2026-08-08T01:00:01.000Z'),
     })).toThrow(/stale/);
+  });
+
+  it('requires qualification to use the same direct transport as formal capture', () => {
+    expect(assertDirectQualificationTransport([
+      { engine: 'duckduckgo', status: 'missing' },
+      { engine: 'sogou', status: 'missing' },
+    ])).toEqual({ proxy: false });
+    expect(() => assertDirectQualificationTransport([
+      { engine: 'duckduckgo', status: 'present' },
+      { engine: 'sogou', status: 'missing' },
+    ])).toThrow(/requires direct/);
   });
 
   it('hashes the exact driver, configuration, and implementation revision', () => {

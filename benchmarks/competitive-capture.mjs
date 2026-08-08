@@ -68,6 +68,7 @@ try {
       createAgentSearchQualificationProfile(
         'agent-search-free-waterfall',
         [...freeEngines],
+        revisions.get('agent-search-free-waterfall'),
       ),
     );
     const runtimeEvidence = Object.fromEntries(await Promise.all(

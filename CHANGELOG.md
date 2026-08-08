@@ -18,6 +18,9 @@ tags:
 - fix: Bound formal competitive execution to a fresh, complete qualification
   report for the exact runtime-derived nine-adapter profile, and preserved
   validated provider-level failure attribution in private checkpoints.
+- fix: Extended the qualification profile with the exact Agent Search
+  implementation revision and fail-closed direct-transport evidence, preventing
+  proxy or build drift between qualification and formal capture.
 - fix: Aligned the Open-WebSearch 2.1.9 competitive profile with its annotated
   tag commit and packaged engine registry, preserved subprocess timeouts as
   timeout samples, and made qualification stop after challenge/rate-limit

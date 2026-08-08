@@ -17,6 +17,7 @@ import {
   terminalQualificationFailure,
 } from './lib/runner-qualification.mjs';
 import {
+  assertDirectQualificationTransport,
   competitiveProfileSha256,
   createAgentSearchQualificationProfile,
 } from './lib/competitive-run-contract.mjs';
@@ -39,14 +40,30 @@ try {
   const queries = selectBenchmarkQueries(querySet, limit);
   const minimumQueries = integerOption('--minimum-queries') ?? limit;
   const queryDelayMs = qualificationQueryDelayMs(optionValue('--query-delay-ms'));
+  const implementationRevision = requiredOption('--implementation-revision');
 
   process.env.OUTPUT_STYLE = 'normal';
   process.env.MAX_FULL_RESULTS = '50';
   process.env.MIN_CONFIDENCE = '0';
   process.env.MIN_SOURCE_COUNT = '1';
-  const [{ searchWithFallback }, { SEARCH_PROVIDERS }] = await Promise.all([
+  const [
+    { searchWithFallback },
+    { SEARCH_PROVIDERS },
+    { inspectEngineProxyConfiguration },
+  ] = await Promise.all([
     import('../dist/tools/free-search.js'),
     import('../dist/engines/provider-catalog.js'),
+    import('../dist/infrastructure/engine-http.js'),
+  ]);
+  assertDirectQualificationTransport([
+    {
+      engine: 'duckduckgo',
+      ...inspectEngineProxyConfiguration('duckduckgo'),
+    },
+    {
+      engine: 'sogou',
+      ...inspectEngineProxyConfiguration('sogou'),
+    },
   ]);
   const systems = systemSpecs.map(value => parseSystem(value, SEARCH_PROVIDERS));
 
@@ -117,7 +134,11 @@ try {
     systems: systems.map(system => ({
       ...system,
       profile_sha256: competitiveProfileSha256(
-        createAgentSearchQualificationProfile(system.system_id, system.engines),
+        createAgentSearchQualificationProfile(
+          system.system_id,
+          system.engines,
+          implementationRevision,
+        ),
       ),
     })),
     samples,

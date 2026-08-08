@@ -830,7 +830,8 @@ Research:
       seam. Fail over only on transport exceptions, cool failed transports for
       60 seconds, and never switch exits after HTTP challenge/403/429 evidence.
 - [x] Bind formal competitive execution to a fresh exact-profile qualification
-      hash and retain validated provider-level failure attribution in private
+      hash, exact implementation revision, and direct-transport preflight;
+      retain validated provider-level failure attribution in private
       checkpoints. The earlier DDG/Wikipedia-only qualification remains narrow
       evidence and cannot authorize the nine-adapter formal profile.
 - [x] Verify the packed Windows `fasm.cmd` entry against live native DDG search,

@@ -15,17 +15,26 @@ function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function createAgentSearchQualificationProfile(systemId, engines) {
+export function createAgentSearchQualificationProfile(
+  systemId,
+  engines,
+  implementationRevision,
+) {
   if (typeof systemId !== 'string' || systemId.length === 0
     || !Array.isArray(engines) || engines.length === 0
     || engines.some(engine => typeof engine !== 'string' || engine.length === 0)
-    || new Set(engines).size !== engines.length) {
-    fail('system ID and unique engine list are required');
+    || new Set(engines).size !== engines.length
+    || typeof implementationRevision !== 'string'
+    || implementationRevision.length < 1
+    || implementationRevision.length > 1_000
+    || !/^[\x21-\x7e]+$/u.test(implementationRevision)) {
+    fail('system ID, unique engine list, and printable implementation revision are required');
   }
   return {
     schema_version: 1,
     system_id: systemId,
     system_version: 'repository-build',
+    implementation_revision: implementationRevision,
     result_limit: 5,
     retry_limit: 0,
     options: {
@@ -34,8 +43,23 @@ export function createAgentSearchQualificationProfile(systemId, engines) {
       engines: [...engines],
       enrichment: false,
       query_expansion: false,
+      proxy: false,
     },
   };
+}
+
+export function assertDirectQualificationTransport(inspections) {
+  if (!Array.isArray(inspections)
+    || inspections.length !== 2
+    || inspections.some(inspection => (
+      !isRecord(inspection)
+      || !['duckduckgo', 'sogou'].includes(inspection.engine)
+      || inspection.status !== 'missing'
+    ))
+    || new Set(inspections.map(inspection => inspection.engine)).size !== 2) {
+    fail('qualification requires direct DDG and Sogou transport');
+  }
+  return { proxy: false };
 }
 
 export function competitiveProfileSha256(profile) {

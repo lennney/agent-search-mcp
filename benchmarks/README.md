@@ -74,6 +74,7 @@ npm run benchmark:qualify-runner -- \
   --limit 10 \
   --minimum-queries 10 \
   --query-delay-ms 10000 \
+  --implementation-revision git:<exact-commit> \
   --output D:/private-search-artifacts/runner-qualification.json
 ```
 
@@ -90,6 +91,9 @@ The probe waits 10 seconds between query groups by default and accepts only
 Each adapter invocation also uses a zero-retry override. A `bot_challenge` or
 rate-limit observation fills the uncalled systems with local aborted markers,
 writes an `aborted` privacy-preserving report, and stops further network probes.
+Qualification also rejects configured DDG/Sogou proxy transports before the
+first request and binds its profile hash to the declared implementation
+revision. Formal capture must declare the same Agent Search revision.
 
 External comparison systems stay outside the product runtime. Export their
 already-captured results as `external-search-results` JSON, disclose the
