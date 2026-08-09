@@ -17,6 +17,11 @@ export type {
   SearchEvidenceEvaluator,
   SearchEvidencePolicy,
 } from './search-evidence.js';
+export {
+  ACTIVE_URL_CANONICALIZATION_VERSION,
+  canonicalizeUrl,
+} from './url-canonicalization.js';
+export type { UrlCanonicalizationVersion } from './url-canonicalization.js';
 export { formatResults } from './format.js';
 export type { FormatOptions } from './format.js';
 export { selectRelevantPassage } from './passage-selector.js';

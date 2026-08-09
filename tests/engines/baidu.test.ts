@@ -24,6 +24,56 @@ describe('Baidu engine', () => {
     }
   });
 
+  it('requests one JSON page and parses structured Baidu results', async () => {
+    const originalFetch = global.fetch;
+    let requestInput: string | URL | Request | undefined;
+    let fetchCalls = 0;
+    try {
+      global.fetch = async (input) => {
+        fetchCalls += 1;
+        requestInput = input;
+        return new Response(JSON.stringify({
+          feed: {
+            entry: [
+              {
+                title: 'OAuth &amp; PKCE Guide',
+                url: 'https://example.com/oauth-pkce',
+                abs: 'Use PKCE to protect the authorization code flow.',
+              },
+              {
+                title: 'Baidu redirect must not be followed',
+                url: 'https://www.baidu.com/link?url=opaque',
+                abs: 'Resolving this URL would add another provider request.',
+              },
+            ],
+          },
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json; charset=utf-8' },
+        });
+      };
+
+      await expect(searchBaidu('OAuth PKCE', 3, {
+        throwOnError: true,
+      })).resolves.toEqual([expect.objectContaining({
+        title: 'OAuth & PKCE Guide',
+        url: 'https://example.com/oauth-pkce',
+        snippet: 'Use PKCE to protect the authorization code flow.',
+        source: 'baidu',
+      })]);
+
+      const requestedUrl = new URL(String(requestInput));
+      expect(fetchCalls).toBe(1);
+      expect(requestedUrl.searchParams.get('wd')).toBe('OAuth PKCE');
+      expect(requestedUrl.searchParams.get('rn')).toBe('3');
+      expect(requestedUrl.searchParams.get('pn')).toBe('0');
+      expect(requestedUrl.searchParams.get('tn')).toBe('json');
+      expect(requestedUrl.searchParams.get('ie')).toBe('utf-8');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it('searchBaidu returns empty array on fetch error', async () => {
     const originalFetch = global.fetch;
     try {
@@ -49,6 +99,73 @@ describe('Baidu engine', () => {
 
       const results = await searchBaidu('test query', 5);
       expect(results).toEqual([]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('preserves a verification page as bot_challenge in strict mode', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(
+        '<html><head><title>百度安全验证</title></head>'
+        + '<body>请完成验证后继续访问</body></html>',
+        { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } },
+      );
+
+      await expect(searchBaidu('PKCE 的作用', 3, {
+        throwOnError: true,
+      })).rejects.toMatchObject({
+        failureType: 'bot_challenge',
+        retryable: false,
+        cooldownMs: 3_600_000,
+      });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('does not follow a Baidu CAPTCHA redirect', async () => {
+    const originalFetch = global.fetch;
+    let requestInit: RequestInit | undefined;
+    try {
+      global.fetch = async (_input, init) => {
+        requestInit = init;
+        return new Response(null, {
+          status: 302,
+          headers: {
+            location: 'https://wappass.baidu.com/static/captcha/tuxing.html',
+          },
+        });
+      };
+
+      await expect(searchBaidu('PKCE', 3, {
+        throwOnError: true,
+      })).rejects.toMatchObject({
+        failureType: 'bot_challenge',
+        retryable: false,
+        cooldownMs: 3_600_000,
+      });
+      expect(requestInit?.redirect).toBe('manual');
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('does not classify a normal result quoting verification text as a challenge', async () => {
+    const originalFetch = global.fetch;
+    try {
+      global.fetch = async () => new Response(`<html>
+        <head><title>百度一下，你就知道</title></head>
+        <body><div class="result c-container">
+          <h3><a href="https://example.com/help">Verification help</a></h3>
+          <div class="c-abstract">遇到提示时，请完成验证后继续访问相关服务。</div>
+        </div></body>
+      </html>`, { status: 200 });
+
+      await expect(searchBaidu('验证帮助', 3, {
+        throwOnError: true,
+      })).resolves.toHaveLength(1);
     } finally {
       global.fetch = originalFetch;
     }

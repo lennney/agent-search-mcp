@@ -1,6 +1,5 @@
 import type {
   EngineSearchOptions,
-  SearchProviderInfo,
   SearchResult,
 } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
@@ -10,13 +9,9 @@ import {
   isWebUrl,
   readString,
 } from './json-search-api.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const tencentWsaProvider: SearchProviderInfo = {
-  id: 'tencent_wsa',
-  name: 'Tencent Web Search API',
-  isFree: false,
-  languages: ['zh'],
-};
+export const tencentWsaProvider = providerCatalog.tencent_wsa;
 
 function createTencentWsaError(code: string): EngineAdapterError {
   if (

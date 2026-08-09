@@ -551,4 +551,34 @@ describe('DuckDuckGo HTML engine', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('uses the resolved Chinese region and language header for HTML and Lite', async () => {
+    const calls: Array<{ input: string; init?: RequestInit }> = [];
+    const originalFetch = global.fetch;
+    global.fetch = (async (input, init) => {
+      calls.push({ input: String(input), init });
+      if (calls.length === 1) return new Response('', { status: 202 });
+      return new Response('<html><body>No results</body></html>', { status: 200 });
+    }) as typeof fetch;
+
+    try {
+      await searchDuckDuckGoHtml('缓存穿透', 10, {
+        requestContext: {
+          language: 'zh',
+          region: 'cn-zh',
+          acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      });
+
+      expect(calls).toHaveLength(2);
+      for (const call of calls) {
+        const body = new URLSearchParams(String(call.init?.body));
+        expect(body.get('l')).toBe('cn-zh');
+        expect(new Headers(call.init?.headers).get('accept-language'))
+          .toBe('zh-CN,zh;q=0.9,en;q=0.8');
+      }
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

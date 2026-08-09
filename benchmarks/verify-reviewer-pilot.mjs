@@ -2,9 +2,10 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(import.meta.dirname, '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const capture = await readJson('benchmarks/fixtures/live-reviewer-pilot.json');
 const pending = await readJson('benchmarks/fixtures/live-reviewer-pilot-labels.pending.json');
 const packets = await Promise.all([

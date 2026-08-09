@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "kind": "synthetic-evidence-demo",
+  "claim_scope": "contract-demonstration-only",
+  "quality_claim_eligible": false,
+  "security_note": "All queries, results, failures, and routing traces are synthetic. This fixture demonstrates response contracts, not live availability or search quality.",
+  "scenarios": [
+    {
+      "id": "same-family-corroboration",
+      "title": "Adapter overlap does not inflate independent evidence",
+      "query": "agent search provenance",
+      "engine_weights": {
+        "duckduckgo": 0.85,
+        "bing": 0.9
+      },
+      "quality_gate": {
+        "minResults": 1,
+        "minAvgConfidence": 0,
+        "minRelevantResults": 1,
+        "minResultRelevance": 0,
+        "minProviderFamilies": 2,
+        "topK": 5
+      },
+      "raw_results": [
+        {
+          "title": "Agent search provenance guide",
+          "url": "https://demo.example/provenance",
+          "snippet": "Agent search provenance identifies which upstream evidence produced a result.",
+          "source": "duckduckgo",
+          "engines": [
+            "duckduckgo"
+          ]
+        },
+        {
+          "title": "Agent search provenance guide",
+          "url": "https://demo.example/provenance/",
+          "snippet": "Agent search provenance identifies which upstream evidence produced a result without double counting adapters.",
+          "source": "bing",
+          "engines": [
+            "bing"
+          ]
+        }
+      ],
+      "execution": {
+        "mode": "waterfall",
+        "engine_calls": 2,
+        "searched_engines": [
+          "duckduckgo",
+          "bing"
+        ],
+        "phases_completed": [
+          "1a",
+          "1b"
+        ],
+        "early_stop": false,
+        "stop_reason": "phases_exhausted",
+        "quality_gate_stage": "pre_semantic"
+      },
+      "partial_failures": [],
+      "format": {
+        "style": "compact",
+        "snippetMax": 160,
+        "maxFullResults": 3,
+        "evidenceBudgetChars": 320
+      },
+      "expected": {
+        "result_count": 1,
+        "top_result_source_count": 1,
+        "quality_gate_sufficient": false,
+        "partial_failure_types": [],
+        "text_tokens": 88,
+        "structured_tokens": 319,
+        "text_savings_percent": 72.4
+      }
+    },
+    {
+      "id": "visible-fallback-failure",
+      "title": "Fallback keeps the upstream failure visible",
+      "query": "model context protocol specification",
+      "engine_weights": {
+        "wikipedia": 0.93
+      },
+      "quality_gate": {
+        "minResults": 1,
+        "minAvgConfidence": 0,
+        "minRelevantResults": 1,
+        "minResultRelevance": 0,
+        "minProviderFamilies": 1,
+        "topK": 5
+      },
+      "raw_results": [
+        {
+          "title": "Model Context Protocol specification",
+          "url": "https://demo.example/mcp-specification",
+          "snippet": "The Model Context Protocol specification defines a standard interface for connecting applications and contextual tools.",
+          "source": "wikipedia",
+          "engines": [
+            "wikipedia"
+          ]
+        }
+      ],
+      "execution": {
+        "mode": "waterfall",
+        "engine_calls": 2,
+        "searched_engines": [
+          "duckduckgo",
+          "wikipedia"
+        ],
+        "phases_completed": [
+          "1a",
+          "1c"
+        ],
+        "early_stop": false,
+        "stop_reason": "phases_exhausted",
+        "quality_gate_stage": "pre_semantic"
+      },
+      "partial_failures": [
+        {
+          "engine": "duckduckgo",
+          "type": "bot_challenge",
+          "message": "Synthetic provider challenge for the offline contract demo.",
+          "suggestion": "Use another independent provider or retry from an approved clean runner later."
+        }
+      ],
+      "format": {
+        "style": "compact",
+        "snippetMax": 160,
+        "maxFullResults": 3,
+        "evidenceBudgetChars": 320
+      },
+      "expected": {
+        "result_count": 1,
+        "top_result_source_count": 1,
+        "quality_gate_sufficient": true,
+        "partial_failure_types": [
+          "bot_challenge"
+        ],
+        "text_tokens": 102,
+        "structured_tokens": 362,
+        "text_savings_percent": 71.8
+      }
+    },
+    {
+      "id": "bounded-quality-stop",
+      "title": "The quality gate stops bounded fallback without dropping provenance",
+      "query": "abort signal cancel fetch request",
+      "engine_weights": {
+        "sogou": 0.8,
+        "wikipedia": 0.93
+      },
+      "quality_gate": {
+        "minResults": 3,
+        "minAvgConfidence": 0.6,
+        "minRelevantResults": 3,
+        "minResultRelevance": 0.35,
+        "minProviderFamilies": 2,
+        "topK": 5
+      },
+      "raw_results": [
+        {
+          "title": "AbortSignal cancel fetch request safely",
+          "url": "https://demo.example/abort-signal",
+          "snippet": "AbortSignal lets an application cancel a fetch request through an AbortController. The caller passes the signal to fetch and aborts the controller when work is no longer needed. This long synthetic passage exercises the shared evidence budget while retaining the source URL and provider-family signals.",
+          "source": "wikipedia",
+          "engines": [
+            "wikipedia"
+          ]
+        },
+        {
+          "title": "Cancel a fetch request with AbortController",
+          "url": "https://demo.example/fetch-cancellation",
+          "snippet": "Create an AbortController, pass controller.signal to the fetch request, and call controller.abort to cancel pending work. The rejected request should be handled as an expected cancellation path. This synthetic result is intentionally verbose so progressive disclosure is observable without live content.",
+          "source": "sogou",
+          "engines": [
+            "sogou"
+          ]
+        },
+        {
+          "title": "Abort signal composition for request cancellation",
+          "url": "https://demo.example/signal-composition",
+          "snippet": "Request cancellation can combine an explicit abort signal with a bounded timeout. Consumers should forward the same cancellation signal through rate limiting, retries, HTTP requests, and enrichment. This synthetic result provides a second independent route through the evidence basket.",
+          "source": "wikipedia",
+          "engines": [
+            "wikipedia"
+          ]
+        },
+        {
+          "title": "Handle aborted fetch operations",
+          "url": "https://demo.example/abort-errors",
+          "snippet": "Applications distinguish an intentional aborted fetch operation from other network failures and preserve enough context for callers to decide whether work should continue. The result remains a compact source reference after the full-result budget is exhausted.",
+          "source": "sogou",
+          "engines": [
+            "sogou"
+          ]
+        },
+        {
+          "title": "Forward cancellation across async boundaries",
+          "url": "https://demo.example/cancellation-boundaries",
+          "snippet": "Forwarding one AbortSignal across asynchronous boundaries prevents work from surviving after its caller has cancelled the operation. The example is synthetic and exists only to demonstrate the bounded evidence response contract.",
+          "source": "wikipedia",
+          "engines": [
+            "wikipedia"
+          ]
+        }
+      ],
+      "execution": {
+        "mode": "waterfall",
+        "engine_calls": 2,
+        "searched_engines": [
+          "sogou",
+          "wikipedia"
+        ],
+        "phases_completed": [
+          "1a",
+          "1c"
+        ],
+        "early_stop": true,
+        "stop_reason": "quality_gate_satisfied",
+        "quality_gate_stage": "pre_semantic"
+      },
+      "skipped_engines": [
+        "baidu",
+        "mojeek"
+      ],
+      "partial_failures": [],
+      "format": {
+        "style": "compact",
+        "snippetMax": 140,
+        "maxFullResults": 2,
+        "evidenceBudgetChars": 240
+      },
+      "expected": {
+        "result_count": 5,
+        "top_result_source_count": 1,
+        "quality_gate_sufficient": true,
+        "partial_failure_types": [],
+        "compacted_count": 3,
+        "skipped_engines": [
+          "baidu",
+          "mojeek"
+        ],
+        "text_view_smaller_than_structured": true,
+        "text_view_preserves_all_urls": true,
+        "text_view_preserves_source_signal": true,
+        "text_tokens": 197,
+        "structured_tokens": 517,
+        "text_savings_percent": 61.9
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { logger } from '../infrastructure/index.js';
+import { resolveDefaultProfile } from '../engines/request-profiles.js';
 
 function parseCsdnArticleUrl(url: string): URL {
   let parsed: URL;
@@ -81,9 +82,14 @@ export async function fetchGithubReadme(url: string): Promise<string> {
 export async function fetchCsdnArticle(url: string): Promise<string> {
   try {
     const safeUrl = parseCsdnArticleUrl(url);
+    const profile = resolveDefaultProfile();
     const response = await fetch(safeUrl.href, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': profile.userAgent,
+        ...profile.clientHints,
+        'Accept': profile.acceptHtml,
+        'Accept-Language': 'zh-CN,zh;q=0.9',
+        'Accept-Encoding': profile.acceptEncoding,
       },
       redirect: 'error',
       signal: AbortSignal.timeout(10000),

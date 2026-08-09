@@ -1,6 +1,5 @@
 import type {
   EngineSearchOptions,
-  SearchProviderInfo,
   SearchResult,
 } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
@@ -10,13 +9,9 @@ import {
   isWebUrl,
   readString,
 } from './json-search-api.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const bochaProvider: SearchProviderInfo = {
-  id: 'bocha',
-  name: 'Bocha Web Search',
-  isFree: false,
-  languages: ['zh', 'en'],
-};
+export const bochaProvider = providerCatalog.bocha;
 
 function parseBochaResult(value: unknown): SearchResult | null {
   const item = asJsonObject(value);

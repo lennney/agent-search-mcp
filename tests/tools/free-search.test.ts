@@ -4,11 +4,11 @@ const infrastructureState = vi.hoisted(() => ({
   cacheGet: vi.fn(() => null as unknown),
   cacheSet: vi.fn(),
   cacheMakeKey: vi.fn((q: string, c: number, e: string[]) => `${q}:${c}:${[...e].sort().join(',')}`),
-  getAvailability: vi.fn(() => ({ available: true } as
-    | { available: true }
-    | { available: false; failureType: 'bot_challenge'; retryAt: number })),
-  suspend: vi.fn(),
-  recordFailure: vi.fn(),
+  finishAttempt: vi.fn(),
+  acquireAttempt: vi.fn(() => ({
+    acquired: true,
+    lease: { finish: infrastructureState.finishAttempt },
+  } as const)),
   config: {
     ALLOWED_ENGINES: [] as string[],
     DENIED_ENGINES: [] as string[],
@@ -162,10 +162,8 @@ vi.mock('../../src/infrastructure/index.js', async (importOriginal) => {
     })),
     HealthTracker: vi.fn(() => ({
       isHealthy: vi.fn(() => true),
-      getAvailability: infrastructureState.getAvailability,
-      recordSuccess: vi.fn(),
-      recordFailure: infrastructureState.recordFailure,
-      suspend: infrastructureState.suspend,
+      acquireAttempt: infrastructureState.acquireAttempt,
+      getHealth: vi.fn(() => []),
     })),
     EnginePolicy: vi.fn(() => ({
       isAllowed: vi.fn(() => true),
@@ -191,7 +189,6 @@ import { searchSerper } from '../../src/engines/serper.js';
 import { EngineAdapterError } from '../../src/engines/engine-error.js';
 import {
   checkConfidenceBasket,
-  detectLanguage,
   enrichResults,
   expandQuery,
   filterLowQuality,
@@ -199,6 +196,7 @@ import {
   semanticDedup,
   semanticRerank,
 } from '../../src/aggregation/index.js';
+import { SEARCH_PROVIDERS } from '../../src/types.js';
 
 function makeResults(count: number, source: string) {
   return Array.from({ length: count }, (_, i) => ({
@@ -248,10 +246,12 @@ describe('searchWithFallback — parallel', () => {
     vi.clearAllMocks();
     resetAggregationMocks();
     infrastructureState.cacheGet.mockReturnValue(null);
-    infrastructureState.getAvailability.mockReset();
-    infrastructureState.getAvailability.mockReturnValue({ available: true });
-    infrastructureState.suspend.mockReset();
-    infrastructureState.recordFailure.mockReset();
+    infrastructureState.finishAttempt.mockReset();
+    infrastructureState.acquireAttempt.mockReset();
+    infrastructureState.acquireAttempt.mockImplementation(() => ({
+      acquired: true,
+      lease: { finish: infrastructureState.finishAttempt },
+    }));
     infrastructureState.config.outputStyle = 'normal';
     infrastructureState.config.minConfidence = 0;
     infrastructureState.config.minSourceCount = 1;
@@ -391,6 +391,59 @@ describe('searchWithFallback — parallel', () => {
     expect(infrastructureState.cacheSet).not.toHaveBeenCalled();
   });
 
+  it('does not report request-budget failure when results exactly fill the limit', async () => {
+    infrastructureState.config.searchBudgetMaxResults = 3;
+    (searchWikipedia as any).mockResolvedValue(makeResults(3, 'wikipedia'));
+    (formatResults as any).mockImplementationOnce((results: any[]) => ({
+      results: results.map(result => ({
+        title: result.title,
+        url: result.url,
+        snippet: result.snippet,
+        confidence: result.confidence,
+        relevance: result.relevance,
+        source_count: result.source_count,
+        sources: result.engines,
+      })),
+      meta: {
+        total: 3,
+        high_confidence: 3,
+        engines: ['wikipedia'],
+        evidence_budget: {
+          unit: 'characters',
+          limit: 1200,
+          used: 551,
+          truncated_results: 2,
+        },
+      },
+      security_note: '',
+    }));
+
+    const response = await searchWithFallback({
+      query: 'exact result limit',
+      engines: ['wikipedia'],
+      count: 3,
+    });
+
+    expect(response.meta.execution?.budget).toMatchObject({
+      observed: { result_count: 3 },
+      exhausted: false,
+      exhausted_reasons: [],
+    });
+    expect(response.meta.execution?.stop_reason).not.toBe('budget_exhausted');
+    expect(response.meta.evidence_budget).toEqual({
+      unit: 'characters',
+      limit: 1200,
+      used: 551,
+      truncated_results: 2,
+    });
+    expect(response.partialFailures ?? []).not.toContainEqual(
+      expect.objectContaining({
+        engine: 'request_budget',
+        type: 'budget_exhausted',
+      }),
+    );
+  });
+
   it('does not cache an empty all-provider failure response', async () => {
     const failure = new EngineAdapterError(
       'upstream_5xx',
@@ -404,6 +457,29 @@ describe('searchWithFallback — parallel', () => {
     expect(response.results).toEqual([]);
     await new Promise<void>(resolve => setImmediate(resolve));
     expect(infrastructureState.cacheSet).not.toHaveBeenCalled();
+  });
+
+  it('allows a controlled benchmark run to disable adapter retries', async () => {
+    (searchDuckDuckGo as any).mockRejectedValue(new Error('network timeout'));
+
+    const response = await searchWithFallback({
+      query: 'bounded benchmark request',
+      engines: ['duckduckgo'],
+      providerMaxRetries: 0,
+    });
+
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(1);
+    expect(response.partialFailures).toContainEqual(expect.objectContaining({
+      engine: 'duckduckgo',
+    }));
+  });
+
+  it('rejects an invalid adapter retry override before dispatch', async () => {
+    await expect(searchWithFallback({
+      query: 'invalid retry override',
+      providerMaxRetries: -1,
+    })).rejects.toThrow(/providerMaxRetries/);
+    expect(searchDuckDuckGo).not.toHaveBeenCalled();
   });
 
   it('passes the query and configured evidence budget into formatting', async () => {
@@ -438,6 +514,64 @@ describe('searchWithFallback — parallel', () => {
     expect(a).not.toBe(b);
   });
 
+  it('does not collapse languages and passes each resolved context to providers', async () => {
+    (searchDuckDuckGo as any).mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return makeResults(3, 'ddg');
+    });
+
+    await Promise.all([
+      searchWithFallback({
+        query: 'same-query',
+        engines: ['duckduckgo'],
+        language: 'en',
+      }),
+      searchWithFallback({
+        query: 'same-query',
+        engines: ['duckduckgo'],
+        language: 'zh',
+      }),
+    ]);
+
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(searchDuckDuckGo).mock.calls.map(call => call[2]?.requestContext))
+      .toEqual(expect.arrayContaining([
+        {
+          language: 'en',
+          region: 'us-en',
+          acceptLanguage: 'en-US,en;q=0.9',
+        },
+        {
+          language: 'zh',
+          region: 'cn-zh',
+          acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+        },
+      ]));
+  });
+
+  it('collapses auto and explicit language when they resolve identically', async () => {
+    (searchDuckDuckGo as any).mockImplementation(async () => {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      return makeResults(3, 'ddg');
+    });
+
+    const [automatic, explicit] = await Promise.all([
+      searchWithFallback({
+        query: 'same English query',
+        engines: ['duckduckgo'],
+        language: 'auto',
+      }),
+      searchWithFallback({
+        query: 'same English query',
+        engines: ['duckduckgo'],
+        language: 'en',
+      }),
+    ]);
+
+    expect(automatic).toBe(explicit);
+    expect(searchDuckDuckGo).toHaveBeenCalledTimes(1);
+  });
+
   it('continues fallback and reports a thrown engine failure', async () => {
     (searchBaidu as any).mockRejectedValue(new Error('HTTP 401 unauthorized'));
     const result = await searchWithFallback({
@@ -450,6 +584,10 @@ describe('searchWithFallback — parallel', () => {
     expect(result.partialFailures).toEqual(expect.arrayContaining([
       expect.objectContaining({ engine: 'baidu', type: 'permission_denied' }),
     ]));
+    expect(infrastructureState.finishAttempt).toHaveBeenCalledWith({
+      status: 'failure',
+      failureType: 'unknown',
+    });
   });
 
   it('preserves a zero-key anti-bot challenge as its own failure type', async () => {
@@ -476,17 +614,25 @@ describe('searchWithFallback — parallel', () => {
         suggestion: 'Use another network runner',
       }),
     ]));
+    expect(infrastructureState.finishAttempt).toHaveBeenCalledWith({
+      status: 'suspended',
+      cooldownMs: 3_600_000,
+      failureType: 'bot_challenge',
+    });
   });
 
   it('reports a provider skipped by durable cooldown as a partial failure', async () => {
-    infrastructureState.getAvailability.mockImplementation((engine: string) => (
+    infrastructureState.acquireAttempt.mockImplementation((engine: string) => (
       engine === 'sogou'
         ? {
-            available: false,
+            acquired: false,
             failureType: 'bot_challenge',
             retryAt: Date.parse('2026-07-26T18:00:00Z'),
           }
-        : { available: true }
+        : {
+            acquired: true,
+            lease: { finish: infrastructureState.finishAttempt },
+          }
     ));
 
     const response = await searchWithFallback({
@@ -547,6 +693,11 @@ describe('searchWithFallback — parallel', () => {
     expect(result.partialFailures).toEqual(expect.arrayContaining([
       expect.objectContaining({ engine: 'duckduckgo' }),
     ]));
+    expect(result.meta.execution).toMatchObject({
+      scheduled_adapters: 2,
+      adapter_attempts: 2,
+      http_requests: null,
+    });
   });
 
   it('tries a same-family fallback when the preferred adapter returns only low-quality rows', async () => {
@@ -888,15 +1039,18 @@ describe('searchWithFallback — parallel', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
     const engineOptions = vi.mocked(searchDuckDuckGo).mock.calls[0][2];
     expect(engineOptions?.signal?.aborted).toBe(true);
-    expect(infrastructureState.suspend).not.toHaveBeenCalled();
-    expect(infrastructureState.recordFailure).not.toHaveBeenCalled();
+    expect(infrastructureState.finishAttempt).toHaveBeenCalledWith({ status: 'released' });
   });
 
-  it('detects language in search', async () => {
-    (detectLanguage as any).mockReturnValue('zh');
+  it('resolves one bilingual request context for response and providers', async () => {
     const res = await searchWithFallback({ query: '中文' });
-    expect(detectLanguage).toHaveBeenCalled();
     expect(res.detected_language).toBe('zh');
+    expect(vi.mocked(searchDuckDuckGo).mock.calls[0][2]?.requestContext)
+      .toEqual({
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      });
   });
 
   it('returns empty when all engines blocked', async () => {
@@ -945,6 +1099,28 @@ describe('searchWithFallback — waterfall', () => {
     const res = await searchWithFallback({ query: 'wf', waterfall: true });
     expect(res).toBeDefined();
     expect(res.query).toBe('wf');
+    expect(res.meta.execution?.scheduled_adapters).toBeGreaterThanOrEqual(2);
+    expect(res.meta.execution?.adapter_attempts)
+      .toBe(res.meta.execution?.budget?.observed.engine_calls);
+    expect(res.meta.execution?.http_requests).toBeNull();
+  });
+
+  it('passes the same resolved context through waterfall dispatch', async () => {
+    const res = await searchWithFallback({
+      query: '技术文档',
+      engines: ['duckduckgo'],
+      language: 'zh',
+      waterfall: true,
+      expandQueries: false,
+    });
+
+    expect(res.detected_language).toBe('zh');
+    expect(vi.mocked(searchDuckDuckGo).mock.calls[0][2]?.requestContext)
+      .toEqual({
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      });
   });
 
   it('runs the paid stage before free stages in paid_first waterfall mode', async () => {
@@ -1123,7 +1299,7 @@ describe('searchWithFallback — waterfall', () => {
     expect(result.cache_hit).toBe(true);
     expect(searchDuckDuckGo).not.toHaveBeenCalled();
     expect(infrastructureState.cacheGet).toHaveBeenCalledWith(
-      expect.stringMatching(/^search-cache-key-v1:[a-f0-9]{64}$/),
+      expect.stringMatching(/^search-cache-key-v2:[a-f0-9]{64}$/),
     );
   });
 
@@ -1224,12 +1400,48 @@ describe('searchWithFallback — waterfall', () => {
   });
 });
 
+vi.mock('../../src/infrastructure/search-runtime.js', async () => {
+  const { searchProvider } = await import('../../src/engines/runtime-registry.js');
+  const runtime = {
+    config: infrastructureState.config,
+    cache: {
+      get: infrastructureState.cacheGet,
+      set: infrastructureState.cacheSet,
+      stats: vi.fn(() => ({ hits: 0, misses: 0, size: 0, maxSize: 1_000 })),
+    },
+    healthTracker: {
+      isHealthy: vi.fn(() => true),
+      acquireAttempt: infrastructureState.acquireAttempt,
+      getHealth: vi.fn(() => []),
+    },
+    serverMetrics: {
+      getMetrics: vi.fn(),
+      recordRequest: vi.fn(),
+    },
+    rateLimiter: {
+      waitForSlot: vi.fn(async () => undefined),
+      getAllRateLimits: vi.fn(() => ({})),
+    },
+    enginePolicy: {
+      isAllowed: vi.fn(() => true),
+    },
+    searchProvider,
+  };
+  return {
+    getDefaultSearchRuntime: vi.fn(() => runtime),
+  };
+});
+
 describe('setupFreeSearchTool', () => {
   it('registers free_search tool', () => {
     const server = { registerTool: vi.fn() } as any;
     setupFreeSearchTool(server);
     expect(server.registerTool).toHaveBeenCalledOnce();
     expect(server.registerTool.mock.calls[0][0]).toBe('free_search');
+    expect(server.registerTool.mock.calls[0][1].description)
+      .toContain(`${SEARCH_PROVIDERS.length} adapters are selectable`);
+    expect(server.registerTool.mock.calls[0][1].description)
+      .not.toContain('Twelve adapters');
     expect(server.registerTool.mock.calls[0][1].outputSchema)
       .toEqual(expect.objectContaining({
         query: expect.anything(),

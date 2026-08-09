@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "kind": "competitive-search-query-set",
+  "scope": "bilingual-developer-evergreen-web-search",
+  "queries": [
+    {
+      "id": "en-factual-01",
+      "query": "What is the Model Context Protocol?",
+      "question": "What does MCP define and what can it connect?",
+      "reference_answer": "MCP is an open protocol that standardizes how AI applications exchange context with external tools and data sources.",
+      "reference_sources": ["https://modelcontextprotocol.io/specification/"],
+      "language": "en",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-factual-02",
+      "query": "HTTP 429 status code meaning",
+      "question": "What does an HTTP 429 response mean?",
+      "reference_answer": "HTTP 429 means the client sent too many requests within a period and may be told how long to wait before retrying.",
+      "reference_sources": ["https://www.rfc-editor.org/rfc/rfc6585#section-4"],
+      "language": "en",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-factual-03",
+      "query": "How PostgreSQL MVCC works",
+      "question": "What role does MVCC play in PostgreSQL concurrency?",
+      "reference_answer": "PostgreSQL uses multiversion concurrency control so statements see consistent snapshots while reads and writes usually avoid blocking each other.",
+      "reference_sources": ["https://www.postgresql.org/docs/current/mvcc-intro.html"],
+      "language": "en",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-factual-04",
+      "query": "zero trust security core principle",
+      "question": "What is the central access-control principle of zero trust?",
+      "reference_answer": "Zero trust grants no implicit trust based on network location and continually evaluates access to resources using explicit policy.",
+      "reference_sources": ["https://csrc.nist.gov/pubs/sp/800/207/final"],
+      "language": "en",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-factual-05",
+      "query": "retrieval augmented generation definition",
+      "question": "What is retrieval-augmented generation?",
+      "reference_answer": "RAG combines generation with retrieved external passages so a model can condition its answer on relevant evidence beyond its parameters.",
+      "reference_sources": ["https://arxiv.org/abs/2005.11401"],
+      "language": "en",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-factual-01",
+      "query": "数据库 ACID 四个特性是什么",
+      "question": "ACID 分别表示哪些事务特性？",
+      "reference_answer": "ACID 指原子性、一致性、隔离性和持久性，用于描述数据库事务的关键保证。",
+      "reference_sources": ["https://www.postgresql.org/docs/current/tutorial-transactions.html"],
+      "language": "zh",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-factual-02",
+      "query": "自注意力机制的作用",
+      "question": "自注意力如何处理序列中的信息？",
+      "reference_answer": "自注意力让序列中每个位置根据与其他位置的相关性聚合信息，从而建模远近依赖。",
+      "reference_sources": ["https://arxiv.org/abs/1706.03762"],
+      "language": "zh",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-factual-03",
+      "query": "OAuth PKCE 的目的",
+      "question": "PKCE 主要缓解哪类授权码风险？",
+      "reference_answer": "PKCE 用一次性校验材料把授权请求与令牌交换绑定，降低授权码被截获后遭冒用的风险。",
+      "reference_sources": ["https://www.rfc-editor.org/rfc/rfc7636"],
+      "language": "zh",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-factual-04",
+      "query": "容器和虚拟机的区别",
+      "question": "容器与虚拟机在隔离层级上有什么主要区别？",
+      "reference_answer": "容器通常共享宿主内核并隔离进程，虚拟机则虚拟化硬件并运行各自的完整操作系统。",
+      "reference_sources": ["https://docs.docker.com/get-started/docker-concepts/the-basics/what-is-a-container/"],
+      "language": "zh",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-factual-05",
+      "query": "UTF-8 和 Unicode 的关系",
+      "question": "Unicode 与 UTF-8 分别定义了什么？",
+      "reference_answer": "Unicode 定义字符及其码点，UTF-8 是把这些码点编码为字节序列的一种可变长度编码。",
+      "reference_sources": ["https://www.unicode.org/faq/utf_bom.html"],
+      "language": "zh",
+      "category": "factual",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-technical-01",
+      "query": "cancel fetch request with AbortSignal",
+      "question": "How can a JavaScript fetch request be cancelled?",
+      "reference_answer": "Pass an AbortSignal to fetch and call abort on its controller; fetch then rejects with an abort-related exception.",
+      "reference_sources": ["https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort"],
+      "language": "en",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-technical-02",
+      "query": "TypeScript narrow unknown catch variable",
+      "question": "How should code safely use a caught value typed as unknown?",
+      "reference_answer": "Narrow the value with checks such as instanceof Error or typeof before accessing properties that are not known on unknown.",
+      "reference_sources": ["https://www.typescriptlang.org/docs/handbook/2/narrowing.html"],
+      "language": "en",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-technical-03",
+      "query": "PostgreSQL query planner not using index",
+      "question": "Why might PostgreSQL choose a sequential scan despite an available index?",
+      "reference_answer": "The planner estimates total cost and can prefer a sequential scan when many rows match, statistics imply low selectivity, or random index access costs more.",
+      "reference_sources": ["https://www.postgresql.org/docs/current/using-explain.html"],
+      "language": "en",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-technical-04",
+      "query": "Docker Compose wait for dependency healthcheck",
+      "question": "How can a Compose service wait for a dependency to become healthy?",
+      "reference_answer": "Define a healthcheck on the dependency and use depends_on with the service_healthy condition for the dependent service.",
+      "reference_sources": ["https://docs.docker.com/compose/how-tos/startup-order/"],
+      "language": "en",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-technical-05",
+      "query": "Nginx reverse proxy WebSocket configuration",
+      "question": "Which proxy settings are needed for WebSocket upgrade through Nginx?",
+      "reference_answer": "Use HTTP/1.1 proxying and explicitly forward the Upgrade and Connection headers so the protocol switch reaches the upstream server.",
+      "reference_sources": ["https://nginx.org/en/docs/http/websocket.html"],
+      "language": "en",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-technical-01",
+      "query": "Python asyncio 如何取消任务",
+      "question": "asyncio 任务取消是如何发起和传播的？",
+      "reference_answer": "调用 Task.cancel 会在任务下一次恢复时注入 CancelledError；协程通常应在清理后继续传播取消。",
+      "reference_sources": ["https://docs.python.org/zh-cn/3/library/asyncio-task.html#task-cancellation"],
+      "language": "zh",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-technical-02",
+      "query": "如何防止缓存穿透",
+      "question": "缓存穿透是什么，常见缓解方式有哪些？",
+      "reference_answer": "缓存穿透是反复查询不存在的数据并绕过缓存；可缓存空结果、校验请求或用布隆过滤器减少无效后端查询。",
+      "reference_sources": ["https://redis.io/docs/latest/develop/data-types/probabilistic/bloom-filter/"],
+      "language": "zh",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-technical-03",
+      "query": "git rebase 冲突后如何恢复",
+      "question": "rebase 出现冲突时怎样继续、跳过或退出？",
+      "reference_answer": "解决并暂存冲突后可执行 rebase --continue，也可以用 --skip 跳过当前提交，或用 --abort 恢复到 rebase 前。",
+      "reference_sources": ["https://git-scm.com/docs/git-rebase"],
+      "language": "zh",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-technical-04",
+      "query": "Kubernetes 存活探针和就绪探针区别",
+      "question": "liveness 与 readiness 探针分别控制什么？",
+      "reference_answer": "存活探针用于判断容器是否需要重启，就绪探针决定 Pod 是否应接收服务流量。",
+      "reference_sources": ["https://kubernetes.io/zh-cn/docs/concepts/configuration/liveness-readiness-startup-probes/"],
+      "language": "zh",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-technical-05",
+      "query": "npm 包 ESM exports 配置",
+      "question": "如何用 package.json 的 exports 声明 ESM 包入口？",
+      "reference_answer": "在 package.json 中用 exports 显式映射公开入口，并配合 type module 或相应文件扩展名定义 ESM 解析语义。",
+      "reference_sources": ["https://nodejs.org/api/packages.html#package-entry-points"],
+      "language": "zh",
+      "category": "technical",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-navigational-01",
+      "query": "Model Context Protocol specification",
+      "question": "Find the official MCP specification index.",
+      "reference_answer": "The intended destination is the official Model Context Protocol specification site.",
+      "reference_sources": ["https://modelcontextprotocol.io/specification/"],
+      "language": "en",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-navigational-02",
+      "query": "Node.js ECMAScript modules documentation",
+      "question": "Find the official Node.js ESM documentation.",
+      "reference_answer": "The intended destination is the Node.js API documentation for ECMAScript modules.",
+      "reference_sources": ["https://nodejs.org/api/esm.html"],
+      "language": "en",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-navigational-03",
+      "query": "OWASP SSRF prevention cheat sheet",
+      "question": "Find OWASP's official SSRF prevention guidance.",
+      "reference_answer": "The intended destination is the OWASP Server-Side Request Forgery Prevention Cheat Sheet.",
+      "reference_sources": ["https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html"],
+      "language": "en",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-navigational-04",
+      "query": "PostgreSQL transaction isolation documentation",
+      "question": "Find PostgreSQL's official transaction isolation documentation.",
+      "reference_answer": "The intended destination is the PostgreSQL documentation section describing transaction isolation levels.",
+      "reference_sources": ["https://www.postgresql.org/docs/current/transaction-iso.html"],
+      "language": "en",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "en-navigational-05",
+      "query": "TypeScript narrowing handbook",
+      "question": "Find the official TypeScript handbook page on narrowing.",
+      "reference_answer": "The intended destination is the TypeScript Handbook chapter named Narrowing.",
+      "reference_sources": ["https://www.typescriptlang.org/docs/handbook/2/narrowing.html"],
+      "language": "en",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-navigational-01",
+      "query": "Python asyncio 官方文档 中文",
+      "question": "找到 Python 官方中文 asyncio 文档。",
+      "reference_answer": "目标页面是 Python 文档中的 asyncio 异步 I/O 章节。",
+      "reference_sources": ["https://docs.python.org/zh-cn/3/library/asyncio.html"],
+      "language": "zh",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-navigational-02",
+      "query": "MDN HTTP 缓存 文档 中文",
+      "question": "找到 MDN 中文 HTTP 缓存指南。",
+      "reference_answer": "目标页面是 MDN Web 文档中介绍 HTTP 缓存机制的中文指南。",
+      "reference_sources": ["https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Guides/Caching"],
+      "language": "zh",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-navigational-03",
+      "query": "Docker Compose 网络 官方文档",
+      "question": "找到 Docker Compose 网络的官方说明。",
+      "reference_answer": "目标页面是 Docker 文档中解释 Compose 默认网络和服务发现的章节。",
+      "reference_sources": ["https://docs.docker.com/compose/how-tos/networking/"],
+      "language": "zh",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-navigational-04",
+      "query": "Git rebase 官方文档",
+      "question": "找到 Git 官方的 rebase 命令参考。",
+      "reference_answer": "目标页面是 git-scm.com 的 git-rebase 命令文档。",
+      "reference_sources": ["https://git-scm.com/docs/git-rebase/zh_HANS-CN"],
+      "language": "zh",
+      "category": "navigational",
+      "freshness": "evergreen"
+    },
+    {
+      "id": "zh-navigational-05",
+      "query": "Kubernetes 探针 中文文档",
+      "question": "找到 Kubernetes 中文文档中的探针说明。",
+      "reference_answer": "目标页面是 Kubernetes 中文文档中关于存活、就绪和启动探针的概念页。",
+      "reference_sources": ["https://kubernetes.io/zh-cn/docs/concepts/configuration/liveness-readiness-startup-probes/"],
+      "language": "zh",
+      "category": "navigational",
+      "freshness": "evergreen"
+    }
+  ]
+}

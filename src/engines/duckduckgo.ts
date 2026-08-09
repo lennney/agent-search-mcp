@@ -3,13 +3,9 @@ import { logger } from '../infrastructure/logger.js';
 import { searchDuckDuckGoHtml } from './duckduckgo-html.js';
 import { searchDuckDuckGoWeb } from './duckduckgo-web.js';
 import { isEngineAdapterError } from './engine-error.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const duckduckgoProvider = {
-  id: 'duckduckgo' as const,
-  name: 'DuckDuckGo',
-  isFree: true,
-  languages: ['en'],
-};
+export const duckduckgoProvider = providerCatalog.duckduckgo;
 
 /**
  * Search DuckDuckGo through native Node representations. The page-issued Web

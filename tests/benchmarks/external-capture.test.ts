@@ -61,6 +61,13 @@ describe('external comparison capture import', () => {
         system_id: 'comparison-search',
         source_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
       }),
+      capture_contract_version: 2,
+      capture_status: 'complete',
+      expected_sample_count: 1,
+      completed_sample_count: 1,
+      result_limit: 5,
+      capture_configuration_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+      system_version_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
     expect(capture.samples[0]).toEqual(expect.objectContaining(querySet[0]));
     expect(response.results[0]).toEqual({
@@ -146,5 +153,21 @@ describe('external comparison capture import', () => {
     expect(pool.source_captures.map(item => item.system_id))
       .toEqual(['agent-search', 'comparison']);
     expect(pool.samples[0].candidates).toHaveLength(2);
+  });
+
+  it('enforces the declared Top-5 result limit', () => {
+    const input = externalInput({
+      result_limit: 5,
+      samples: [{
+        id: 'q1',
+        duration_ms: 1,
+        results: Array.from({ length: 6 }, (_, index) => ({
+          title: `result ${index}`,
+          url: `https://example.com/${index}`,
+          snippet: 'snippet',
+        })),
+      }],
+    });
+    expect(() => normalizeExternalCapture(input, querySet)).toThrow(/5-result limit/);
   });
 });

@@ -80,4 +80,59 @@ describe('Startpage engine', () => {
       global.fetch = originalFetch;
     }
   });
+
+  it('surfaces an anti-bot verification page as bot_challenge under throwOnError', async () => {
+    const originalFetch = global.fetch;
+    try {
+      let callCount = 0;
+      global.fetch = (async () => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            ok: true,
+            text: async () => '<form id="search"><input name="sc" value="abc123"></form>',
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          text: async () =>
+            '<html><head><title>Captcha</title></head><body>'
+            + 'We detected unusual traffic<altcha-widget></altcha-widget>'
+            + '</body></html>',
+        } as unknown as Response;
+      }) as typeof fetch;
+
+      await expect(searchStartpage('test', 5, { throwOnError: true }))
+        .rejects.toMatchObject({ failureType: 'bot_challenge' });
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('soft-returns empty for a verification page when throwOnError is unset', async () => {
+    const originalFetch = global.fetch;
+    try {
+      let callCount = 0;
+      global.fetch = (async () => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            ok: true,
+            text: async () => '<form id="search"><input name="sc" value="abc123"></form>',
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          text: async () =>
+            '<html><head><title>Verification</title></head><body>'
+            + 'captcha verification required</body></html>',
+        } as unknown as Response;
+      }) as typeof fetch;
+
+      const results = await searchStartpage('test', 5);
+      expect(results).toEqual([]);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
 });

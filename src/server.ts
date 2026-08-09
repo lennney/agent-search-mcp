@@ -1,13 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-import type { Config } from './infrastructure/config.js';
+import {
+  getDefaultSearchRuntime,
+  type SearchRuntime,
+} from './infrastructure/search-runtime.js';
 import { ToolPolicy } from './infrastructure/tool-policy.js';
 import { readCurrentVersion } from './infrastructure/version-check.js';
 import { registerCapabilities } from './tools/capabilities.js';
-import {
-  healthTracker,
-  serverMetrics,
-} from './tools/free-search.js';
 import { registerHealth, registerHealthMetrics } from './tools/health.js';
 import { registerConfiguredTools } from './tools/registry.js';
 
@@ -18,7 +17,10 @@ import { registerConfiguredTools } from './tools/registry.js';
  * call this factory once per request because SDK v1 transports are single-use
  * when sessionIdGenerator is undefined.
  */
-export function createAgentSearchServer(config: Config): McpServer {
+export function createAgentSearchServer(
+  runtime: SearchRuntime = getDefaultSearchRuntime(),
+): McpServer {
+  const { config } = runtime;
   const server = new McpServer(
     {
       name: 'agent-search-mcp',
@@ -34,11 +36,11 @@ export function createAgentSearchServer(config: Config): McpServer {
 
   const toolPolicy = new ToolPolicy(config.enabledTools, config.disabledTools);
 
-  registerConfiguredTools(server, toolPolicy);
+  registerConfiguredTools(server, toolPolicy, runtime);
 
   registerCapabilities(server, toolPolicy);
-  registerHealth(server, healthTracker);
-  registerHealthMetrics(server, serverMetrics);
+  registerHealth(server, runtime.healthTracker);
+  registerHealthMetrics(server, runtime.serverMetrics);
 
   return server;
 }

@@ -65,6 +65,37 @@ describe('DuckDuckGo Web representation', () => {
     expect(secondHeaders.get('referer')).toBe('https://duckduckgo.com/');
   });
 
+  it('applies the request region only to bootstrap and preserves the signed preload URL', async () => {
+    const calls: Array<{ input: string; init?: RequestInit }> = [];
+    global.fetch = vi.fn(async (input, init) => {
+      calls.push({ input: String(input), init });
+      if (calls.length === 1) {
+        return new Response(
+          `<link id="deep_preload_link" href="${PRELOAD_URL}">`,
+          { status: 200 },
+        );
+      }
+      return Response.json({ results: [] });
+    }) as typeof fetch;
+
+    await searchDuckDuckGoWeb('test query', 10, {
+      throwOnError: true,
+      requestContext: {
+        language: 'zh',
+        region: 'cn-zh',
+        acceptLanguage: 'zh-CN,zh;q=0.9,en;q=0.8',
+      },
+    });
+
+    const bootstrap = new URL(calls[0].input);
+    expect(bootstrap.searchParams.get('kl')).toBe('cn-zh');
+    expect(new Headers(calls[0].init?.headers).get('accept-language'))
+      .toBe('zh-CN,zh;q=0.9,en;q=0.8');
+    expect(calls[1].input).not.toContain('kl=');
+    expect(new Headers(calls[1].init?.headers).get('accept-language'))
+      .toBe('zh-CN,zh;q=0.9,en;q=0.8');
+  });
+
   it('rejects a preload URL outside the exact DDG API boundary', async () => {
     global.fetch = vi.fn(async () => new Response(
       '<link id="deep_preload_link" href="https://attacker.example/d.js?q=test">',

@@ -1,4 +1,4 @@
-import { SearchCache } from './cache.js';
+import type { SearchCacheStats } from './cache.js';
 import { logger } from './logger.js';
 import {
   MemoryProviderCooldownStore,
@@ -38,13 +38,17 @@ export interface ServerMetricsData {
  * Uses only built-in Node.js modules (node:process).
  * Integrates with SearchCache for cache telemetry.
  */
+export interface CacheMetricsSource {
+  stats(): SearchCacheStats;
+}
+
 export class ServerMetrics {
   private readonly startTime = Date.now();
   private requestCount = 0;
   private totalLatency = 0;
-  private readonly cache?: SearchCache;
+  private readonly cache?: CacheMetricsSource;
 
-  constructor(cache?: SearchCache) {
+  constructor(cache?: CacheMetricsSource) {
     this.cache = cache;
   }
 
@@ -112,16 +116,37 @@ export type ProviderAvailability =
       retryAt: number | null;
     };
 
+export type ProviderAttemptOutcome =
+  | { status: 'released' }
+  | { status: 'success'; latency: number }
+  | { status: 'failure'; failureType: ProviderCooldownFailureType }
+  | {
+      status: 'suspended';
+      cooldownMs: number;
+      failureType: ProviderCooldownFailureType;
+    };
+
+export interface ProviderAttemptLease {
+  finish(outcome: ProviderAttemptOutcome): void;
+}
+
+export type ProviderAttemptAdmission =
+  | { acquired: true; lease: ProviderAttemptLease }
+  | {
+      acquired: false;
+      failureType: ProviderCooldownFailureType;
+      retryAt: number | null;
+    };
+
 export class HealthTracker {
   private health = new Map<string, ProviderHealth>();
+  private readonly halfOpenProbes = new Set<string>();
   private readonly cooldownStore: ProviderCooldownStore;
   
   // Circuit breaker configuration
   private static readonly FAILURE_THRESHOLD = 5;
   private static readonly INITIAL_COOLDOWN_MS = 30_000; // 30 seconds
   private static readonly MAX_COOLDOWN_MS = 300_000; // 5 minutes
-  private static readonly HALF_OPEN_MAX_ATTEMPTS = 1;
-
   constructor(
     cooldownStore: ProviderCooldownStore = new MemoryProviderCooldownStore(),
   ) {
@@ -147,9 +172,12 @@ export class HealthTracker {
   recordSuccess(provider: string, latency: number): void {
     const h = this.getOrCreate(provider);
     const hadSuspension = h.suspendedUntil !== null;
+    const hadSuccessfulSample = h.lastSuccess !== null;
     h.lastSuccess = Date.now();
     h.errorCount = Math.max(0, h.errorCount - 1);
-    h.avgLatency = (h.avgLatency + latency) / 2;
+    h.avgLatency = hadSuccessfulSample
+      ? (h.avgLatency + latency) / 2
+      : latency;
     h.suspendedUntil = null;
     h.suspensionFailureType = null;
     h.lastFailureType = null;
@@ -239,6 +267,81 @@ export class HealthTracker {
     return this.getAvailability(provider).available;
   }
 
+  acquireAttempt(provider: string): ProviderAttemptAdmission {
+    const h = this.health.get(provider);
+    if (!h) {
+      return {
+        acquired: true,
+        lease: this.createAttemptLease(provider, false),
+      };
+    }
+    this.refreshSuspension(h);
+
+    if (h.suspendedUntil !== null) {
+      return {
+        acquired: false,
+        failureType: h.suspensionFailureType ?? h.lastFailureType ?? 'unknown',
+        retryAt: h.suspendedUntil,
+      };
+    }
+
+    if (h.circuitState === 'open') {
+      const retryAt = (h.circuitOpenedAt ?? Date.now()) + h.circuitCooldownMs;
+      if (Date.now() < retryAt) {
+        return {
+          acquired: false,
+          failureType: h.lastFailureType ?? 'unknown',
+          retryAt,
+        };
+      }
+      h.circuitState = 'half-open';
+      logger.info({ provider }, 'Health circuit half-open; testing recovery');
+    }
+
+    const isHalfOpenProbe = h.circuitState === 'half-open';
+    if (isHalfOpenProbe && this.halfOpenProbes.has(provider)) {
+      return {
+        acquired: false,
+        failureType: h.lastFailureType ?? 'unknown',
+        retryAt: null,
+      };
+    }
+    if (!isHalfOpenProbe && !h.isHealthy) {
+      return {
+        acquired: false,
+        failureType: h.lastFailureType ?? 'unknown',
+        retryAt: null,
+      };
+    }
+
+    return {
+      acquired: true,
+      lease: this.createAttemptLease(provider, isHalfOpenProbe),
+    };
+  }
+
+  private createAttemptLease(
+    provider: string,
+    isHalfOpenProbe: boolean,
+  ): ProviderAttemptLease {
+    if (isHalfOpenProbe) this.halfOpenProbes.add(provider);
+    let finished = false;
+    return {
+      finish: (outcome: ProviderAttemptOutcome): void => {
+        if (finished) return;
+        finished = true;
+        if (isHalfOpenProbe) this.halfOpenProbes.delete(provider);
+        if (outcome.status === 'success') {
+          this.recordSuccess(provider, outcome.latency);
+        } else if (outcome.status === 'failure') {
+          this.recordFailure(provider, outcome.failureType);
+        } else if (outcome.status === 'suspended') {
+          this.suspend(provider, outcome.cooldownMs, outcome.failureType);
+        }
+      },
+    };
+  }
+
   getAvailability(provider: string): ProviderAvailability {
     const h = this.health.get(provider);
     if (!h) return { available: true }; // Unknown providers are assumed healthy
@@ -252,19 +355,27 @@ export class HealthTracker {
       };
     }
     
-    // Check if circuit should transition to half-open
+    // Report whether a caller may try to acquire the half-open probe.
     if (h.circuitState === 'open' && h.circuitOpenedAt) {
       const elapsed = Date.now() - h.circuitOpenedAt;
       if (elapsed >= h.circuitCooldownMs) {
-        h.circuitState = 'half-open';
-        logger.info({ provider }, 'Health circuit half-open; testing recovery');
-        return { available: true }; // Allow one test request
+        return { available: true };
       }
       return {
         available: false,
         failureType: h.lastFailureType ?? 'unknown',
         retryAt: h.circuitOpenedAt + h.circuitCooldownMs,
       };
+    }
+
+    if (h.circuitState === 'half-open') {
+      return this.halfOpenProbes.has(provider)
+        ? {
+            available: false,
+            failureType: h.lastFailureType ?? 'unknown',
+            retryAt: null,
+          }
+        : { available: true };
     }
     
     return h.isHealthy

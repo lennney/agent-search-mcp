@@ -36,7 +36,9 @@ try {
         capture: await readJson(option.slice(separator + 1)),
       };
     }));
-    await writeJson(output, poolLiveCaptures(captures));
+    await writeJson(output, poolLiveCaptures(captures, {
+      requireComplete: argv.includes('--require-complete'),
+    }));
     console.error(`Wrote pooled search capture to ${resolve(output)}`);
   } else if (prepareSource !== undefined) {
     const output = requiredOption('--output');
@@ -108,7 +110,7 @@ async function writeJson(path, value) {
 function usage() {
   throw new Error([
     'Usage:',
-    '  node benchmarks/pool.mjs --capture system-id=path --capture other-id=path --output pool.json',
+    '  node benchmarks/pool.mjs --capture system-id=path --capture other-id=path --output pool.json [--require-complete]',
     '  node benchmarks/pool.mjs --prepare-adjudication pool.json --review a.json --review b.json --output adjudication.json',
     '  node benchmarks/pool.mjs --verify-adjudication completed-adjudication.json',
     '  node benchmarks/pool.mjs --compare pool.json --adjudication completed.json --output report.json',

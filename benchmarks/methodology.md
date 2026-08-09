@@ -15,6 +15,11 @@ This design prevents network variance or different search results from being mis
 ## Query and fixture sets
 
 - `queries.json`: 30 live-search prompts, 15 English and 15 Chinese; primarily developer topics.
+- `queries/competitive-comparison-v1.json`: preregistered 30-query
+  English/Chinese evergreen developer-search contract, balanced across
+  factual, technical, and navigational intents. Each query has an official
+  HTTP(S) reference source, judgment question, and paraphrased reference
+  answer. Dates, freshness/news terms, and compared-system brands are rejected.
 - `format-regression.json`: deterministic 10-query bilingual synthetic fixture used only for formatting and token regression.
 - `quality-bootstrap.json`: synthetic metric-code regression with
   `quality_claim_eligible: false`.
@@ -25,6 +30,15 @@ This design prevents network variance or different search results from being mis
 - Pooled captures: two or more systems run the identical sample IDs and query
   metadata. Pool generation rejects invalid response hashes, duplicate system
   IDs, or query-set drift.
+
+Formal competitive captures use contract version 2. They record capture
+status, expected and completed sample counts, Top-5 limit, complete run
+configuration and its SHA-256, and the exact system version. Legacy live
+fixtures remain replayable, but formal pooling requires complete v2 inputs.
+The three-system schedule rotates by Latin square, waits at least ten seconds
+between calls, and never retries. Explicit rate limiting or bot challenge
+aborts the round after a checkpoint; timeouts and empty results stay in the
+evidence.
 
 ## Metrics
 
@@ -118,7 +132,8 @@ query-population coverage, or practical significance.
 4. Use two different model families at temperature zero, then a third family
    to judge disagreements from scratch without seeing the earlier verdicts.
 5. Retain provider/model family, prompt/version hashes, structured verdict
-   hashes, short rationales, usage, and timestamps.
+   hashes, short rationales, per-candidate usage, pricing snapshot, estimated
+   stage cost, and timestamps.
 6. Publish language, category, and freshness slices before any overall average.
 
 Pooling canonicalizes HTTP(S) URLs by lowercasing the hostname, removing the
@@ -139,11 +154,21 @@ mixed within one adjudication.
 
 Candidate text is untrusted input and is sent as data, not instructions.
 Oversized fields are rejected rather than silently truncated. The OpenAI
-Responses driver uses strict JSON Schema, disables tools, and sends
-`store: false`. URLs sent to the judge retain only origin and pathname; user
+Responses driver uses strict JSON Schema, disables tools, sends `store: false`,
+and caps output at 384 tokens. URLs sent to the judge retain only origin and pathname; user
 info, query parameters, and fragments are removed. Users must still review
 their provider and organization data-retention policy. API keys are read only
 from environment variables and are never written into review artifacts.
+
+Judge A, Judge B, and the adjudicator use the fixed snapshot/family pairs in
+`lib/competitive-ai-policy.mjs`, with application-stage ceilings of $12, $3,
+and $15. Resume is content-addressed: pool, blinded packet, prompt, model,
+pricing, budget, and run configuration must match. A prior candidate is
+skipped only when its request/verdict/response hashes, provider model, and
+token usage are complete and valid. Before each new call, the runner reserves
+an estimated bounded request against the stage budget. Budget exhaustion, 429,
+or another API error leaves the most recent checkpoint and does not trigger a
+retry, model substitution, or additional budget.
 
 Reviewer reliability is calculated before adjudication. Relevance uses the
 mean pairwise quadratic-weighted Cohen's kappa because the 0-3 grades are

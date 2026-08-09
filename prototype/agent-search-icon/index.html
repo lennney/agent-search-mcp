@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PROTOTYPE — Agent Search icon directions</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --graphite: #08090a;
+        --graphite-soft: #0d0f10;
+        --cool-white: #f2f1ec;
+        --muted: #9ca1a4;
+        --line: #282b2d;
+        --orange: #ff5a1f;
+        --panel: #111416;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; margin: 0; }
+      body {
+        background: var(--graphite);
+        color: var(--cool-white);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        letter-spacing: -0.01em;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        background-image: linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 32px 32px;
+        content: "";
+        opacity: 0.18;
+        mask-image: linear-gradient(to bottom, black, transparent 78%);
+      }
+
+      main { width: min(1120px, calc(100% - 40px)); margin: 0 auto; padding: 40px 0 120px; }
+      .eyebrow, .meta, .switcher, .small-label {
+        color: var(--muted);
+        font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .eyebrow { display: flex; align-items: center; gap: 10px; }
+      .eyebrow::before { width: 8px; height: 8px; background: var(--orange); content: ""; }
+      h1 { max-width: 720px; margin: 36px 0 14px; font-size: clamp(38px, 7vw, 76px); line-height: 0.96; letter-spacing: -0.065em; }
+      .intro { max-width: 620px; margin: 0; color: #b2b1ae; font-size: 17px; line-height: 1.55; }
+
+      .stage {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.6fr);
+        gap: 1px;
+        margin-top: 56px;
+        border: 1px solid var(--line);
+        background: var(--line);
+      }
+      .hero, .notes { background: var(--graphite-soft); }
+      .hero { min-height: 530px; display: grid; place-items: center; padding: 42px; }
+      .hero svg { width: min(360px, 70vw); height: auto; image-rendering: pixelated; }
+      .notes { padding: 28px; }
+      .notes h2 { margin: 0 0 16px; font-size: 28px; letter-spacing: -0.045em; }
+      .notes p { margin: 0; color: #b2b1ae; line-height: 1.6; }
+      .notes dl { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 12px; margin: 34px 0 0; }
+      .notes dt { margin-bottom: 6px; color: var(--muted); font: 600 10px/1.2 ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+      .notes dd { margin: 0; font-size: 14px; line-height: 1.4; }
+
+      .sizes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px; margin-top: 1px; background: var(--line); }
+      .size { display: flex; min-height: 150px; flex-direction: column; justify-content: space-between; gap: 20px; padding: 20px; background: var(--graphite-soft); }
+      .size-preview { display: flex; align-items: center; gap: 24px; }
+      .size-preview svg:nth-child(1) { width: 96px; }
+      .size-preview svg:nth-child(2) { width: 64px; }
+      .size-preview svg:nth-child(3) { width: 32px; }
+      .size-label { color: var(--muted); font: 600 10px/1.2 ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+
+      .questions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line); }
+      .questions h3 { margin: 0 0 10px; font: 600 11px/1.3 ui-monospace, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange); }
+      .questions p { margin: 0; color: #b2b1ae; line-height: 1.55; }
+
+      .switcher {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 14px;
+        border: 1px solid #68696d;
+        background: #08090a;
+        box-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+        transform: translateX(-50%);
+      }
+      .switcher button { border: 0; padding: 2px 5px; background: transparent; color: var(--cool-white); cursor: pointer; font: inherit; }
+      .switcher button:hover, .switcher button:focus-visible { color: var(--orange); }
+      .switcher strong { color: var(--orange); }
+      :focus-visible { outline: 2px solid var(--orange); outline-offset: 4px; }
+
+      @media (max-width: 720px) {
+        main { width: min(100% - 24px, 560px); padding-top: 24px; }
+        .stage { grid-template-columns: 1fr; }
+        .hero { min-height: 340px; padding: 28px; }
+        .notes { padding: 22px; }
+        .questions { grid-template-columns: 1fr; gap: 24px; }
+        .sizes { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">PROTOTYPE / AGENT SEARCH ICON SYSTEM</div>
+      <h1 id="title">One brand. Three angular signatures.</h1>
+      <p class="intro">A throwaway geometry study before any raster asset is made. Every direction uses the production Signal System palette: near-black field, cool-white structure, and one restrained orange terminal.</p>
+
+      <section class="stage" aria-labelledby="title">
+        <div class="hero" id="hero"></div>
+        <aside class="notes" id="notes"></aside>
+      </section>
+      <section class="sizes" id="sizes" aria-label="Scale checks"></section>
+      <section class="questions" aria-label="Discussion prompts">
+        <article><h3>01 / Silhouette</h3><p>Which outline remains identifiable before the orange terminal or product name is visible?</p></article>
+        <article><h3>02 / Family</h3><p>How close should the product mark stay to the C2 master identity without becoming a duplicate?</p></article>
+        <article><h3>03 / Terminal</h3><p>Does the orange endpoint feel structurally necessary, rather than added as decoration?</p></article>
+      </section>
+    </main>
+
+    <nav class="switcher" aria-label="Prototype variations">
+      <button type="button" id="previous" aria-label="Previous variation">←</button>
+      <span><strong id="key">A</strong> / <span id="name">C2 inheritance</span></span>
+      <button type="button" id="next" aria-label="Next variation">→</button>
+    </nav>
+
+    <script>
+      const variants = {
+        A: {
+          name: 'offset broken loop',
+          title: '偏移断环 / Offset broken loop',
+          description: 'The C2 family structure gains one inward step at the lower-right. The extra corner creates a product-specific rhythm while the upper-right orange terminal preserves the master-brand relationship.',
+          values: [['heritage', 'highest'], ['silhouette', 'quiet'], ['32px', 'strong'], ['orange', 'one terminal']],
+          mark: '<path fill="currentColor" d="M4 4h12v4H8v16h12v-8h4v12H4V4Z"/><rect x="20" y="4" width="8" height="4" fill="var(--orange)"/>'
+        },
+        B: {
+          name: 'opposed twin angles',
+          title: '对向双折角 / Opposed twin angles',
+          description: 'Two white right-angle structures face each other across a deliberate gap. The orange block completes the upper structure without closing the overall mark.',
+          values: [['heritage', 'medium'], ['silhouette', 'strongest'], ['32px', 'strong'], ['orange', 'inner terminal']],
+          mark: '<path fill="currentColor" d="M4 4h16v4H8v12H4V4Z"/><path fill="currentColor" d="M12 16h4v8h12v4H12V16Z"/><rect x="20" y="8" width="4" height="4" fill="var(--orange)"/>'
+        },
+        C: {
+          name: 'cut frame',
+          title: '切口方框 / Cut frame',
+          description: 'A heavy C-shaped frame carries one internal right-angle cut. The detached orange endpoint holds the opening and gives the simplest, most architectural silhouette.',
+          values: [['heritage', 'medium'], ['silhouette', 'bold'], ['32px', 'strong'], ['orange', 'detached terminal']],
+          mark: '<path fill="currentColor" d="M4 4h24v4H8v16h20v4H4V4Z"/><path fill="currentColor" d="M12 12h8v4h-4v4h-4v-8Z"/><rect x="24" y="12" width="4" height="4" fill="var(--orange)"/>'
+        }
+      };
+
+      const order = ['A', 'B', 'C'];
+      const current = new URLSearchParams(location.search).get('variant');
+      let variant = variants[current] ? current : 'A';
+
+      function svg(mark) {
+        return `<svg viewBox="0 0 32 32" role="img" aria-label="${variants[variant].name} icon" shape-rendering="crispEdges"><rect width="32" height="32" fill="var(--graphite)"/>${mark}</svg>`;
+      }
+
+      function render() {
+        const item = variants[variant];
+        document.title = `PROTOTYPE — ${item.name}`;
+        document.getElementById('hero').innerHTML = svg(item.mark);
+        document.getElementById('notes').innerHTML = `<div class="meta">${variant} / ${item.name}</div><h2>${item.title}</h2><p>${item.description}</p><dl>${item.values.map(([key, value]) => `<div><dt>${key}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
+        document.getElementById('sizes').innerHTML = [96, 64, 32].map((size) => `<div class="size"><div class="small-label">scale check</div><div class="size-preview">${svg(item.mark).replace('<svg ', `<svg style="width:${size}px" `)}<span class="size-label">${size}px</span></div></div>`).join('');
+        document.getElementById('key').textContent = variant;
+        document.getElementById('name').textContent = item.name;
+      }
+
+      function move(direction) {
+        const index = order.indexOf(variant);
+        variant = order[(index + direction + order.length) % order.length];
+        history.replaceState(null, '', `?variant=${variant}`);
+        render();
+      }
+
+      document.getElementById('previous').addEventListener('click', () => move(-1));
+      document.getElementById('next').addEventListener('click', () => move(1));
+      document.addEventListener('keydown', (event) => {
+        if (event.target.matches('input, textarea, [contenteditable="true"]')) return;
+        if (event.key === 'ArrowLeft') move(-1);
+        if (event.key === 'ArrowRight') move(1);
+      });
+      render();
+    </script>
+  </body>
+</html>

@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   evaluateQualityFixture,
@@ -10,7 +11,7 @@ import {
   validateQualityFixture,
 } from './lib/quality-metrics.mjs';
 
-const ROOT = resolve(import.meta.dirname, '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function option(name) {
   const index = process.argv.indexOf(name);

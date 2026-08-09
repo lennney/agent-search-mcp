@@ -2,12 +2,18 @@ import { createHash } from 'node:crypto';
 
 import { buildCaptureTrace } from './quality-metrics.mjs';
 import { canonicalizeSearchResultUrl } from './search-result-contract.mjs';
+import {
+  COMPETITIVE_CAPTURE_CONTRACT_VERSION,
+  COMPETITIVE_RESULT_LIMIT,
+  captureConfigurationSha256,
+} from './capture-contract.mjs';
 
 const SYSTEM_ID = /^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/;
 const MAX_INPUT_CHARACTERS = 5_000_000;
 const MAX_RESULTS = 50;
 const FAILURE_TYPES = new Set([
   'timeout',
+  'bot_challenge',
   'rate_limited',
   'permission_denied',
   'upstream_error',
@@ -89,6 +95,7 @@ export function normalizeExternalCapture(input, querySet) {
   } catch {
     captureError('input must be JSON-serializable');
   }
+  const querySetQueries = Array.isArray(querySet) ? querySet : querySet?.queries;
   if (!isRecord(input)
     || serializedInput.length > MAX_INPUT_CHARACTERS
     || input.schema_version !== 1
@@ -106,12 +113,16 @@ export function normalizeExternalCapture(input, querySet) {
     || input.content_licenses[input.system.id].license.length === 0
     || input.content_licenses[input.system.id].license.length > 1_000
     || !Array.isArray(input.samples)
-    || !Array.isArray(querySet)
-    || querySet.length === 0) {
+    || !Array.isArray(querySetQueries)
+    || querySetQueries.length === 0) {
     captureError('header, license disclosure, query set, or samples are invalid');
   }
 
-  const metadata = querySet.map(queryMetadata);
+  const resultLimit = input.result_limit ?? COMPETITIVE_RESULT_LIMIT;
+  if (!Number.isInteger(resultLimit) || resultLimit < 1 || resultLimit > MAX_RESULTS) {
+    captureError('result_limit must be an integer from 1 to 50');
+  }
+  const metadata = querySetQueries.map(queryMetadata);
   if (input.samples.length !== metadata.length) {
     captureError('sample coverage must exactly match the query set');
   }
@@ -136,8 +147,8 @@ export function normalizeExternalCapture(input, querySet) {
         error: `external:${source.failure_type}`,
       };
     }
-    if (source.results.length > MAX_RESULTS) {
-      captureError(`${query.id} exceeds the ${MAX_RESULTS}-result limit`);
+    if (source.results.length > resultLimit) {
+      captureError(`${query.id} exceeds the ${resultLimit}-result limit`);
     }
     const results = source.results.map((result, resultIndex) =>
       validateResult(result, query.id, resultIndex, systemId));
@@ -167,14 +178,28 @@ export function normalizeExternalCapture(input, querySet) {
     };
   });
 
+  const captureConfiguration = {
+    system_id: systemId,
+    system_version: input.system.version,
+    result_limit: resultLimit,
+    ...(isRecord(input.configuration) && { external_configuration: input.configuration }),
+  };
   return {
     schema_version: 1,
     kind: 'live-capture',
     captured_at: input.captured_at,
     package_version: input.system.version,
-    query_set_sha256: sha256(querySet),
+    query_set_sha256: sha256(querySetQueries),
     requested_engines: [systemId],
     content_licenses: input.content_licenses,
+    capture_contract_version: COMPETITIVE_CAPTURE_CONTRACT_VERSION,
+    capture_status: 'complete',
+    expected_sample_count: metadata.length,
+    completed_sample_count: samples.length,
+    result_limit: resultLimit,
+    capture_configuration: captureConfiguration,
+    capture_configuration_sha256: captureConfigurationSha256(captureConfiguration),
+    system_version_sha256: sha256(input.system),
     capture_origin: {
       kind: 'external-import',
       schema_version: 1,

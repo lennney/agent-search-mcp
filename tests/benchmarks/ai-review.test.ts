@@ -6,7 +6,12 @@ import {
   createOpenAiResponsesJudge,
   runAiAdjudication,
   runAiReview,
+  runAiSchemaSmoke,
 } from '../../benchmarks/lib/ai-review.mjs';
+import {
+  COMPETITIVE_AI_PROFILES,
+  competitiveAiProfile,
+} from '../../benchmarks/lib/competitive-ai-policy.mjs';
 import { evaluatePooledComparison } from '../../benchmarks/lib/comparison-metrics.mjs';
 import {
   poolLiveCaptures,
@@ -97,6 +102,7 @@ function judge(overrides = new Map<string, number>()) {
       response: {
         id: `response-${request.task_id}`,
         model: request.judge.model,
+        provider_secret: 'provider-secret-body',
         usage: { input_tokens: 100, output_tokens: 20 },
       },
     };
@@ -132,7 +138,7 @@ describe('AI search-quality review', () => {
     });
     const request = {
       task_id: 'reviewer:q1:c1',
-      judge: { model: 'judge-model-2026-07-26' },
+      judge: { model: 'judge-model-2026-07-26', max_output_tokens: 384 },
       system_prompt: 'Judge safely.',
       schema: {
         type: 'object',
@@ -162,6 +168,7 @@ describe('AI search-quality review', () => {
     const body = JSON.parse(init.body);
     expect(body).toEqual(expect.objectContaining({
       model: 'judge-model-2026-07-26',
+      max_output_tokens: 384,
       store: false,
       temperature: 0,
       tools: [],
@@ -368,5 +375,153 @@ describe('AI search-quality review', () => {
       oversizedJudge,
     )).rejects.toThrow(/candidate snippet/);
     expect(oversizedJudge).not.toHaveBeenCalled();
+  });
+
+  it('pins three independent competitive profiles and their stage budgets', () => {
+    expect(COMPETITIVE_AI_PROFILES).toMatchObject({
+      'judge-a': {
+        model: 'gpt-4.1-2025-04-14',
+        modelFamily: 'gpt-4.1',
+        maxOutputTokens: 384,
+        maxCostUsd: 12,
+      },
+      'judge-b': {
+        model: 'gpt-4o-mini-2024-07-18',
+        modelFamily: 'gpt-4o-mini',
+        maxOutputTokens: 384,
+        maxCostUsd: 3,
+      },
+      adjudicator: {
+        model: 'gpt-4o-2024-11-20',
+        modelFamily: 'gpt-4o',
+        maxOutputTokens: 384,
+        maxCostUsd: 15,
+      },
+    });
+  });
+
+  it('runs a bounded schema smoke without retaining the provider response', async () => {
+    const callJudge = judge();
+    const smoke = await runAiSchemaSmoke(
+      competitiveAiProfile('judge-a'),
+      callJudge,
+      { completedAt: '2026-08-07T00:30:00.000Z' },
+    );
+
+    expect(callJudge).toHaveBeenCalledTimes(1);
+    expect(smoke).toMatchObject({
+      kind: 'ai-review-schema-smoke',
+      actor: {
+        model: 'gpt-4.1-2025-04-14',
+        max_output_tokens: 384,
+        completed_at: '2026-08-07T00:30:00.000Z',
+        usage: { judged_candidates: 1 },
+      },
+      verdict: {
+        judge_evidence: {
+          provider_response_sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        },
+      },
+    });
+    expect(JSON.stringify(smoke)).not.toContain('provider-secret-body');
+  });
+
+  it('resumes only valid judgments and does not charge the completed candidate twice', async () => {
+    const sourcePool = pool();
+    const profile = competitiveAiProfile('judge-a');
+    const successfulJudge = judge();
+    const interruptedJudge = vi.fn()
+      .mockImplementationOnce(successfulJudge)
+      .mockRejectedValueOnce(new Error('provider unavailable'));
+    let checkpoint: Record<string, any> | undefined;
+
+    await expect(runAiReview(sourcePool, profile, interruptedJudge, {
+      onProgress: value => { checkpoint = value; },
+    })).rejects.toThrow(/provider unavailable/);
+    expect(checkpoint?.reviewer.usage.judged_candidates).toBe(1);
+
+    const resumedJudge = judge();
+    const completed = await runAiReview(sourcePool, profile, resumedJudge, {
+      resumePacket: checkpoint,
+      completedAt: '2026-08-07T01:00:00.000Z',
+    });
+
+    expect(resumedJudge).toHaveBeenCalledTimes(1);
+    expect(completed.reviewer.usage).toMatchObject({
+      input_tokens: 200,
+      output_tokens: 40,
+      judged_candidates: 2,
+      estimated_cost_usd: expect.any(Number),
+    });
+    expect(JSON.stringify(completed)).not.toContain('provider-secret-body');
+
+    const drifted = { ...profile, model: 'gpt-4.1-2025-04-15' };
+    await expect(runAiReview(sourcePool, drifted, judge(), {
+      resumePacket: completed,
+    })).rejects.toThrow(/configuration drifted/);
+  });
+
+  it('checkpoints before a budget stop without invoking the provider', async () => {
+    const tinyBudget = {
+      ...competitiveAiProfile('judge-b'),
+      maxCostUsd: 0.00000001,
+    };
+    const callJudge = judge();
+    const checkpoints: unknown[] = [];
+
+    await expect(runAiReview(pool(), tinyBudget, callJudge, {
+      onProgress: value => checkpoints.push(value),
+    })).rejects.toThrow(/budget/);
+
+    expect(callJudge).not.toHaveBeenCalled();
+    expect(checkpoints).toHaveLength(1);
+  });
+
+  it('resumes disagreement adjudication without repeating completed calls', async () => {
+    const sourcePool = pool();
+    const first = await runAiReview(
+      sourcePool,
+      config('judge-a', 'family-a'),
+      judge(),
+    );
+    const second = await runAiReview(
+      sourcePool,
+      config('judge-b', 'family-b'),
+      judge(new Map([
+        ['https://example.com/alpha', 2],
+        ['https://example.com/noise', 1],
+      ])),
+    );
+    const pending = prepareReviewAdjudication(sourcePool, [first, second]);
+    expect(pending.summary.disagreements).toBe(2);
+    const profile = competitiveAiProfile('adjudicator');
+    const baseJudge = judge();
+    const interruptedJudge = vi.fn()
+      .mockImplementationOnce(baseJudge)
+      .mockRejectedValueOnce(new Error('HTTP 429'));
+    let checkpoint: Record<string, any> | undefined;
+
+    await expect(runAiAdjudication(
+      sourcePool,
+      pending,
+      profile,
+      interruptedJudge,
+      { onProgress: value => { checkpoint = value; } },
+    )).rejects.toThrow(/429/);
+
+    const resumedJudge = judge();
+    const completed = await runAiAdjudication(
+      sourcePool,
+      pending,
+      profile,
+      resumedJudge,
+      {
+        resumePacket: checkpoint,
+        completedAt: '2026-08-07T02:00:00.000Z',
+      },
+    );
+    expect(resumedJudge).toHaveBeenCalledTimes(1);
+    expect(completed.adjudicator.usage.judged_candidates).toBe(2);
+    expect(validateCompletedAdjudication(completed).status).toBe('completed');
   });
 });

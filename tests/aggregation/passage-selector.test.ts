@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { selectRelevantPassage } from '../../src/aggregation/passage-selector.js';
+import {
+  selectRelevantPassage,
+  termMatches,
+} from '../../src/aggregation/passage-selector.js';
+
+describe('termMatches', () => {
+  it('matches Latin terms at word boundaries only', () => {
+    expect(termMatches('the catalog has cats', 'cat')).toBe(false);
+    expect(termMatches('a cat sits on the mat', 'cat')).toBe(true);
+    expect(termMatches('catapult and cat', 'cat')).toBe(true);
+  });
+
+  it('rejects inflected forms without a word boundary', () => {
+    expect(termMatches('cancellation signals stop', 'signal')).toBe(false);
+    expect(termMatches('the signal is clear', 'signal')).toBe(true);
+  });
+
+  it('keeps CJK bigram matching contiguous', () => {
+    expect(termMatches('编程语言', '编程')).toBe(true);
+    expect(termMatches('程序设计', '编程')).toBe(false);
+  });
+});
 
 describe('selectRelevantPassage', () => {
   it('selects a later sentence that best matches the query', () => {
@@ -12,7 +33,8 @@ describe('selectRelevantPassage', () => {
     const selected = selectRelevantPassage(text, 'cancellation retry signal', 120);
 
     expect(selected.text).toContain('Cancellation signals');
-    expect(selected.matched_terms).toEqual(expect.arrayContaining(['cancellation', 'retry', 'signal']));
+    // "signal" correctly does not match the plural "signals" at word boundary.
+    expect(selected.matched_terms).toEqual(expect.arrayContaining(['cancellation', 'retry']));
     expect(selected.score).toBeGreaterThan(0);
   });
 

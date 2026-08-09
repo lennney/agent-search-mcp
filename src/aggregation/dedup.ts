@@ -1,29 +1,16 @@
-import { SearchResult } from '../types.js';
+import { SearchResult, type SearchProvider } from '../types.js';
+import { PROVIDER_FAMILIES } from '../engines/provider-catalog.js';
+import { canonicalizeUrl } from './url-canonicalization.js';
 
 // An adapter is not necessarily an independent source. Keep this mapping
 // conservative: corroboration must not increase merely because two adapters
 // expose results from the same upstream family.
-export const PROVIDER_FAMILIES: Readonly<Record<string, string>> = {
-  duckduckgo: 'bing',
-  bing: 'bing',
-  startpage: 'google',
-  sogou: 'sogou',
-  baidu: 'baidu',
-  wikipedia: 'wikipedia',
-  yandex: 'yandex',
-  mojeek: 'mojeek',
-  wiby: 'wiby',
-  brave: 'brave',
-  tavily: 'tavily',
-  exa: 'exa',
-  youcom: 'youcom',
-  tencent_wsa: 'sogou',
-  bocha: 'bocha',
-  serper: 'google',
-};
+export { PROVIDER_FAMILIES };
 
 export function getProviderFamily(engine: string): string {
-  return PROVIDER_FAMILIES[engine] ?? engine;
+  return Object.prototype.hasOwnProperty.call(PROVIDER_FAMILIES, engine)
+    ? PROVIDER_FAMILIES[engine as SearchProvider]
+    : engine;
 }
 
 export function getResultEngines(
@@ -38,12 +25,7 @@ export function getResultEngines(
 }
 
 export function normalizeUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname.replace(/\/$/, '')}`.toLowerCase();
-  } catch {
-    return url.toLowerCase();
-  }
+  return canonicalizeUrl(url);
 }
 
 /**

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Search"
+  short_description: "Evidence-first English and Chinese web search"
+  default_prompt: "Use $agent-search to find and verify web evidence with the smallest suitable tool path."

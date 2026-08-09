@@ -5,6 +5,7 @@ import { fetchForEngine } from '../infrastructure/engine-http.js';
 import { logger } from '../infrastructure/logger.js';
 import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
+import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
 const DDG_HOME_ORIGIN = 'https://duckduckgo.com';
 const DDG_PRELOAD_ORIGIN = 'https://links.duckduckgo.com';
@@ -12,12 +13,11 @@ const MAX_DDG_QUERY_CHARS = 499;
 const MAX_RESPONSE_CHARS = 2_000_000;
 const CHALLENGE_COOLDOWN_MS = 60 * 60 * 1000;
 
-// DDG binds its signed preload URL to the request identity. Keep this stable
-// for both steps instead of rotating identities inside one logical session.
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-  + 'AppleWebKit/537.36 (KHTML, like Gecko) '
-  + 'Chrome/136.0.0.0 Safari/537.36';
+// DDG binds its signed preload URL to the request identity. The profile is
+// derived deterministically from the query, so bootstrap + preload share one
+// coherent identity while different queries rotate among browser profiles.
+const DDG_ROTATE_STATUS = Object.freeze([202, 403, 429] as const);
+const MAX_STATUS_ROTATIONS = 1;
 
 type DdgApiResult = {
   t?: unknown;
@@ -44,16 +44,28 @@ export async function searchDuckDuckGoWeb(
     }
     options?.signal?.throwIfAborted();
     const signal = withTimeout(options?.signal, 10_000);
+    const profile = resolveRequestProfile(query, currentProfileWindowKey());
     const homeUrl = new URL('/', DDG_HOME_ORIGIN);
     homeUrl.searchParams.set('q', query);
     homeUrl.searchParams.set('t', 'h_');
     homeUrl.searchParams.set('ia', 'web');
+    if (options?.requestContext) {
+      homeUrl.searchParams.set('kl', options.requestContext.region);
+    }
 
     const homeResponse = await fetchForEngine('duckduckgo', homeUrl, {
       method: 'GET',
-      headers: navigationHeaders(),
+      headers: profileHeaders(profile, {
+        acceptLanguage: options?.requestContext?.acceptLanguage ?? 'en-US,en;q=0.9',
+        referer: `${DDG_HOME_ORIGIN}/`,
+        kind: 'navigation',
+      }),
       redirect: 'error',
       signal,
+    }, {
+      affinityKey: query,
+      rotateOnStatus: DDG_ROTATE_STATUS,
+      maxStatusRotations: MAX_STATUS_ROTATIONS,
     });
     const homeHtml = await readBoundedText(homeResponse);
     ensureUsableResponse('Web bootstrap', homeResponse, homeHtml);
@@ -65,10 +77,19 @@ export async function searchDuckDuckGoWeb(
       'duckduckgo',
       buildJsonApiUrl(preloadUrl),
       {
-      method: 'GET',
-      headers: scriptHeaders(),
-      redirect: 'error',
-      signal,
+        method: 'GET',
+        headers: profileHeaders(profile, {
+          acceptLanguage: options?.requestContext?.acceptLanguage ?? 'en-US,en;q=0.9',
+          referer: `${DDG_HOME_ORIGIN}/`,
+          kind: 'script',
+        }),
+        redirect: 'error',
+        signal,
+      },
+      {
+        affinityKey: query,
+        rotateOnStatus: DDG_ROTATE_STATUS,
+        maxStatusRotations: MAX_STATUS_ROTATIONS,
       },
     );
     const apiBody = await readBoundedText(apiResponse);
@@ -99,32 +120,6 @@ export async function searchDuckDuckGoWeb(
     );
     return [];
   }
-}
-
-function navigationHeaders(): Record<string, string> {
-  return {
-    'User-Agent': USER_AGENT,
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': `${DDG_HOME_ORIGIN}/`,
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'same-origin',
-    'Sec-Fetch-User': '?1',
-    'Upgrade-Insecure-Requests': '1',
-  };
-}
-
-function scriptHeaders(): Record<string, string> {
-  return {
-    'User-Agent': USER_AGENT,
-    'Accept': '*/*',
-    'Accept-Language': 'en-US,en;q=0.9',
-    'Referer': `${DDG_HOME_ORIGIN}/`,
-    'Sec-Fetch-Dest': 'script',
-    'Sec-Fetch-Mode': 'no-cors',
-    'Sec-Fetch-Site': 'same-site',
-  };
 }
 
 async function readBoundedText(response: Response): Promise<string> {

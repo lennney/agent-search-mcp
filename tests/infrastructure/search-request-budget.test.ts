@@ -34,13 +34,36 @@ describe('SearchRequestBudget', () => {
     budget.dispose();
   });
 
-  it('marks evidence truncation without aborting execution', () => {
+  it('does not exhaust the result budget when a batch exactly fits', () => {
     const budget = new SearchRequestBudget(limits);
-    budget.observeEvidence(20, true);
+    expect(budget.admitResults([1, 2, 3])).toEqual([1, 2, 3]);
+    expect(budget.canContinue()).toBe(false);
+    expect(budget.snapshot()).toMatchObject({
+      observed: { result_count: 3 },
+      exhausted: false,
+      exhausted_reasons: [],
+    });
+    budget.dispose();
+  });
+
+  it('marks evidence-limit saturation without aborting execution', () => {
+    const budget = new SearchRequestBudget(limits);
+    budget.observeEvidence(20);
     expect(budget.canContinue()).toBe(true);
     expect(budget.snapshot()).toMatchObject({
       observed: { evidence_chars: 20 },
       exhausted_reasons: ['evidence_chars'],
+    });
+    budget.dispose();
+  });
+
+  it('does not exhaust evidence when observed usage remains below the limit', () => {
+    const budget = new SearchRequestBudget(limits);
+    budget.observeEvidence(11);
+    expect(budget.snapshot()).toMatchObject({
+      observed: { evidence_chars: 11 },
+      exhausted: false,
+      exhausted_reasons: [],
     });
     budget.dispose();
   });

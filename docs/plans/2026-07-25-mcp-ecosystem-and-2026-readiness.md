@@ -86,6 +86,28 @@ The non-empty single-engine capture qualifies the capture and blinding path.
 A real multi-system pool and credentialed model calls remain open. Human review
 is retained only as an optional compatibility path.
 
+Current execution order:
+
+1. Complete the planned Provider half-open probe lease and its offline gates.
+   `HealthTracker` must own atomic admission and release across cancellation,
+   budget rejection, rate-limit wait failure, success, failure, and suspension.
+2. Completed on 2026-08-08: one English and one Chinese Wikipedia Top-3 smoke
+   through the built runtime dispatcher, with no retries and at least 10 seconds
+   between calls. Both returned three results without 429 or challenge. This is
+   not a quality capture and does not authorize challenged providers.
+3. With separate capture approval, collect the registered 30-query results for
+   Agent Search and both comparison systems into the private external artifact
+   directory. Do not reuse the previously challenged outlet.
+4. Run both fixed-family AI reviews, adjudicate only disagreements, validate the
+   completed contract, then generate the pooled comparison.
+5. Run internal relevance calibration only from completed pooled qrels. Keep the
+   production threshold unchanged until that evidence passes its gates.
+
+The half-open work is specified in
+[`2026-08-07-provider-half-open-probe-lease.md`](2026-08-07-provider-half-open-probe-lease.md).
+Network smoke, capture, model calls, push, and release remain separate approval
+boundaries.
+
 ## P0 - credibility and compatibility
 
 - [x] Correct `search_with_synthesis` confidence semantics: confidence is 0-1,

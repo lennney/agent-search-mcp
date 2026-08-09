@@ -1,6 +1,6 @@
 import { SearchResult } from '../types.js';
-import { getProviderFamily, getResultEngines } from './dedup.js';
-import { extractQueryTerms } from './passage-selector.js';
+import { getProviderFamily, getResultEngines, normalizeUrl } from './dedup.js';
+import { extractQueryTerms, termMatches } from './passage-selector.js';
 
 // 域名权威评级: 域名 → 评分加成
 // 基于 TLD + 域名知名度
@@ -149,15 +149,6 @@ function calculateWeightedConfidence(
   return Math.min(reliability + corroborationBonus, 1.0);
 }
 
-function normalizeUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return `${u.hostname}${u.pathname.replace(/\/$/, '')}`.toLowerCase();
-  } catch {
-    return url.toLowerCase();
-  }
-}
-
 /**
  * Token-based scoring inspired by ddgs SimpleFilterRanker.
  * 
@@ -179,9 +170,9 @@ function calculateRelevance(
   const titleLower = result.title.toLowerCase();
   const bodyLower = (result.snippet || '').toLowerCase();
   
-  // Count token matches
-  const titleMatches = tokens.filter(t => titleLower.includes(t)).length;
-  const bodyMatches = tokens.filter(t => bodyLower.includes(t)).length;
+  // Count token matches at word boundaries (Latin) / contiguous bigrams (CJK)
+  const titleMatches = tokens.filter(t => termMatches(titleLower, t)).length;
+  const bodyMatches = tokens.filter(t => termMatches(bodyLower, t)).length;
   
   const titleCoverage = titleMatches / tokens.length;
   const bodyCoverage = bodyMatches / tokens.length;

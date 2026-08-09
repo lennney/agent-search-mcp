@@ -351,7 +351,7 @@ describe('HealthTracker', () => {
 
     const report = ht.getHealth();
     expect(report).toHaveLength(2);
-    expect(report.find(h => h.provider === 'ddg')?.avgLatency).toBe(100);
+    expect(report.find(h => h.provider === 'ddg')?.avgLatency).toBe(200);
     expect(report.find(h => h.provider === 'sogou')?.errorCount).toBe(1);
   });
 

@@ -1,7 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { HealthTracker, ServerMetrics } from '../infrastructure/health.js';
+import type {
+  HealthTrackerPort,
+  ServerMetricsPort,
+} from '../infrastructure/search-runtime.js';
 
-export function registerHealth(server: McpServer, health: HealthTracker) {
+export function registerHealth(server: McpServer, health: HealthTrackerPort) {
   server.resource('health', 'search://health', async () => ({
     contents: [{
       uri: 'search://health',
@@ -11,7 +14,7 @@ export function registerHealth(server: McpServer, health: HealthTracker) {
   }));
 }
 
-export function registerHealthMetrics(server: McpServer, metrics: ServerMetrics) {
+export function registerHealthMetrics(server: McpServer, metrics: ServerMetricsPort) {
   server.resource('health-metrics', 'mcp://health/metrics', async () => ({
     contents: [{
       uri: 'mcp://health/metrics',

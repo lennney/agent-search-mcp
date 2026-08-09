@@ -186,6 +186,37 @@ describe('multi-system search result pooling', () => {
     ])).toThrow(/non-empty candidate pool/);
   });
 
+  it('keeps legacy fixtures replayable but gates formal comparison on complete v2 captures', () => {
+    expect(() => poolLiveCaptures([
+      { systemId: 'system-a', capture: systemA },
+      { systemId: 'system-b', capture: systemB },
+    ], { requireComplete: true })).toThrow(/legacy contract/);
+
+    const completeA = structuredClone(systemA);
+    const completeB = structuredClone(systemB);
+    for (const item of [completeA, completeB]) {
+      Object.assign(item, {
+        capture_contract_version: 2,
+        capture_status: 'complete',
+        expected_sample_count: 1,
+        completed_sample_count: 1,
+        result_limit: 5,
+        capture_configuration_sha256: 'b'.repeat(64),
+        system_version_sha256: 'c'.repeat(64),
+      });
+    }
+    expect(poolLiveCaptures([
+      { systemId: 'system-a', capture: completeA },
+      { systemId: 'system-b', capture: completeB },
+    ], { requireComplete: true }).samples).toHaveLength(1);
+
+    completeB.capture_status = 'aborted';
+    expect(() => poolLiveCaptures([
+      { systemId: 'system-a', capture: completeA },
+      { systemId: 'system-b', capture: completeB },
+    ], { requireComplete: true })).toThrow(/incomplete/);
+  });
+
   it('creates a pooled reviewer packet without system identity or original ranks', () => {
     const pooled = poolLiveCaptures([
       { systemId: 'system-a', capture: systemA },

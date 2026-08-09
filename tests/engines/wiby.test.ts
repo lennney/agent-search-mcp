@@ -37,6 +37,25 @@ describe('searchWiby', () => {
     expect(requestedUrl.searchParams.get('q')).toBe('independent web');
   });
 
+  it('decodes HTML entities in provider-owned text fields', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([
+      {
+        Title: 'Alice&#39;s &amp; Bob&#39;s page',
+        URL: 'https://example.net/entities',
+        Snippet: 'A &quot;small web&quot; result.',
+      },
+    ]), { status: 200 })));
+
+    const results = await searchWiby('html entities', 1, {
+      throwOnError: true,
+    });
+
+    expect(results[0]).toMatchObject({
+      title: "Alice's & Bob's page",
+      snippet: 'A "small web" result. Search index: https://wiby.me/',
+    });
+  });
+
   it('does not automatically retry shared public-server failures', async () => {
     const fetchMock = vi.fn(async () => new Response('', { status: 503 }));
     vi.stubGlobal('fetch', fetchMock);

@@ -2,11 +2,17 @@ import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { searchWithFallback } from './free-search.js';
 import {
+  type SearchRuntime,
+} from '../infrastructure/search-runtime.js';
+import {
   createSearchToolResult,
   searchOutputSchema,
 } from './search-output.js';
 
-export function registerFreeSearchAdvanced(server: McpServer) {
+export function registerFreeSearchAdvanced(
+  server: McpServer,
+  runtime?: SearchRuntime,
+) {
   server.registerTool(
     'free_search_advanced',
     {
@@ -25,7 +31,7 @@ Not recommended for: Simple queries — use free_search instead.
         min_confidence: z.number().min(0).max(3).optional().default(0)
           .describe('Minimum source-reliability confidence (0-1). Legacy values 2-3 are treated as min_source_count.'),
         min_source_count: z.number().int().min(1).max(12).optional().default(1)
-          .describe('Minimum independent upstream provider families; current adapters expose at most 12'),
+          .describe('Minimum independent upstream provider families; the input contract is capped at 12 for compatibility'),
         time_range: z.enum(['day', 'week', 'month', 'year']).optional()
           .describe('Deprecated compatibility field; returns UNSUPPORTED_FILTER because general-search recency is not enforced end to end'),
         language: z.enum(['auto', 'en', 'zh']).optional().default('auto')
@@ -71,7 +77,7 @@ Not recommended for: Simple queries — use free_search instead.
         }
 
         const legacySourceCount = input.min_confidence > 1 ? Math.ceil(input.min_confidence) : 1;
-        const results = await searchWithFallback({
+        const options = {
           query: input.query,
           count: input.count,
           minConfidence: input.min_confidence <= 1 ? input.min_confidence : 0,
@@ -85,7 +91,10 @@ Not recommended for: Simple queries — use free_search instead.
           enrich: input.enrich,
           enrichMax: input.enrich_max,
           signal: extra?.signal,
-        });
+        };
+        const results = runtime
+          ? await searchWithFallback(options, runtime)
+          : await searchWithFallback(options);
         return createSearchToolResult(results);
       } catch (error) {
         if (extra?.signal.aborted) throw error;

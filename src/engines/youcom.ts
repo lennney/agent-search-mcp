@@ -1,13 +1,9 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
 import { withTimeout } from '../infrastructure/abort.js';
 import { logger } from '../infrastructure/logger.js';
+import { providerCatalog } from './provider-catalog.js';
 
-export const youcomProvider = {
-  id: 'youcom' as const,
-  name: 'You.com Search',
-  isFree: false,
-  languages: ['en', 'zh'],
-};
+export const youcomProvider = providerCatalog.youcom;
 
 interface YouComSearchItem {
   url?: string;
