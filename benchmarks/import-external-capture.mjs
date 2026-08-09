@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { normalizeExternalCapture } from './lib/external-capture.mjs';
 
-const ROOT = resolve(import.meta.dirname, '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 
 try {

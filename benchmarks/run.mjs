@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { encode } from 'gpt-tokenizer';
 
@@ -21,7 +22,7 @@ import {
 import { countProviderFamilies } from './lib/evidence-handoff.mjs';
 import { buildCaptureTrace } from './lib/quality-metrics.mjs';
 
-const ROOT = resolve(import.meta.dirname, '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_LICENSES = {
   wikipedia: {
     license: 'CC BY-SA 4.0',

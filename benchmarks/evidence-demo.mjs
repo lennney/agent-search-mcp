@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   buildEvidenceDemoReport,
@@ -8,7 +9,7 @@ import {
   verifyEvidenceDemoReport,
 } from './lib/evidence-demo.mjs';
 
-const ROOT = resolve(import.meta.dirname, '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 function option(name) {
   const index = process.argv.indexOf(name);
