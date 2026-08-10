@@ -9,7 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVER_PATH = process.env.E2E_SERVER_PATH
   ? resolve(process.env.E2E_SERVER_PATH)
   : resolve(__dirname, '../../dist/index.js');
-const EXPECTED_SERVER_VERSION = process.env.E2E_EXPECTED_SERVER_VERSION || '3.2.0';
+const EXPECTED_SERVER_VERSION = process.env.E2E_EXPECTED_SERVER_VERSION || '3.2.1';
 
 // Guard: the E2E test spawns the compiled binary, so dist/ must exist.
 // CI runs build before test, but this check gives a clear failure message

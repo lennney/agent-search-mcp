@@ -95,6 +95,19 @@ fasm doctor
 | Chinese web search | Sogou and Baidu handle Chinese queries without a translation layer |
 | Lightweight self-hosting | Pure Node.js runtime with stdio, Streamable HTTP, and CLI access |
 
+### The difference from a plain multi-engine wrapper
+
+| Plain multi-engine aggregation | Agent Search MCP |
+|---|---|
+| Returns N deduplicated results | Returns results plus the number of **independent sources** (provider families, not adapter names) |
+| A provider failure quietly drops some results | Every failure stays in `partialFailures` (timeout, rate limit, challenge, permission, budget) |
+| Stops when the result count looks sufficient | Stops only after a quality gate (count, relevance, confidence, source coverage) and returns the `stop_reason` |
+| Fixed-size output | One shared evidence budget bounds response tokens; compact text keeps provenance |
+| One adapter counts as one source | The same upstream through several adapters never inflates `source_count` |
+
+The one-minute offline demo replays these differences through the production
+evidence scorer and formatter:
+
 ### Inspect the search evidence
 
 Each JSON response includes one Search Evidence Packet. It answers the routing
@@ -166,7 +179,10 @@ visible in `partialFailures`, so an empty result cannot hide an upstream error.
 
 The [competitive landscape (2026-08-07)](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md)
 maps the crowded baseline and the product gaps. It records source dates and
-fixed commits for facts that can change. The earlier
+fixed commits for facts that can change. The
+[2026-08-10 update](./docs/research/2026-08-10-competitive-landscape-update.md)
+adds competitor activity since then: direct local competitors are dormant, and
+token-efficient evidence is becoming an industry-explicit lever. The earlier
 [source-level product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md)
 contains the architecture-specific evidence.
 
@@ -306,7 +322,8 @@ credential or proxy values.
 | Document | Contents |
 |---|---|
 | [System architecture](./docs/architecture.md) | Routing, evidence, provider families, and configuration |
-| [Competitive landscape](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md) | Current competitors, baseline expectations, and product gaps |
+| [Competitive landscape (2026-08-10)](./docs/research/2026-08-10-competitive-landscape-update.md) | Competitor activity through 2026-08-10, positioning, and improvement priorities |
+| [Competitive landscape (2026-08-07)](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md) | Baseline competitors, expectations, and product gaps snapshot |
 | [Product comparison](./docs/research/2026-07-26-agent-search-product-architecture.md) | Source-level review of Agent search products |
 | [Benchmarks](./benchmarks/) | Token fixture, live-run scope, and quality evaluation method |
 | [v3.2.0 release notes](./docs/releases/v3.2.0.md) | Provider policy, budgets, and migration notes |
