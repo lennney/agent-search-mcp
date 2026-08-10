@@ -118,7 +118,7 @@ export async function fetchForEngine(
 
   let statusRotations = 0;
   for (const [index, proxy] of ordered.entries()) {
-    const attemptStart = Date.now();
+    const attemptStart = performance.now();
     const attemptController = new AbortController();
     const timer = setTimeout(() => {
       attemptController.abort(ATTEMPT_TIMEOUT_REASON);
@@ -162,7 +162,7 @@ export async function fetchForEngine(
       }
       failedProxyUntil.delete(proxy.cacheKey);
       consecutiveFailures.delete(proxy.cacheKey);
-      recordProxySuccess(proxy, Date.now() - attemptStart);
+      recordProxySuccess(proxy, performance.now() - attemptStart);
       return response;
     } catch (error) {
       if (callerSignal?.aborted) throw error;
