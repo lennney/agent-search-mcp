@@ -11,6 +11,21 @@ tags:
 
 ## Unreleased
 
+## v3.2.1 (2026-08-10)
+
+### 📢 Why Update
+
+This patch ships two weeks of user-visible reliability and correctness work
+behind one version. Free-first search is more dependable: the shared transport
+now fails fast on hung proxies, rotates exits on challenge/rate-limit responses
+within a bounded budget, and backs off exponentially. Two engines that
+previously returned silent empty results on captcha pages (Mojeek's Altcha,
+Startpage) now surface the challenge as `bot_challenge` instead of hiding it.
+Relevance matching uses word boundaries so `cat` no longer matches `catalog`.
+Request identity is one self-consistent browser profile per query, rotating
+deterministically across queries and hours. No engines, tools, or MCP input
+signatures changed; this is a compatibility-safe patch.
+
 - feat: Hardened the shared engine transport with per-attempt timeouts (hung
   proxies fail fast and rotate), proxy 407 treated as a transport failure,
   optional bounded exit rotation on challenge/403/429 (`rotateOnStatus`), and
@@ -140,6 +155,10 @@ tags:
 - docs: Recorded that the GitHub repository homepage still needs the website
   canonical product URL; no external setting was changed while GitHub was
   logged out.
+- docs: Added a 2026-08-10 competitive-landscape update (direct local
+  competitors dormant, token-efficient evidence becoming an explicit industry
+  lever) and a README/README_zh first-screen comparison of plain multi-engine
+  aggregation versus the inspectable evidence contract.
 
 ## v3.2.0 (2026-07-26)
 
