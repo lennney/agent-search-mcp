@@ -91,6 +91,18 @@ fasm doctor
 | 中文网页搜索 | 搜狗和百度直接处理中文查询，无需翻译层 |
 | 轻量自托管 | 纯 Node.js 运行时，支持 stdio、Streamable HTTP 和 CLI |
 
+### 与普通多引擎聚合器的区别
+
+| 普通多引擎聚合 | Agent Search MCP |
+|---|---|
+| 返回 N 条去重后的结果 | 返回结果 + **独立来源计数**（按 provider family，不是适配器数） |
+| Provider 失败时静默少几条 | 每个失败都保留在 `partialFailures`（超时、限流、challenge、权限、预算） |
+| 结果数够多就停止 | 只有质量门（数量、相关性、置信度、来源覆盖）达标才停止，并返回 `stop_reason` |
+| 固定长度输出 | 共享证据预算限制全响应 Token，紧凑文本保留来源 |
+| 一个适配器算一个"来源" | 同一上游经多个适配器不会虚增 `source_count` |
+
+一分钟离线 Demo 用生产证据评分器与格式化器重放这些差异：
+
 ### 检查搜索证据
 
 每个 JSON 响应都包含一份 Search Evidence Packet，回答 Agent 使用结果前需要了解的
@@ -157,7 +169,9 @@ flowchart LR
 
 [竞品格局调研（2026-08-07）](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md)
 梳理了已经拥挤的基础能力和当前产品缺口，并为容易变化的事实记录来源日期和固定
-commit。更早的[源码级产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md)
+commit。[2026-08-10 增量调研](./docs/research/2026-08-10-competitive-landscape-update.md)
+补充其后的竞品动态：直接本地竞品进入休眠，省 Token 的证据输出成为行业显式杠杆。
+更早的[源码级产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md)
 保留架构层面的详细证据。
 
 ---
@@ -281,7 +295,8 @@ HTTP_AUTH_TOKEN=change-me MODE=http npx agent-search-mcp
 | 文档 | 内容 |
 |---|---|
 | [系统架构](./docs/architecture.md) | 路由、证据、provider family 和配置 |
-| [竞品格局](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md) | 当前竞品、基础预期和产品缺口 |
+| [竞品格局（2026-08-10）](./docs/research/2026-08-10-competitive-landscape-update.md) | 截至 2026-08-10 的竞品动态、定位与提升优先级 |
+| [竞品格局（2026-08-07）](./docs/research/2026-08-07-competitive-landscape-and-product-gaps.md) | 竞品基线、预期与产品缺口快照 |
 | [产品对比](./docs/research/2026-07-26-agent-search-product-architecture.md) | Agent 搜索产品的源码级调查 |
 | [基准测试](./benchmarks/) | Token fixture、真实运行边界和质量评测方法 |
 | [v3.2.0 发布说明](./docs/releases/v3.2.0.md) | 渠道策略、预算和迁移说明 |
