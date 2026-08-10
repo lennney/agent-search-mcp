@@ -71,3 +71,17 @@ generated capability matrix and `capabilities:check`).
   authorization and a clean exit.
 - `git push`, npm publish, tag/Release, MCP Registry, and external directory
   updates each require separate authorization.
+
+## Bounded release live smoke (2026-08-11)
+
+From the retained tarball installed in a clean temp dir, two serial queries via
+the packed `fasm.cmd`, Top-3, Wikipedia only, at least 10 seconds apart, zero
+retries, zero enrichment:
+
+| Query | Language | Results | Quality gate | partialFailures |
+|---|---|---:|---|---|
+| Model Context Protocol | en | 3 | sufficient (basketRelevance 0.64) | none |
+| 模型上下文协议 | zh | 3 | sufficient (basketRelevance 0.67) | none |
+
+Point-in-time availability observation only; not an availability, latency, or
+accuracy claim. No result text, titles, or URLs were retained.
