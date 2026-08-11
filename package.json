@@ -2,7 +2,7 @@
   "name": "agent-search-mcp",
   "mcpName": "io.github.lennney/agent-search-mcp",
   "version": "3.2.1",
-  "description": "Free-first web search MCP with zero-key English and Chinese sources and compact evidence.",
+  "description": "Free-first Chinese and English web search MCP using zero-key sources and inspectable evidence.",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {
@@ -49,7 +49,7 @@
       "codex",
       "streamable-http",
       "token-efficient",
-      "open-source"
+      "evidence-first"
     ]
   },
   "keywords": [
@@ -64,7 +64,10 @@
     "no-api-key",
     "zero-api-key",
     "token-efficient",
-    "context-compression",
+    "bilingual-search",
+    "evidence-first",
+    "inspectable-evidence",
+    "compact-evidence",
     "search-router",
     "multi-source",
     "multi-engine",
@@ -75,7 +78,6 @@
     "web-scraping",
     "chinese-search",
     "self-hosted",
-    "open-source",
     "claude",
     "cursor",
     "codex"

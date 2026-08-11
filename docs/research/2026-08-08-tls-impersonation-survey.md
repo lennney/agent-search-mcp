@@ -72,7 +72,7 @@ lwthiker 仓库 2024 起已停更）；`curl_cffi`（Python）v0.15.1b1。对比
   不影响直连、其他引擎、MCP 契约。
 2. 在干净出口上先做小样本 A/B：同一查询集，Node 默认 TLS vs 一种模仿 target，
    对比 202/空结果率。用数据决定是否值得为它引入依赖。
-3. 依赖决策按 AGENTS.md「新增重大依赖前先询问」走，优先候选 `curl-cffi-node`
+3. 依赖决策按公开依赖策略先评估并确认，优先候选 `curl-cffi-node`
    （Windows 预编译存在、无 runtime 下载、无运行时依赖），回避 `impers` 的
    首启下载。Node 端先不发布为默认依赖。
 

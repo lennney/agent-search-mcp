@@ -13,18 +13,23 @@ tags:
 
 ## v3.2.1 (2026-08-10)
 
-### 📢 Why Update
+### Why Update
 
-This patch ships two weeks of user-visible reliability and correctness work
-behind one version. Free-first search is more dependable: the shared transport
-now fails fast on hung proxies, rotates exits on challenge/rate-limit responses
-within a bounded budget, and backs off exponentially. Two engines that
-previously returned silent empty results on captcha pages (Mojeek's Altcha,
-Startpage) now surface the challenge as `bot_challenge` instead of hiding it.
-Relevance matching uses word boundaries so `cat` no longer matches `catalog`.
-Request identity is one self-consistent browser profile per query, rotating
-deterministically across queries and hours. No engines, tools, or MCP input
-signatures changed; this is a compatibility-safe patch.
+This release fixes transport failures, captcha reporting, relevance matching,
+and request-profile consistency. It also updates the public package metadata,
+tool-routing instructions, and deterministic fixture figures. The MCP input
+signatures and tool set remain unchanged.
+
+### Discovery and documentation
+
+- docs: Package, MCP Registry, and GitHub metadata now describe free-first
+  Chinese and English web search with inspectable evidence.
+- docs: Server instructions and tool descriptions lead agents from
+  `free_search` to verification or selected-page extraction only when needed.
+- bench: Current deterministic fixture values are 2396.0, 1650.1, and 1633.0
+  average tokens, with 31.1% and 31.8% savings for compact modes.
+- test: Registry metadata, initialize instructions, tool descriptions, and
+  current public documentation have regression coverage.
 
 - feat: Hardened the shared engine transport with per-attempt timeouts (hung
   proxies fail fast and rotate), proxy 407 treated as a transport failure,

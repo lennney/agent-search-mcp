@@ -27,7 +27,7 @@
 ## Checklist
 
 - [ ] Branch is based on latest `main`
-- [ ] Only target files changed (no workspace files: AGENTS.md, HANDOVER.md, .hermes/, docs/plans/)
+- [ ] Only target files changed (no local workspace artifacts, secrets, or generated files)
 - [ ] `npm run build` passes
 - [ ] `npm test` passes (all tests)
 - [ ] `npx tsc --noEmit` passes

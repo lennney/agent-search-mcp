@@ -21,9 +21,8 @@ export function registerSearchWithSynthesis(
     'search_with_synthesis',
     {
       description:
-        'Deep search with waterfall multi-engine verification. Returns structured results plus a prompt_hint for the agent to synthesize its own answer. No external LLM call or model API key is required; search and enrichment still make outbound network requests.\n\n' +
-        'Best for: Complex queries needing multi-source verification and LLM synthesis.\n' +
-        'Not recommended for: Simple fact-finding — use free_search instead.\n\n' +
+        'Opt-in deep search with waterfall verification and content enrichment. Returns structured results plus a prompt_hint; it does not call an external LLM.\n\n' +
+        'Use when multi-source evidence needs a synthesis handoff. free_search is the default for discovery; this path uses more tokens and network time.\n\n' +
         '@readOnly true @idempotent true — runs waterfall search across free+paid engines with content enrichment.',
       inputSchema: {
         query: z.string().describe('Search query'),

@@ -32,7 +32,7 @@ Agent Search 的核心方向是成立的：它不应继续与竞品比“引擎�
 - HTML/JSON adapter、去重、评分、证据选择、丰富化和安全处理；
 - benchmark、外部 capture、AI review、发布门禁和文档治理。
 
-本地事实以 `package.json`、`src/`、`benchmarks/`、`skills/`、`HANDOVER.md` 和测试为准。
+本地事实以 `package.json`、`src/`、`benchmarks/`、`skills/`、公开文档和测试为准。
 竞品只使用官方仓库、官方文档和固定源码：
 
 - [Open-WebSearch `searchService.ts`](https://github.com/Aas-ee/open-webSearch/blob/3f36330dfba873d66c52116d8c8334aaf65137f4/src/core/search/searchService.ts)

@@ -1423,14 +1423,10 @@ export function setupFreeSearchTool(
     'free_search',
     {
       description:
-        'Search the web with an explicit adapter set and bounded fallback.\n\n' +
-        'Best for: Quick fact-finding, general search, when date/domain filters are not needed.\n' +
-        'Not recommended for: Filtered or verified-only results — use free_search_advanced. ' +
-        'For full page content — use free_extract.\n\n' +
-        `${SEARCH_PROVIDERS.length} adapters are selectable; the default request uses DuckDuckGo + Sogou only. ` +
-        'Adapters that share one upstream family are tried sequentially on failure and never double-count as corroboration. ' +
-        'Explicitly requested optional API adapters run only when credentials are present and the free basket is short or below the quality gate.\n' +
-        'Results are deduplicated and include separate confidence, relevance, and source-count signals.\n\n' +
+        'Quick public-web search for current facts and discovery.\n\n' +
+        'Use free_search_advanced for verification or domain filters. Use free_extract for one selected URL.\n\n' +
+        'Returns compact multi-source evidence with confidence, relevance, source_count, stop_reason, evidence_budget, and partialFailures. ' +
+        'Provider families are counted once even when several adapters use the same upstream. Optional API providers run only when credentials and policy allow.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
         'Injection detection and SSRF protection active.',
       inputSchema: {

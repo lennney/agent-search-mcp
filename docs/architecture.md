@@ -334,5 +334,5 @@ Wiby 是零密钥的独立小型网页索引，只在免费瀑布后段作为补
 | [research/2026-08-07-full-design-audit-and-assimilation.md](research/2026-08-07-full-design-audit-and-assimilation.md) | 全面设计审计、竞品吸收矩阵与优先级 |
 | [research/2026-07-26-agent-search-product-architecture.md](research/2026-07-26-agent-search-product-architecture.md) | 当前竞品源码、Agent/MCP 分层和架构策略 |
 | [conventions.md](conventions.md) | 编码规范（命名/导入/签名） |
-| [AGENTS.md](../AGENTS.md) | 项目地图（Agent 第一站） |
+| [Documentation index](index.md) | 公开文档入口和当前权威来源 |
 | [superpowers/plans/2026-07-22-iteration-roadmap.md](superpowers/plans/2026-07-22-iteration-roadmap.md) | 当前路线图 |

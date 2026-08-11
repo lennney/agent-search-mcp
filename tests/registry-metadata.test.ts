@@ -51,12 +51,19 @@ describe('release registry metadata', () => {
   });
 
   it('uses durable discovery metadata instead of volatile inventory claims', () => {
-    expect(packageMetadata.description).toContain('Free-first web search MCP');
-    expect(packageMetadata.description).toContain('zero-key English and Chinese sources');
+    expect(packageMetadata.description).toBe(
+      'Free-first Chinese and English web search MCP using zero-key sources and inspectable evidence.',
+    );
     expect(packageMetadata.description.length).toBeLessThanOrEqual(100);
     expect(packageMetadata.description).not.toMatch(/\b\d+\s+(?:zero-key|free)\s+engines?\b/i);
     expect(packageMetadata.description).not.toMatch(/\b(?:only|best|unique)\b/i);
+    expect(packageMetadata.keywords).not.toContain('context-compression');
+    expect(packageMetadata.keywords).not.toContain('open-source');
     expect(packageMetadata.keywords).toEqual(expect.arrayContaining([
+      'bilingual-search',
+      'compact-evidence',
+      'evidence-first',
+      'inspectable-evidence',
       'metasearch',
       'privacy-first',
       'search-aggregator',
@@ -65,6 +72,8 @@ describe('release registry metadata', () => {
     ]));
     expect(packageMetadata.distributionMetadata.githubTopics).toHaveLength(20);
     expect(new Set(packageMetadata.distributionMetadata.githubTopics).size).toBe(20);
+    expect(packageMetadata.distributionMetadata.githubTopics).toContain('evidence-first');
+    expect(packageMetadata.distributionMetadata.githubTopics).not.toContain('open-source');
   });
 
   it('publishes every optional provider credential as an optional secret', () => {

@@ -1,11 +1,10 @@
-# Agent Search MCP：免费网页搜索与可检查证据
+# Agent Search MCP：免费优先的中英文网页搜索与可检查证据
 
-**轻量、免费优先的 MCP 网页搜索路由器，返回紧凑的多源证据。**
+**无需 API Key 的中英文网页搜索 MCP，返回紧凑的多源证据。**
 
-Agent Search MCP 是开源、自托管的 MCP Server 和 CLI，为 AI Agent 提供免费的
-Tavily 替代方案或本地搜索路径。默认路径无需 API Key，直接搜索中英文来源。
-可选付费渠道受显式策略控制；共享预算限制渠道调用、搜索时间、接纳结果数和
-证据体积。
+Agent Search MCP 是 Node.js MCP Server 和 CLI。默认路径无需 API Key，直接搜索
+中英文来源，保留来源计数、停止原因和 Provider 失败记录。请求预算和证据预算
+限制调用量与响应体积；只有策略和凭证都允许时才运行付费渠道。
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -142,9 +141,9 @@ npm run demo:evidence -- --json
 
 | 输出 | 每次查询平均 Token | 相比 Normal |
 |---|---:|---:|
-| Normal | 2311.0 | |
-| Compact | 1655.8 | 节省 28.4% |
-| Compact+ | 1607.5 | 节省 30.4% |
+| Normal | 2396.0 | |
+| Compact | 1650.1 | 节省 31.1% |
+| Compact+ | 1633.0 | 节省 31.8% |
 
 这组 fixture 只验证输出格式和证据包行为，不代表真实引擎可用率或搜索质量。
 具体方法与限制见[基准说明](./benchmarks/#reproducible-fixture-replay)。

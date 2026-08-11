@@ -14,7 +14,7 @@ export function registerCapabilities(
       mimeType: 'text/markdown',
       text: `# Agent Search MCP
 
-Free and open-source multi-engine MCP Search.
+Free-first multi-engine web search with inspectable evidence.
 
 - GitHub: https://github.com/lennney/agent-search-mcp
 - npm: \`npx agent-search-mcp\`

@@ -5,8 +5,7 @@
 - Source commit:
   `a1de48515d84748d8bf40e66d8853266e0dd1268`
 - Artifact: `agent-search-mcp-3.2.0.tgz`
-- Retained path:
-  `C:\Users\LIU\.codex\release-artifacts\agent-search-mcp\a1de48515d84748d8bf40e66d8853266e0dd1268\agent-search-mcp-3.2.0.tgz`
+- Retained path: outside the repository (local release artifact; path omitted)
 - SHA-256:
   `002EBC7C7AC7E4B8330C1AB25288CD4DB71917ECBC4C2A5C7CB76BE08BFABAEA`
 - npm pack: 77 files, 106,180 bytes packed, 385,303 bytes unpacked.

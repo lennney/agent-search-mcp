@@ -3,7 +3,7 @@
 日期：2026-08-08
 范围：竞品（SearXNG / DDGS / Open-WebSearch）如何保证上游出口稳定与规避反爬；
      对照本项目现有实现，给出合同边界内可吸收的优化项。
-关联：ADR-20260808-sticky-proxy-pools、AGENTS.md「不可破坏的契约」、
+关联：ADR-20260808-sticky-proxy-pools、源码与测试中的「不可破坏的契约」、
      `docs/research/2026-08-07-competitive-landscape-and-product-gaps.md`。
 
 > 后记（2026-08-08）：项目已通过 `ADR-20260808-egress-fingerprint-flexibility`
@@ -127,7 +127,7 @@
 3. **行为指纹**：请求频率、间隔抖动、点击轨迹、`navigator.webdriver` 等，只有
    真浏览器/脚本化浏览器才能提供。
 
-**我们合同禁止的是「轮换 / 规避」**：AGENTS.md 明确「不使用指纹轮换、挑战规避
+**我们合同禁止的是「轮换 / 规避」**：公开契约明确「不使用指纹轮换、挑战规避
 或高频重试来获取 DDG/Sogou 结果」，ADR 明确「CAPTCHA/challenge/403/429 轮换
 出口会规避上游控制、使质量 capture 不可比」。curl_cffi 式 TLS 模仿 + 挑战后换
 UA/IP 恰好落在这条线内，且会把搜索质量声明污染成「规避能力」而非「搜索能力」。
@@ -206,4 +206,4 @@ UA/IP 恰好落在这条线内，且会把搜索质量声明污染成「规避�
   结论为**不采用**——Node 端选项全为 alpha/preview、Windows 仅 `curl-cffi-node`
   有现成预编译、`impers` 首启运行时下载 native、全部打破零依赖定位，且 DDG/Sogou
   的边际收益未验证。若将来上，藏在 `engine-http.ts` 传输缝后 + 干净出口 A/B 实测，
-  并按 AGENTS.md 先询问依赖。
+  并按公开依赖策略先评估并确认依赖。

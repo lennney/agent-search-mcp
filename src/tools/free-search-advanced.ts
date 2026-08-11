@@ -17,10 +17,9 @@ export function registerFreeSearchAdvanced(
     'free_search_advanced',
     {
       description:
-        `Advanced search with filters and quality control.
+        `Verification-oriented search with domain filters and waterfall fallback.
 
-Best for: Domain filtering, high-confidence only, Chinese content.
-Not recommended for: Simple queries — use free_search instead.
+Use for claim checking, Chinese-source search, or publisher restrictions. Start with free_search for quick discovery. The response exposes source_count, stop_reason, evidence_budget, and partialFailures.
 
 @readOnly true @idempotent true — runs waterfall progressive search across policy-allowed engines. ` +
         `Makes outbound HTTP requests to search engines and optionally to Jina Reader for content enrichment.`,

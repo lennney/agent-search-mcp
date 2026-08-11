@@ -13,5 +13,7 @@ benchmarks/fixtures/live-latest.json
 .claude/hooks/
 .claude/session_state/
 .claude/
+.codex/
+.codegraph/
 .dev-harness/
 .goal-harness/
