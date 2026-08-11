@@ -1,6 +1,6 @@
 ---
 name: agent-search
-description: Use Agent Search MCP for evidence-first English and Chinese web search with minimal tool calls. Trigger for quick factual discovery, claim or source verification, Chinese web results, reading a selected page, diagnosing Agent Search readiness, or controlling search token and provider spend. Choose among free_search, free_search_advanced, free_extract, the health and capabilities resources, and fasm doctor while preserving failures and freshness limits.
+description: Use Agent Search MCP for free-first English and Chinese web search with compact evidence and minimal tool calls. Trigger for factual discovery, claim verification, Chinese web results, selected-page extraction, provider failures, freshness limits, or search token and spend controls. Choose free_search, free_search_advanced, free_extract, health and capabilities resources, or fasm doctor.
 ---
 
 # Agent Search

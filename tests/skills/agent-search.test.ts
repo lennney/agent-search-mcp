@@ -52,9 +52,9 @@ describe('official Agent Search skill', () => {
 
     expect(metadata.interface).toEqual({
       display_name: 'Agent Search',
-      short_description: 'Evidence-first English and Chinese web search',
+      short_description: 'Free-first bilingual web search with compact evidence',
       default_prompt:
-        'Use $agent-search to find and verify web evidence with the smallest suitable tool path.',
+        'Use $agent-search for the smallest search path and inspect the evidence packet before trusting results.',
     });
   });
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Search"
-  short_description: "Evidence-first English and Chinese web search"
-  default_prompt: "Use $agent-search to find and verify web evidence with the smallest suitable tool path."
+  short_description: "Free-first bilingual web search with compact evidence"
+  default_prompt: "Use $agent-search for the smallest search path and inspect the evidence packet before trusting results."

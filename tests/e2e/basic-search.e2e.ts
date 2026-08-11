@@ -255,6 +255,9 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect(result).toHaveProperty('serverInfo');
     expect((result.serverInfo as Record<string, unknown>).name).toBe('agent-search-mcp');
     expect((result.serverInfo as Record<string, unknown>).version).toBe(EXPECTED_SERVER_VERSION);
+    expect(result.instructions).toContain('Public-web search.');
+    expect(result.instructions).toContain('free_search_advanced');
+    expect(result.instructions).toContain('evidence_budget');
   }, 20000);
 
   it('lists tools after initialization', async () => {
@@ -287,6 +290,17 @@ function waitForStartup(ms: number = 500): Promise<void> {
     expect(toolNames).toContain('free_search');
     expect(toolNames).toContain('free_extract');
     const freeSearch = tools.find((tool) => tool.name === 'free_search');
+    const advancedSearch = tools.find((tool) => tool.name === 'free_search_advanced');
+    const freeExtract = tools.find((tool) => tool.name === 'free_extract');
+    const synthesis = tools.find((tool) => tool.name === 'search_with_synthesis');
+    expect(freeSearch?.description).toContain('Quick public-web search');
+    expect(freeSearch?.description).toContain('partialFailures');
+    expect(advancedSearch?.description).toContain('Verification-oriented search');
+    expect(advancedSearch?.description).toContain('domain filters');
+    expect(freeExtract?.description).toContain('one selected URL');
+    expect(freeExtract?.description).toContain('does not search');
+    expect(synthesis?.description).toContain('Opt-in deep search');
+    expect(synthesis?.description).toContain('more tokens');
     expect(freeSearch?.outputSchema).toEqual(expect.objectContaining({
       type: 'object',
       required: expect.arrayContaining(['query', 'engines', 'results', 'meta', 'security_note']),

@@ -97,8 +97,7 @@ export async function doSomething(
 
 - **README.md** — 用户入门 + 功能列表 + 竞品对比
 - **CHANGELOG.md** — 版本变更记录（用户视角）
-- **AGENTS.md** — 项目规范（Agent 视角）
-- **HANDOVER.md** — 会话交接日志
+- **docs/index.md** — 公开文档入口和当前权威来源
 - **ADR** `docs/decisions/ADR-YYYYMMDD-title.md` — 架构决策
 - **Plans** `docs/plans/YYYY-MM-DD-title.md` — 功能计划
 

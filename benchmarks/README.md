@@ -24,8 +24,8 @@ The current runner replays the same frozen results through all output styles wit
 
 | Metric | Normal | Compact | Compact+ |
 |--------|-------:|--------:|---------:|
-| Average tokens | 2311.0 | 1655.8 | 1607.5 |
-| Savings vs Normal | — | **28.4%** | **30.4%** |
+| Average tokens | 2396.0 | 1650.1 | 1633.0 |
+| Savings vs Normal | — | **31.1%** | **31.8%** |
 
 The three scenarios enforce shared passage budgets of 1200, 600, and 360
 characters respectively. This synthetic bilingual fixture verifies formatting,

@@ -12,8 +12,6 @@ eslint.config.js
 tsconfig.json
 vitest.config.ts
 smithery.yaml
-AGENTS.md
-HANDOVER.md
 llms.txt
 npm-shrinkwrap.json
 package-lock.json

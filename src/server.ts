@@ -31,6 +31,9 @@ export function createAgentSearchServer(
         tools: { listChanged: true },
         resources: { subscribe: false, listChanged: false },
       },
+      instructions:
+        'Public-web search. Use free_search for discovery, free_search_advanced for verification or domain filters, and free_extract only for a selected URL. ' +
+        'Check source_count, stop_reason, evidence_budget, and partialFailures. Tool-catalog compression is outside this server\'s scope.',
     },
   );
 

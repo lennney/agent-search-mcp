@@ -7,10 +7,9 @@ export function registerFreeExtract(server: McpServer) {
     'free_extract',
     {
       description:
-        `Extract full content from a URL. Returns clean markdown text.
+        `Extract one selected URL into clean Markdown.
 
-Best for: Reading a specific page found in search results to get full context.
-Not recommended for: Bulk extraction — use free_search first to find relevant pages.
+Use after search when snippets are insufficient, or for a URL supplied by the user. It fetches one page; it does not search or bulk-extract URLs.
 
 Behavior: Makes an outbound HTTP request to Jina Reader (r.jina.ai) which fetches and converts the page to markdown. ` +
         `Has SSRF protection: blocks private IPs, localhost, and metadata endpoints. ` +

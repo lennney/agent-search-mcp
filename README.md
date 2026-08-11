@@ -1,12 +1,10 @@
-# Agent Search MCP: Free Web Search with Inspectable Evidence
+# Agent Search MCP: Free-first Web Search with Inspectable Evidence
 
-**A lightweight, free-first MCP web search router with compact multi-source evidence.**
+**A Node.js MCP server and CLI for English and Chinese web search.**
 
-Agent Search MCP is an open-source, self-hosted MCP server and CLI. It gives AI
-agents a free Tavily alternative or a local search path. The default path starts
-without an API key and searches English and Chinese sources. Request policy
-keeps optional paid providers explicit. Shared budgets cap provider calls,
-search time, admitted results, and evidence size.
+Agent Search MCP starts without an API key. It returns compact multi-source
+evidence, records provider failures, and bounds work with request and evidence
+budgets. Paid providers run only when policy and credentials allow.
 
 [![npm version](https://img.shields.io/npm/v/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
 [![npm downloads](https://img.shields.io/npm/dm/agent-search-mcp)](https://www.npmjs.com/package/agent-search-mcp)
@@ -150,9 +148,9 @@ The checked-in bilingual fixture measures formatting with a locked tokenizer:
 
 | Output | Average tokens per query | Savings vs normal |
 |---|---:|---:|
-| Normal | 2311.0 | |
-| Compact | 1655.8 | 28.4% |
-| Compact+ | 1607.5 | 30.4% |
+| Normal | 2396.0 | |
+| Compact | 1650.1 | 31.1% |
+| Compact+ | 1633.0 | 31.8% |
 
 This fixture verifies output formatting and evidence-packet behavior. It does
 not measure live engine availability or search quality. See the

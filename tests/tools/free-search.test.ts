@@ -1439,9 +1439,11 @@ describe('setupFreeSearchTool', () => {
     expect(server.registerTool).toHaveBeenCalledOnce();
     expect(server.registerTool.mock.calls[0][0]).toBe('free_search');
     expect(server.registerTool.mock.calls[0][1].description)
-      .toContain(`${SEARCH_PROVIDERS.length} adapters are selectable`);
+      .toContain('Quick public-web search');
     expect(server.registerTool.mock.calls[0][1].description)
-      .not.toContain('Twelve adapters');
+      .toContain('partialFailures');
+    expect(server.registerTool.mock.calls[0][1].description)
+      .not.toContain('adapters are selectable');
     expect(server.registerTool.mock.calls[0][1].outputSchema)
       .toEqual(expect.objectContaining({
         query: expect.anything(),
