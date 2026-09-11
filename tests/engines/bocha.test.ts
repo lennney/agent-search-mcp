@@ -19,17 +19,19 @@ describe('searchBocha', () => {
   it('requests compact web results and parses valid entries', async () => {
     process.env.BOCHA_API_KEY = 'bocha-secret';
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
-      webPages: {
-        value: [
-          {
-            name: '博查结果',
-            url: 'https://example.cn/bocha',
-            snippet: '搜索摘要',
-            summary: 'Long generated summary that should not be preferred',
-            datePublished: '2026-07-26T00:00:00+08:00',
-          },
-          { name: 'Unsafe URL', url: 'javascript:alert(1)' },
-        ],
+      data: {
+        webPages: {
+          value: [
+            {
+              name: '博查结果',
+              url: 'https://example.cn/bocha',
+              snippet: '搜索摘要',
+              summary: 'Long generated summary that should not be preferred',
+              datePublished: '2026-07-26T00:00:00+08:00',
+            },
+            { name: 'Unsafe URL', url: 'javascript:alert(1)' },
+          ],
+        },
       },
     }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);

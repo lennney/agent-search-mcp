@@ -1435,8 +1435,10 @@ export function setupFreeSearchTool(
         limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
         engines: z.array(z.enum(SEARCH_PROVIDERS))
           .min(1)
-          .default(['duckduckgo', 'sogou'])
-          .describe('Search engines to use (default: duckduckgo + sogou). Free engines work without API keys. ' +
+          .optional()
+          .describe('Search engines to use. Omit to let SEARCH_PROVIDER_MODE / PAID_ENGINE_ORDER decide ' +
+            '(paid_first tries the first credentialed paid engine first, then duckduckgo + sogou). ' +
+            'Free engines work without API keys. ' +
             'Optional API engines require their corresponding environment-variable credentials. ' +
             'For Chinese results, include sogou or baidu.'),
       },

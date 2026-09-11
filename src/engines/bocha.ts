@@ -74,7 +74,10 @@ function parseBochaResponse(value: unknown, count: number): SearchResult[] {
     );
   }
 
-  const webPages = asJsonObject(root.webPages);
+  // Bocha wraps the payload in `data`; accept the flat shape as a fallback.
+  const webPages =
+    asJsonObject(asJsonObject(root.data)?.webPages) ??
+    asJsonObject(root.webPages);
   const values = webPages?.value;
   if (values === undefined || values === null) return [];
   if (!Array.isArray(values)) {
