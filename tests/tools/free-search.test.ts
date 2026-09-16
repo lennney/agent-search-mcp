@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
+import { z } from 'zod';
 
 const infrastructureState = vi.hoisted(() => ({
   cacheGet: vi.fn(() => null as unknown),
@@ -333,6 +334,49 @@ describe('searchWithFallback — parallel', () => {
       expect(searchSogou).not.toHaveBeenCalled();
       expect(result.meta.execution?.phases_completed).toEqual(['optional']);
       expect(result.meta.execution?.early_stop).toBe(true);
+    } finally {
+      if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
+      else process.env.EXA_API_KEY = previousApiKey;
+    }
+  });
+
+  it.each([
+    { mode: 'paid_first', engines: undefined, paid: true },
+    { mode: 'paid_first', engines: ['sogou'], paid: false },
+    { mode: 'free_first', engines: undefined, paid: false },
+  ] as const)('honors $mode after MCP input parsing (engines: $engines)', async ({ mode, engines, paid }) => {
+    const previousApiKey = process.env.EXA_API_KEY;
+    process.env.EXA_API_KEY = 'test-key';
+    infrastructureState.config.searchProviderMode = mode;
+    infrastructureState.config.paidEngineOrder = ['exa'];
+    vi.mocked(searchExa).mockResolvedValue(makeResults(3, 'exa'));
+
+    try {
+      const server = { registerTool: vi.fn() } as any;
+      setupFreeSearchTool(server);
+      const [, definition, handler] = server.registerTool.mock.calls[0];
+      const input = z.object(definition.inputSchema).parse({
+        query: 'MCP provider policy',
+        limit: 1,
+        ...(engines ? { engines: [...engines] } : {}),
+      });
+      const response = await handler(input, {});
+
+      expect(response.isError).toBeUndefined();
+      if (paid) {
+        expect(searchExa).toHaveBeenCalledOnce();
+        expect(searchDuckDuckGo).not.toHaveBeenCalled();
+        expect(searchSogou).not.toHaveBeenCalled();
+        expect(response.structuredContent.meta.execution.phases_completed).toEqual(['optional']);
+      } else {
+        expect(searchExa).not.toHaveBeenCalled();
+        if (engines) {
+          expect(searchSogou).toHaveBeenCalled();
+          expect(searchDuckDuckGo).not.toHaveBeenCalled();
+        } else {
+          expect(searchDuckDuckGo).toHaveBeenCalled();
+        }
+      }
     } finally {
       if (previousApiKey === undefined) delete process.env.EXA_API_KEY;
       else process.env.EXA_API_KEY = previousApiKey;

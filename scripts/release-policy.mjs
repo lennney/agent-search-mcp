@@ -42,6 +42,12 @@ export function assertPackageFiles(actualFiles, expectedFiles) {
   }
 }
 
+export function parsePackFiles(packJson) {
+  // npm <= 11 returns an array; npm 12 keys the same entries by package name.
+  const [packResult] = Object.values(JSON.parse(packJson));
+  return packResult?.files?.map(file => file.path) ?? [];
+}
+
 export function checkPackageFiles() {
   const npmCli = process.env.npm_execpath;
   if (!npmCli) {
@@ -52,8 +58,7 @@ export function checkPackageFiles() {
     [npmCli, 'pack', '--dry-run', '--json', '--ignore-scripts'],
     { cwd: projectRoot, encoding: 'utf8' },
   );
-  const packResult = JSON.parse(packJson);
-  const actualFiles = packResult[0]?.files?.map(file => file.path) ?? [];
+  const actualFiles = parsePackFiles(packJson);
   const expectedFiles = JSON.parse(readFileSync(packageFilesManifest, 'utf8'));
   assertPackageFiles(actualFiles, expectedFiles);
 }
