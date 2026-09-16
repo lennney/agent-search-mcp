@@ -19,6 +19,7 @@ describe('searchBocha', () => {
   it('requests compact web results and parses valid entries', async () => {
     process.env.BOCHA_API_KEY = 'bocha-secret';
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      code: 200,
       data: {
         webPages: {
           value: [
@@ -77,5 +78,18 @@ describe('searchBocha', () => {
       retryable: false,
       cooldownMs: 30_000,
     });
+  });
+
+  it('keeps support for flat responses', async () => {
+    process.env.BOCHA_API_KEY = 'bocha-secret';
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      webPages: {
+        value: [{ name: 'Flat result', url: 'https://example.com/flat' }],
+      },
+    }), { status: 200 })));
+
+    await expect(searchBocha('query', 3, { throwOnError: true })).resolves.toEqual([
+      expect.objectContaining({ title: 'Flat result', url: 'https://example.com/flat' }),
+    ]);
   });
 });

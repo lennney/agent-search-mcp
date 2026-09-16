@@ -6,6 +6,7 @@ import {
   assertCleanWorktree,
   assertPackageFiles,
   checkPackageFiles,
+  parsePackFiles,
 } from '../scripts/release-policy.mjs';
 
 describe('npm release policy', () => {
@@ -32,4 +33,16 @@ describe('npm release policy', () => {
   it('matches the reviewed npm package manifest', () => {
     expect(() => checkPackageFiles()).not.toThrow();
   }, 15_000);
+
+  it.each(['array', 'keyed object'])('checks package contents from npm pack as a %s', (format) => {
+    const expected = ['package.json', 'dist/index.js'];
+    const entry = { files: expected.map(path => ({ path })) };
+    const result = format === 'array' ? [entry] : { 'agent-search-mcp': entry };
+    const actual = parsePackFiles(JSON.stringify(result));
+
+    expect(actual).toEqual(expected);
+    expect(() => assertPackageFiles(actual, expected)).not.toThrow();
+    expect(() => assertPackageFiles([...actual, 'dist/debug-dump.json'], expected))
+      .toThrow(/Unexpected: dist\/debug-dump\.json/);
+  });
 });

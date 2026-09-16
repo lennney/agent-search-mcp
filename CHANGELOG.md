@@ -11,6 +11,10 @@ tags:
 
 ## Unreleased
 
+- fix: Parse Bocha results from `data.webPages` while retaining support for flat responses.
+- fix: Let omitted `free_search.engines` follow the configured provider policy, including `paid_first` and `quality_escalation`.
+- fix: Accept npm 12's package-name-keyed `npm pack --json` output in the package manifest check, while retaining support for the earlier array format.
+
 ## v3.2.1 (2026-08-10)
 
 ### Why Update
