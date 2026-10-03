@@ -74,6 +74,7 @@ vi.mock('../../src/engines/tencent-wsa.js', () => ({
 }));
 vi.mock('../../src/engines/bocha.js', () => ({ searchBocha: vi.fn() }));
 vi.mock('../../src/engines/serper.js', () => ({ searchSerper: vi.fn() }));
+vi.mock('../../src/engines/serply.js', () => ({ searchSerply: vi.fn() }));
 vi.mock('../../src/engines/wikipedia.js', () => ({ searchWikipedia: vi.fn(async () => []) }));
 vi.mock('../../src/engines/startpage.js', () => ({ searchStartpage: vi.fn(async () => []) }));
 vi.mock('../../src/engines/yandex.js', () => ({ searchYandex: vi.fn(async () => []) }));
@@ -187,6 +188,7 @@ import { searchExa } from '../../src/engines/exa.js';
 import { searchTencentWsa } from '../../src/engines/tencent-wsa.js';
 import { searchBocha } from '../../src/engines/bocha.js';
 import { searchSerper } from '../../src/engines/serper.js';
+import { searchSerply } from '../../src/engines/serply.js';
 import { EngineAdapterError } from '../../src/engines/engine-error.js';
 import {
   checkConfidenceBasket,
@@ -270,6 +272,7 @@ describe('searchWithFallback — parallel', () => {
     (searchTencentWsa as any).mockResolvedValue(makeResults(3, 'tencent_wsa'));
     (searchBocha as any).mockResolvedValue(makeResults(3, 'bocha'));
     (searchSerper as any).mockResolvedValue(makeResults(3, 'serper'));
+    (searchSerply as any).mockResolvedValue(makeResults(3, 'serply'));
   });
 
   it('returns results with default engines', async () => {
@@ -301,6 +304,7 @@ describe('searchWithFallback — parallel', () => {
       ['TENCENT_WSA_API_KEY', 'tencent_wsa', searchTencentWsa],
       ['BOCHA_API_KEY', 'bocha', searchBocha],
       ['SERPER_API_KEY', 'serper', searchSerper],
+      ['SERPLY_API_KEY', 'serply', searchSerply],
     ] as const;
 
     try {
