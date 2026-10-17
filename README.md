@@ -45,6 +45,9 @@ including Claude Desktop, Cursor, VS Code, and Windsurf:
 Claude Code and Codex can register the same `npx -y agent-search-mcp` stdio
 command through their MCP settings.
 
+For an optional second source, see the [Claude Code cross-check setup](./examples/claude-code-setup.md#4-optional-cross-check-with-parallel-search-mcp)
+for using Parallel Search MCP alongside Agent Search.
+
 ### Add the optional Agent Skill
 
 After connecting the MCP server, Agent Skills-compatible clients can install
