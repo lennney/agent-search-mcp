@@ -18,6 +18,7 @@ const child = spawn(process.execPath, [resolve(serverPath)], {
     BRAVE_API_KEY: '',
     BOCHA_API_KEY: '',
     TAVILY_API_KEY: '',
+    KEENABLE_API_KEY: '',
     TENCENT_WSA_API_KEY: '',
     EXA_API_KEY: '',
     SERPER_API_KEY: '',

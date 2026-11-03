@@ -40,6 +40,7 @@ export class RateLimiter {
     brave: 400,
     tavily: 300,
     exa: 300,
+    keenable: 300,
     youcom: 500,
     tencent_wsa: 500,
     bocha: 500,

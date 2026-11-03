@@ -49,6 +49,7 @@ describe('loadConfig', () => {
       'brave',
       'exa',
       'tavily',
+      'keenable',
       'youcom',
       'tencent_wsa',
       'bocha',

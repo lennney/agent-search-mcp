@@ -5,6 +5,7 @@ import { searchBocha } from './bocha.js';
 import { BraveProvider } from './brave.js';
 import { searchDuckDuckGo } from './duckduckgo.js';
 import { searchExa } from './exa.js';
+import { KeenableProvider } from './keenable.js';
 import { searchMojeek } from './mojeek.js';
 import {
   SEARCH_PROVIDERS,
@@ -51,6 +52,7 @@ const providerExecutors = {
     signal: options?.signal,
     throwOnError: options?.throwOnError,
   }),
+  keenable: (query, count, options) => new KeenableProvider().search(query, count, options),
   youcom: searchYouCom,
   tencent_wsa: searchTencentWsa,
   bocha: searchBocha,
