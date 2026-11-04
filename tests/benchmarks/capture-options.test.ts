@@ -88,8 +88,8 @@ describe('benchmark capture options', () => {
 
   it('uses the live registry as the benchmark inventory authority', () => {
     const registry = deriveCaptureRegistry(engines);
-    expect(registry.allEngines).toHaveLength(16);
+    expect(registry.allEngines).toHaveLength(17);
     expect(registry.freeEngines).toHaveLength(9);
-    expect(Object.keys(registry.optionalCredentialEnvironment)).toHaveLength(7);
+    expect(Object.keys(registry.optionalCredentialEnvironment)).toHaveLength(8);
   });
 });

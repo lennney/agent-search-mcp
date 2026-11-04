@@ -189,7 +189,7 @@ contains the architecture-specific evidence.
 <!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## Engines
 
-The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapters.
+The runtime registers 17 adapters: 9 zero-key adapters and 8 optional API adapters.
 
 | Engine | Access | Languages | Role |
 |---|---|---|---|
@@ -209,6 +209,7 @@ The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapte
 | Tencent Web Search API | `TENCENT_WSA_API_KEY` | zh | Optional official Chinese Web Search |
 | Bocha Web Search | `BOCHA_API_KEY` | zh, en | Optional Chinese-first AI Search |
 | Serper Google Search | `SERPER_API_KEY` | en, zh, auto | Optional Google SERP Search |
+| Serply Google Search | `SERPLY_API_KEY` | en, zh, auto | Optional Google SERP Search |
 
 ## Tools
 
@@ -229,7 +230,7 @@ The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapte
 | `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | Tool registration allowlist and denylist; deny wins |
 | `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | Engine execution allowlist and denylist; deny wins |
 | `SEARCH_PROVIDER_MODE` | free_first | Default routing: free_first, quality_escalation, paid_first, or free_only |
-| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper | Selects the first configured optional provider; not a quality claim |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper,serply | Selects the first configured optional provider; not a quality claim |
 | `SEARCH_BUDGET_MAX_CALLS` | 16 | Adapter-attempt budget |
 | `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | End-to-end elapsed-time budget |
 | `SEARCH_BUDGET_MAX_RESULTS` | 100 | Admitted raw-result budget |
@@ -265,7 +266,7 @@ settings cover the common deployment choices:
 
 | Goal | Environment variables |
 |---|---|
-| Add an optional provider | `BRAVE_API_KEY`, `TAVILY_API_KEY`, `EXA_API_KEY`, `YDC_API_KEY`, `TENCENT_WSA_API_KEY`, `BOCHA_API_KEY`, or `SERPER_API_KEY` |
+| Add an optional provider | `BRAVE_API_KEY`, `TAVILY_API_KEY`, `EXA_API_KEY`, `YDC_API_KEY`, `TENCENT_WSA_API_KEY`, `BOCHA_API_KEY`, `SERPER_API_KEY`, or `SERPLY_API_KEY` |
 | Choose spend policy | `SEARCH_PROVIDER_MODE`, `PAID_ENGINE_ORDER` |
 | Reduce response tokens | `OUTPUT_STYLE=compact`, `MAX_FULL_RESULTS`, `SNIPPET_LENGTH`, `EVIDENCE_BUDGET_CHARS` |
 | Restrict tools or engines | `ENABLED_TOOLS`, `DISABLED_TOOLS`, `ALLOWED_ENGINES`, `DENIED_ENGINES` |

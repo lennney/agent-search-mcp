@@ -13,6 +13,7 @@ import {
   type SearchProvider,
 } from './provider-catalog.js';
 import { searchSerper } from './serper.js';
+import { searchSerply } from './serply.js';
 import { searchSogou } from './sogou.js';
 import { searchStartpage } from './startpage.js';
 import { TavilyProvider } from './tavily.js';
@@ -55,6 +56,7 @@ const providerExecutors = {
   tencent_wsa: searchTencentWsa,
   bocha: searchBocha,
   serper: searchSerper,
+  serply: searchSerply,
 } satisfies Record<SearchProvider, ProviderSearch>;
 
 /**

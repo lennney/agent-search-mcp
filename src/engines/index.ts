@@ -17,6 +17,7 @@ export {
 } from './tencent-wsa.js';
 export { searchBocha, bochaProvider } from './bocha.js';
 export { searchSerper, serperProvider } from './serper.js';
+export { searchSerply, serplyProvider } from './serply.js';
 
 export {
   ENGINE_WEIGHTS,

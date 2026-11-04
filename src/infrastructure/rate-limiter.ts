@@ -44,6 +44,7 @@ export class RateLimiter {
     tencent_wsa: 500,
     bocha: 500,
     serper: 400,
+    serply: 400,
   };
 
   constructor(options: RateLimiterOptions = {}) {

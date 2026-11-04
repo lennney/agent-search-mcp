@@ -37,6 +37,7 @@
   "dist/engines/runtime-registry.js",
   "dist/engines/search-request-context.js",
   "dist/engines/serper.js",
+  "dist/engines/serply.js",
   "dist/engines/sogou.js",
   "dist/engines/startpage.js",
   "dist/engines/tavily.js",

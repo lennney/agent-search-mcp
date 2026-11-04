@@ -21,6 +21,7 @@ const child = spawn(process.execPath, [resolve(serverPath)], {
     TENCENT_WSA_API_KEY: '',
     EXA_API_KEY: '',
     SERPER_API_KEY: '',
+    SERPLY_API_KEY: '',
     YDC_API_KEY: '',
     SEARCH_PROVIDER_MODE: 'free_only',
   },

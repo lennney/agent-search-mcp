@@ -53,6 +53,7 @@ describe('loadConfig', () => {
       'tencent_wsa',
       'bocha',
       'serper',
+      'serply',
     ]);
   });
 

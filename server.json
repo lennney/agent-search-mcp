@@ -66,6 +66,13 @@
           "name": "SERPER_API_KEY"
         },
         {
+          "description": "Serply API key (optional, enables Google SERP search)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "SERPLY_API_KEY"
+        },
+        {
           "description": "Provider policy: free_first, quality_escalation, paid_first, or free_only",
           "isRequired": false,
           "format": "string",

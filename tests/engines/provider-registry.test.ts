@@ -35,6 +35,7 @@ describe('provider catalog', () => {
       'tencent_wsa',
       'bocha',
       'serper',
+      'serply',
     ]);
   });
 
@@ -56,6 +57,7 @@ describe('provider catalog', () => {
       tencent_wsa: 0.9,
       bocha: 0.9,
       serper: 0.9,
+      serply: 0.9,
     });
     expect(WATERFALL_PHASES).toEqual({
       phase1a: ['duckduckgo', 'sogou'],

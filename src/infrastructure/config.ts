@@ -112,7 +112,7 @@ export const publicCapabilityControls = [
   },
   {
     environment: 'PAID_ENGINE_ORDER',
-    defaultValue: 'brave,exa,tavily,youcom,tencent_wsa,bocha,serper',
+    defaultValue: 'brave,exa,tavily,youcom,tencent_wsa,bocha,serper,serply',
     description: {
       en: 'Selects the first configured optional provider; not a quality claim',
       zh: '选择首个已配置可选渠道，不代表质量排名',
@@ -201,7 +201,7 @@ export function loadConfig(): Config {
     searchProviderMode,
     paidEngineOrder: (
       process.env.PAID_ENGINE_ORDER
-      || 'brave,exa,tavily,youcom,tencent_wsa,bocha,serper'
+      || 'brave,exa,tavily,youcom,tencent_wsa,bocha,serper,serply'
     )
       .split(',')
       .map(engine => engine.trim())

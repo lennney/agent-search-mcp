@@ -115,6 +115,13 @@ export const providerCatalog = {
     waterfallPhase: undefined,
     strengths: { en: 'Optional Google SERP Search', zh: '可选 Google SERP 搜索' },
   },
+  serply: {
+    id: 'serply', name: 'Serply Google Search', access: 'optional-api', isFree: false,
+    languages: ['en', 'zh', 'auto'], family: 'google', weight: 0.9,
+    credentialEnvironment: 'SERPLY_API_KEY',
+    waterfallPhase: undefined,
+    strengths: { en: 'Optional Google SERP Search', zh: '可选 Google SERP 搜索' },
+  },
 } as const;
 
 export type SearchProvider = keyof typeof providerCatalog;

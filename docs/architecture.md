@@ -44,7 +44,7 @@ tags:
 │  免费: DDG  Sogou  Bing  Baidu  Wikipedia        │
 │        Startpage  Yandex  Mojeek  Wiby           │
 │  可选 API: Brave  Tavily  Exa  You.com           │
-│            Tencent WSA  Bocha  Serper             │
+│            Tencent WSA  Bocha  Serper  Serply     │
 │  DDG 回退: Web preload → HTML → Lite             │
 ├─────────────────────────────────────────────────┤
 │           基础设施层 (infrastructure/)              │
@@ -318,8 +318,9 @@ export function register{Name}(server: McpServer): void
 | `TENCENT_WSA_API_KEY` | — | 腾讯云联网搜索 API key |
 | `BOCHA_API_KEY` | — | 博查 Web Search API key |
 | `SERPER_API_KEY` | — | Serper Google Search API key |
+| `SERPLY_API_KEY` | — | Serply Google Search API key |
 | `SEARCH_PROVIDER_MODE` | free_first | 免费默认、质量升级、付费优先或仅免费 |
-| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper | 按顺序选择首个已配置可选渠道 |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper,serply | 按顺序选择首个已配置可选渠道 |
 | `MODE` | stdio | 运行模式: stdio / http / both |
 | `PORT` | 3000 | HTTP 模式端口 |
 
