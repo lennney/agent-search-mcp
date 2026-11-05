@@ -144,6 +144,9 @@ export async function fetchSearchJson(
     try {
       return await response.json();
     } catch (error) {
+      // Aborting while consuming the body is still cancellation/timeout,
+      // not evidence that the provider returned malformed JSON.
+      signal.throwIfAborted();
       throw new EngineAdapterError(
         'parse_error',
         `${options.provider} returned malformed JSON`,

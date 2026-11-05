@@ -189,7 +189,7 @@ contains the architecture-specific evidence.
 <!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## Engines
 
-The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapters.
+The runtime registers 17 adapters: 9 zero-key adapters and 8 optional API adapters.
 
 | Engine | Access | Languages | Role |
 |---|---|---|---|
@@ -204,8 +204,8 @@ The runtime registers 16 adapters: 9 zero-key adapters and 7 optional API adapte
 | Wiby | Zero-key | en | Independent small-Web index |
 | Brave Search | `BRAVE_API_KEY` | en, zh | Optional commercial Web Search |
 | Tavily Search | `TAVILY_API_KEY` | en, zh | Optional agent-oriented Search |
-| Keenable Search | `KEENABLE_API_KEY` | en, auto | Optional independent agent-oriented Search |
 | Exa Search | `EXA_API_KEY` | en, zh | Optional neural Search |
+| Keenable Search | `KEENABLE_API_KEY` | en, auto | Optional independent agent-oriented Search |
 | You.com Search | `YDC_API_KEY` | en, zh | Optional commercial Web Search |
 | Tencent Web Search API | `TENCENT_WSA_API_KEY` | zh | Optional official Chinese Web Search |
 | Bocha Web Search | `BOCHA_API_KEY` | zh, en | Optional Chinese-first AI Search |

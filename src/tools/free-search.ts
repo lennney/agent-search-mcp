@@ -246,9 +246,8 @@ interface EngineOutcome {
  * Check if an error is retryable (network, timeout, 5xx).
  */
 function isRetryableError(err: Error): boolean {
-  if ((err as Error & { retryable?: boolean }).retryable === false) {
-    return false;
-  }
+  const retryable = (err as Error & { retryable?: boolean }).retryable;
+  if (typeof retryable === 'boolean') return retryable;
   const msg = err.message.toLowerCase();
   
   // Network errors

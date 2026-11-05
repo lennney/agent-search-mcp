@@ -178,7 +178,7 @@ commit。[2026-08-10 增量调研](./docs/research/2026-08-10-competitive-landsc
 <!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## 搜索引擎
 
-运行时注册了 16 个适配器：9 个零密钥适配器和 7 个可选 API 适配器。
+运行时注册了 17 个适配器：9 个零密钥适配器和 8 个可选 API 适配器。
 
 | 引擎 | 访问方式 | 语言 | 定位 |
 |---|---|---|---|
@@ -193,8 +193,8 @@ commit。[2026-08-10 增量调研](./docs/research/2026-08-10-competitive-landsc
 | Wiby | 零密钥 | en | 独立小型网页索引 |
 | Brave Search | `BRAVE_API_KEY` | en, zh | 可选商业网页搜索 |
 | Tavily Search | `TAVILY_API_KEY` | en, zh | 可选 Agent 导向搜索 |
-| Keenable Search | `KEENABLE_API_KEY` | en, auto | 可选独立 Agent 导向搜索 |
 | Exa Search | `EXA_API_KEY` | en, zh | 可选神经语义搜索 |
+| Keenable Search | `KEENABLE_API_KEY` | en, auto | 可选独立 Agent 导向搜索 |
 | You.com Search | `YDC_API_KEY` | en, zh | 可选商业网页搜索 |
 | Tencent Web Search API | `TENCENT_WSA_API_KEY` | zh | 可选官方中文联网搜索 |
 | Bocha Web Search | `BOCHA_API_KEY` | zh, en | 可选中文优先 AI 搜索 |

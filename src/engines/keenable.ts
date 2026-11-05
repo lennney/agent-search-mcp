@@ -1,7 +1,8 @@
 import { SearchResult, type EngineSearchOptions } from '../types.js';
-import { withTimeout } from '../infrastructure/abort.js';
+import { EngineAdapterError } from './engine-error.js';
 import {
   asJsonObject,
+  fetchSearchJson,
   isWebUrl,
   readString,
 } from './json-search-api.js';
@@ -34,17 +35,28 @@ export class KeenableProvider {
     const apiKey = process.env.KEENABLE_API_KEY;
     if (!apiKey) return [];
 
-    const res = await fetch('https://api.keenable.ai/v1/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
-      body: JSON.stringify({ query, max_results: Math.min(Math.max(count, 1), 50) }),
-      signal: withTimeout(options?.signal, 5000),
-    });
-
-    if (!res.ok) throw new Error(`Keenable returned ${res.status}`);
-
-    const data = asJsonObject(await res.json());
-    const results = Array.isArray(data?.results) ? data.results : [];
+    const data = asJsonObject(await fetchSearchJson({
+      provider: 'Keenable',
+      url: 'https://api.keenable.ai/v1/search',
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+        body: JSON.stringify({ query, max_results: Math.min(Math.max(count, 1), 50) }),
+      },
+      signal: options?.signal,
+      timeoutMs: 5000,
+    }));
+    if (!Array.isArray(data?.results)) {
+      throw new EngineAdapterError(
+        'parse_error',
+        'Keenable returned an invalid response shape',
+        {
+          retryable: false,
+          suggestion: 'Use another provider while the response schema is checked',
+        },
+      );
+    }
+    const results = data.results;
     return results
       .map(parseKeenableResult)
       .filter((result): result is SearchResult => result !== null);
