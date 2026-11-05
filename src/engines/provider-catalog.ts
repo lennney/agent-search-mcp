@@ -87,6 +87,13 @@ export const providerCatalog = {
     waterfallPhase: undefined,
     strengths: { en: 'Optional neural Search', zh: '可选神经语义搜索' },
   },
+  keenable: {
+    id: 'keenable', name: 'Keenable Search', access: 'optional-api', isFree: false,
+    languages: ['en', 'auto'], family: 'keenable', weight: 0.9,
+    credentialEnvironment: 'KEENABLE_API_KEY',
+    waterfallPhase: undefined,
+    strengths: { en: 'Optional independent agent-oriented Search', zh: '可选独立 Agent 导向搜索' },
+  },
   youcom: {
     id: 'youcom', name: 'You.com Search', access: 'optional-api', isFree: false,
     languages: ['en', 'zh'], family: 'youcom', weight: 0.91,

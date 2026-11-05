@@ -178,7 +178,7 @@ commit。[2026-08-10 增量调研](./docs/research/2026-08-10-competitive-landsc
 <!-- BEGIN GENERATED CAPABILITY MATRIX -->
 ## 搜索引擎
 
-运行时注册了 16 个适配器：9 个零密钥适配器和 7 个可选 API 适配器。
+运行时注册了 17 个适配器：9 个零密钥适配器和 8 个可选 API 适配器。
 
 | 引擎 | 访问方式 | 语言 | 定位 |
 |---|---|---|---|
@@ -194,6 +194,7 @@ commit。[2026-08-10 增量调研](./docs/research/2026-08-10-competitive-landsc
 | Brave Search | `BRAVE_API_KEY` | en, zh | 可选商业网页搜索 |
 | Tavily Search | `TAVILY_API_KEY` | en, zh | 可选 Agent 导向搜索 |
 | Exa Search | `EXA_API_KEY` | en, zh | 可选神经语义搜索 |
+| Keenable Search | `KEENABLE_API_KEY` | en, auto | 可选独立 Agent 导向搜索 |
 | You.com Search | `YDC_API_KEY` | en, zh | 可选商业网页搜索 |
 | Tencent Web Search API | `TENCENT_WSA_API_KEY` | zh | 可选官方中文联网搜索 |
 | Bocha Web Search | `BOCHA_API_KEY` | zh, en | 可选中文优先 AI 搜索 |
@@ -218,7 +219,7 @@ commit。[2026-08-10 增量调研](./docs/research/2026-08-10-competitive-landsc
 | `ENABLED_TOOLS / DISABLED_TOOLS` | all / none | 工具注册允许列表和拒绝列表；拒绝优先 |
 | `ALLOWED_ENGINES / DENIED_ENGINES` | all / none | 引擎执行允许列表和拒绝列表；拒绝优先 |
 | `SEARCH_PROVIDER_MODE` | free_first | 默认路由：free_first、quality_escalation、paid_first 或 free_only |
-| `PAID_ENGINE_ORDER` | brave,exa,tavily,youcom,tencent_wsa,bocha,serper | 选择首个已配置可选渠道，不代表质量排名 |
+| `PAID_ENGINE_ORDER` | brave,exa,tavily,keenable,youcom,tencent_wsa,bocha,serper | 选择首个已配置可选渠道，不代表质量排名 |
 | `SEARCH_BUDGET_MAX_CALLS` | 16 | 适配器尝试次数预算 |
 | `SEARCH_BUDGET_MAX_ELAPSED_MS` | 30000 | 端到端耗时预算 |
 | `SEARCH_BUDGET_MAX_RESULTS` | 100 | 接纳原始结果数量预算 |
@@ -249,7 +250,7 @@ Wiby 使用官方 JSON API，是无需账号和 API Key 的真实零密钥来源
 
 | 目标 | 环境变量 |
 |---|---|
-| 增加可选渠道 | `BRAVE_API_KEY`、`TAVILY_API_KEY`、`EXA_API_KEY`、`YDC_API_KEY`、`TENCENT_WSA_API_KEY`、`BOCHA_API_KEY` 或 `SERPER_API_KEY` |
+| 增加可选渠道 | `BRAVE_API_KEY`、`TAVILY_API_KEY`、`KEENABLE_API_KEY`、`EXA_API_KEY`、`YDC_API_KEY`、`TENCENT_WSA_API_KEY`、`BOCHA_API_KEY` 或 `SERPER_API_KEY` |
 | 选择费用策略 | `SEARCH_PROVIDER_MODE`、`PAID_ENGINE_ORDER` |
 | 减少响应 Token | `OUTPUT_STYLE=compact`、`MAX_FULL_RESULTS`、`SNIPPET_LENGTH`、`EVIDENCE_BUDGET_CHARS` |
 | 限制工具或引擎 | `ENABLED_TOOLS`、`DISABLED_TOOLS`、`ALLOWED_ENGINES`、`DENIED_ENGINES` |

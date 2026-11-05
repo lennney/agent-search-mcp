@@ -38,6 +38,13 @@
           "name": "EXA_API_KEY"
         },
         {
+          "description": "Keenable Search API key (optional, enables Keenable engine)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true,
+          "name": "KEENABLE_API_KEY"
+        },
+        {
           "description": "You.com Search API key (optional, enables You.com engine)",
           "isRequired": false,
           "format": "string",

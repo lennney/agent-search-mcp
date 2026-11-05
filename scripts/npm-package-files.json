@@ -31,6 +31,7 @@
   "dist/engines/html-search.js",
   "dist/engines/index.js",
   "dist/engines/json-search-api.js",
+  "dist/engines/keenable.js",
   "dist/engines/mojeek.js",
   "dist/engines/provider-catalog.js",
   "dist/engines/request-profiles.js",

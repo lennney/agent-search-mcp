@@ -11,6 +11,7 @@ services:
     environment:
       - BRAVE_API_KEY=${BRAVE_API_KEY:-}
       - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - KEENABLE_API_KEY=${KEENABLE_API_KEY:-}
       - EXA_API_KEY=${EXA_API_KEY:-}
     stdin_open: true
     tty: true

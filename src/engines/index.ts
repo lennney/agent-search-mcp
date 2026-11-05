@@ -4,6 +4,7 @@ export { searchBing, bingProvider } from './bing.js';
 export { searchBaidu, baiduProvider } from './baidu.js';
 export { braveProvider } from './brave.js';
 export { tavilyProvider } from './tavily.js';
+export { keenableProvider } from './keenable.js';
 export { searchExa, exaProvider } from './exa.js';
 export { searchWikipedia, wikipediaProvider } from './wikipedia.js';
 export { searchStartpage, startpageProvider } from './startpage.js';
