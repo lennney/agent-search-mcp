@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -21,6 +22,9 @@ import {
 } from './lib/capture-contract.mjs';
 import { countProviderFamilies } from './lib/evidence-handoff.mjs';
 import { buildCaptureTrace } from './lib/quality-metrics.mjs';
+
+const require = createRequire(import.meta.url);
+const TOKENIZER = `gpt-tokenizer@${require('gpt-tokenizer/package.json').version}`;
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTENT_LICENSES = {
@@ -146,7 +150,7 @@ async function capture(fixturePath) {
         .filter(engine => CONTENT_LICENSES[engine])
         .map(engine => [engine, CONTENT_LICENSES[engine]]),
     ),
-    tokenizer: 'gpt-tokenizer@3.4.0',
+    tokenizer: TOKENIZER,
     zero_key_engine_baseline: requestedEngines
       .filter(engine => registry.freeEngines.includes(engine))
       .length,
@@ -280,7 +284,7 @@ async function generateFormatFixture(fixturePath) {
     captured_at: new Date().toISOString(),
     package_version: (await readJson(resolve(ROOT, 'package.json'))).version,
     query_set_sha256: sha256(JSON.stringify(selected)),
-    tokenizer: 'gpt-tokenizer@3.4.0',
+    tokenizer: TOKENIZER,
     zero_key_engine_baseline: registry.freeEngines.length,
     naive_engine_baseline: registry.freeEngines.length,
     samples,
@@ -344,7 +348,7 @@ async function replay(fixturePath, outputPath, check) {
 
   const summary = {
     successful_queries: successful.length,
-    tokenizer: fixture.tokenizer,
+    tokenizer: TOKENIZER,
     average_tokens: {
       normal: normalTokens,
       compact: compactTokens,
