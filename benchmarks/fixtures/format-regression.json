@@ -1451,7 +1451,7 @@
   ],
   "expected_summary": {
     "successful_queries": 10,
-    "tokenizer": "gpt-tokenizer@3.4.0",
+    "tokenizer": "gpt-tokenizer@4.0.0",
     "average_tokens": {
       "normal": 2396,
       "compact": 1650.1,
