@@ -20,7 +20,7 @@ The run also reported two average engines per query, equivalent to **75% fewer c
 
 ## Reproducible fixture replay
 
-The current runner replays the same frozen results through all output styles with the locked in-process `gpt-tokenizer`. CI compares the generated summary with the fixture's expected values.
+The current runner replays the same frozen results through all output styles with the locked in-process `gpt-tokenizer`. CI compares the generated summary with the fixture's expected values. Replay summaries identify the installed tokenizer used for the new token counts, while the fixture's top-level tokenizer retains its original capture identity. After a tokenizer upgrade, review the replay changes before refreshing `expected_summary` with `--update-expected`.
 
 | Metric | Normal | Compact | Compact+ |
 |--------|-------:|--------:|---------:|
