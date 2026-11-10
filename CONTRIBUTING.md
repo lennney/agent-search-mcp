@@ -27,6 +27,22 @@ npm test
 npm run test:watch
 ```
 
+## Dependency compatibility
+
+The published runtime supports Node.js >=18.17. Keep the Linux and Windows
+Node 18/20/22 CI lanes when updating dependencies. The lint job uses Node 22;
+its ESLint 10 toolchain is not part of the published runtime.
+
+Keep Pino on 9.x, Undici on 6.x, and Vitest on 3.x while Node 18 remains
+supported. Pino 10 pulls in `thread-stream` 4 (Node >=20), Undici 8 requires
+Node >=22.19, and Vitest 5 requires Node >=22.12. A passing run on an
+unsupported Node version is not a compatibility guarantee.
+
+Vite 6 is an explicit development dependency because Vitest 3 also accepts
+Vite 7, which drops Node 18. Dependabot holds major upgrades for these four
+packages while continuing to propose compatible minor and patch updates.
+Revisit the holds together with an intentional supported-Node policy change.
+
 ## Code Style
 
 - TypeScript strict mode

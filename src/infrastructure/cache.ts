@@ -1,3 +1,4 @@
+import { isNoRetention } from './request-privacy.js';
 import {
   MemoryExactCacheStore,
   type ExactCacheStore,
@@ -41,6 +42,7 @@ export class SearchCache {
   }
 
   get(key: string): unknown | null {
+    if (isNoRetention()) return null;
     const entry = this.store.get(key, Date.now());
     if (!entry) {
       this.misses++;
@@ -60,6 +62,7 @@ export class SearchCache {
   }
 
   setWithTtl(key: string, data: unknown, ttlMs: number): void {
+    if (isNoRetention()) return;
     if (this.validate && !this.validate(data)) return;
     this.store.set(key, { data, expiry: Date.now() + ttlMs });
   }

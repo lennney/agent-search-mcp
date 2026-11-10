@@ -11,6 +11,12 @@ tags:
 
 ## Unreleased
 
+- feat: Add returned-URL path scopes, literal local query handling, independent US/CN/MY/SG market hints, local no-retention mode, and strict count/limit aliases to search tools. Scope is not an outbound network policy; upstream providers can still retain requests.
+- feat: Add explicit DuckDuckGo provider-native day/week/month/year filters, with no unfiltered or paid fallback when verification fails. These filters do not verify publication dates.
+- test: Prepare conservative URL identity v2 and versioned exact-cache migration. Production remains on v1, including its known false merges, pending representative calibration.
+- fix: Bound MCP HTTP bodies and tool inputs; retain Node 18-compatible dependencies and deterministic exact-cache eviction.
+- fix: Gate npm, version-tagged Docker images, and GitHub Release behind Linux/Windows tests and experimental protocol checks; use exact npm version checks that fail closed on registry errors. Docker latest is no longer updated automatically.
+
 - fix: Parse Bocha results from `data.webPages` while retaining support for flat responses.
 - fix: Let omitted `free_search.engines` follow the configured provider policy, including `paid_first` and `quality_escalation`.
 - fix: Accept npm 12's package-name-keyed `npm pack --json` output in the package manifest check, while retaining support for the earlier array format.

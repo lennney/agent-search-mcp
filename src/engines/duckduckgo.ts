@@ -14,6 +14,10 @@ export const duckduckgoProvider = providerCatalog.duckduckgo;
  */
 export async function searchDuckDuckGo(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
   options?.signal?.throwIfAborted();
+  // Native mode has one verified representation and no unfiltered fallback.
+  if (options?.nativeTimeRange) {
+    return searchDuckDuckGoWeb(query, limit, { ...options, throwOnError: true });
+  }
   try {
     const results = await searchDuckDuckGoWeb(query, limit, {
       ...(options ?? {}),

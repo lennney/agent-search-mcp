@@ -38,10 +38,20 @@ describe('URL canonicalization calibration', () => {
 
   it('records the known false merges in v1 instead of hiding them', () => {
     expect(mismatches('v1')).toEqual([
+      'fragment-only',
       'identity-parameter',
       'pagination-parameter',
       'language-parameter',
       'case-sensitive-path',
+      'trailing-slash',
+      'scheme',
+      'nondefault-port',
+      'duplicate-value-order',
+      'hash-route',
+      'unknown-parameter',
+      'invalid-case',
+      'empty-value',
+      'credential-context',
     ]);
   });
 

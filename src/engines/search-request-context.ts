@@ -1,9 +1,17 @@
 import { detectLanguage } from '../aggregation/language-detector.js';
 
 export type SearchLanguage = 'en' | 'zh';
-export type SearchRegion = 'us-en' | 'cn-zh';
+export type SearchMarket = 'US' | 'CN' | 'MY' | 'SG';
+export type SearchRegion = 'us-en' | 'cn-zh' | 'my-en' | 'sg-en';
+
+// DDG official region URL parameters, verified 2026-11-10:
+// https://duckduckgo.com/duckduckgo-help-pages/settings/params/
+const MARKET_REGIONS: Readonly<Record<SearchMarket, SearchRegion>> = Object.freeze({
+  US: 'us-en', CN: 'cn-zh', MY: 'my-en', SG: 'sg-en',
+});
 
 export interface SearchRequestContext {
+  readonly market?: SearchMarket;
   readonly language: SearchLanguage;
   readonly region: SearchRegion;
   readonly acceptLanguage: string;
@@ -28,11 +36,17 @@ const SEARCH_REQUEST_PROFILES: Readonly<
 export function resolveSearchRequestContext(
   query: string,
   preference?: string,
+  market?: SearchMarket,
 ): SearchRequestContext {
   const detected = preference === 'en' || preference === 'zh'
     ? preference
     : detectLanguage(query);
-  return detected === 'zh'
+  const context = detected === 'zh'
     ? SEARCH_REQUEST_PROFILES.zh
     : SEARCH_REQUEST_PROFILES.en;
+  if (market === undefined) return context;
+  if (!Object.hasOwn(MARKET_REGIONS, market)) {
+    throw new Error('Unsupported search market; supported markets: US, CN, MY, SG');
+  }
+  return Object.freeze({ ...context, market, region: MARKET_REGIONS[market] });
 }

@@ -1,4 +1,5 @@
 import type { EngineSearchOptions, SearchResult } from '../types.js';
+import { EngineAdapterError } from './engine-error.js';
 import { searchBaidu } from './baidu.js';
 import { searchBing } from './bing.js';
 import { searchBocha } from './bocha.js';
@@ -68,7 +69,14 @@ export const providerRuntimeRegistry = Object.freeze(Object.fromEntries(
     provider,
     Object.freeze({
       ...providerCatalog[provider],
-      search: providerExecutors[provider],
+      search: (query: string, count: number, options?: EngineSearchOptions) => {
+        if (options?.nativeTimeRange !== undefined && provider !== 'duckduckgo') {
+          return Promise.reject(new EngineAdapterError('validation_error',
+            'Native time filtering is supported only by DuckDuckGo',
+            { retryable: false, suggestion: 'Explicitly select DuckDuckGo or remove the native time filter' }));
+        }
+        return providerExecutors[provider](query, count, options);
+      },
     }),
   ]),
 )) as unknown as Readonly<Record<SearchProvider, ProviderRuntimeDescriptor>>;

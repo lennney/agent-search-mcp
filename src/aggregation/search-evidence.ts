@@ -1,3 +1,4 @@
+import { createResultScope } from './result-scope.js';
 import type { SearchResult } from '../types.js';
 import { dedupByTitle, dedupByUrl, filterLowQuality } from './dedup.js';
 import {
@@ -35,23 +36,11 @@ export interface SearchEvidenceEvaluator {
 export function createSearchEvidenceEvaluator(
   policy: SearchEvidencePolicy,
 ): SearchEvidenceEvaluator {
-  const includeDomains = normalizeDomainFilters(policy.includeDomains);
-  const excludeDomains = normalizeDomainFilters(policy.excludeDomains);
-  const includeFilterRequested = (policy.includeDomains?.length ?? 0) > 0;
+  const inScope = createResultScope(policy.includeDomains, policy.excludeDomains);
 
   return {
     evaluate(rawResults: SearchResult[]): SearchEvidenceEvaluation {
-      const filtered = filterLowQuality(rawResults);
-      const domainFiltered = filtered.filter((result) => {
-        const hostname = getHostname(result.url);
-        if (includeFilterRequested) {
-          if (!hostname || !matchesAnyDomain(hostname, includeDomains)) {
-            return false;
-          }
-        }
-        if (hostname && matchesAnyDomain(hostname, excludeDomains)) return false;
-        return true;
-      });
+      const domainFiltered = filterLowQuality(rawResults.filter(result => inScope(result.url)));
       const { results: urlDeduped, frequencies } = dedupByUrl(domainFiltered);
       const ranked = scoreAndRank(
         dedupByTitle(urlDeduped),
@@ -74,40 +63,4 @@ export function createSearchEvidenceEvaluator(
       return checkConfidenceBasket(results, policy.qualityGate);
     },
   };
-}
-
-function normalizeDomainFilters(domains?: readonly string[]): string[] {
-  if (!domains) return [];
-  const normalized = domains
-    .map(normalizeDomainFilter)
-    .filter((domain): domain is string => domain !== undefined);
-  return [...new Set(normalized)];
-}
-
-function normalizeDomainFilter(value: string): string | undefined {
-  const trimmed = value.trim().toLowerCase().replace(/^\*\./, '');
-  if (!trimmed) return undefined;
-
-  try {
-    const candidate = trimmed.includes('://')
-      ? trimmed
-      : `https://${trimmed}`;
-    return new URL(candidate).hostname.replace(/^\.+|\.+$/g, '') || undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function getHostname(url: string): string | undefined {
-  try {
-    return new URL(url).hostname.toLowerCase().replace(/\.$/, '');
-  } catch {
-    return undefined;
-  }
-}
-
-function matchesAnyDomain(hostname: string, domains: readonly string[]): boolean {
-  return domains.some(
-    (domain) => hostname === domain || hostname.endsWith(`.${domain}`),
-  );
 }

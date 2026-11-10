@@ -2,8 +2,6 @@
   "CHANGELOG.md",
   "LICENSE",
   "README.md",
-  "skills/agent-search/SKILL.md",
-  "skills/agent-search/agents/openai.yaml",
   "dist/aggregation/chinese-optimizer.js",
   "dist/aggregation/dedup.js",
   "dist/aggregation/enricher.js",
@@ -13,6 +11,7 @@
   "dist/aggregation/passage-selector.js",
   "dist/aggregation/query-classifier.js",
   "dist/aggregation/query-expander.js",
+  "dist/aggregation/result-scope.js",
   "dist/aggregation/scorer.js",
   "dist/aggregation/search-evidence.js",
   "dist/aggregation/semantic.js",
@@ -61,6 +60,7 @@
   "dist/infrastructure/protocol.js",
   "dist/infrastructure/provider-cooldown-store.js",
   "dist/infrastructure/rate-limiter.js",
+  "dist/infrastructure/request-privacy.js",
   "dist/infrastructure/search-cache-key.js",
   "dist/infrastructure/search-cache-policy.js",
   "dist/infrastructure/search-provider-policy.js",
@@ -81,8 +81,11 @@
   "dist/tools/health.js",
   "dist/tools/public-capabilities.js",
   "dist/tools/registry.js",
+  "dist/tools/search-input.js",
   "dist/tools/search-output.js",
   "dist/tools/search-with-synthesis.js",
   "dist/types.js",
-  "package.json"
+  "package.json",
+  "skills/agent-search/SKILL.md",
+  "skills/agent-search/agents/openai.yaml"
 ]

@@ -67,6 +67,11 @@ export const searchOutputSchema = {
   engines: z.array(providerSchema),
   results: z.array(resultSchema),
   meta: z.object({
+    request_controls: z.object({
+      query_mode: z.string(), privacy: z.string(), scope: z.string(),
+      market: z.string().optional(), market_supported_by: z.array(z.string()),
+      time_range: z.string().optional(), time_range_mode: z.string().optional(),
+    }).optional(),
     total: z.number().int().min(0),
     high_confidence: z.number().int().min(0),
     engines: z.array(z.string()),

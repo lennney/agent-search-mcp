@@ -339,3 +339,5 @@ npm run dev:http   # HTTP 模式（端口 3000）
 
 如果 Agent Search MCP 对你的 Agent 有帮助，可以[给仓库一个 Star](https://github.com/lennney/agent-search-mcp)，
 让其他开发者更容易找到项目。
+
+未发布功能及其边界见[搜索请求控制](./docs/search-request-controls.md)、[原生时间与地区筛选](./docs/provider-native-time-and-market.md)和[发布门禁](./docs/release-pipeline.md)。

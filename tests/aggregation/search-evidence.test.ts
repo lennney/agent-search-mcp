@@ -68,7 +68,7 @@ describe('createSearchEvidenceEvaluator', () => {
 
   it('matches only exact domains and subdomains', () => {
     const evaluator = createSearchEvidenceEvaluator(
-      policy({ includeDomains: ['https://example.com/reference'] }),
+      policy({ includeDomains: ['https://example.com'] }),
     );
     const evaluation = evaluator.evaluate([
       result('https://docs.example.com/guide', 'wikipedia'),
@@ -105,16 +105,10 @@ describe('createSearchEvidenceEvaluator', () => {
     expect(evaluation.qualityGate.analyzedCount).toBe(1);
   });
 
-  it('fails closed when every requested include-domain filter is invalid', () => {
-    const evaluator = createSearchEvidenceEvaluator(
+  it('rejects invalid scope rather than silently broadening it', () => {
+    expect(() => createSearchEvidenceEvaluator(
       policy({ includeDomains: ['://invalid'] }),
-    );
-    const evaluation = evaluator.evaluate([
-      result('https://example.com/guide', 'wikipedia'),
-    ]);
-
-    expect(evaluation.results).toEqual([]);
-    expect(evaluation.qualityGate.sufficient).toBe(false);
+    )).toThrow();
   });
 
   it('reassesses a transformed display basket with the same policy', () => {

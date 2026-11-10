@@ -8,6 +8,18 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - dependencies
+    # Keep the runtime and test runner compatible with the Node 18 CI lane.
+    # Revisit these major-version holds when the supported Node range changes.
+    # Compatible minor/patch updates (including security fixes) remain enabled.
+    ignore:
+      - dependency-name: pino
+        update-types: [version-update:semver-major]
+      - dependency-name: undici
+        update-types: [version-update:semver-major]
+      - dependency-name: vitest
+        update-types: [version-update:semver-major]
+      - dependency-name: vite
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

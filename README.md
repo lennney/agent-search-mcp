@@ -366,3 +366,5 @@ Based on [open-websearch](https://github.com/Aas-ee/open-websearch) by Aas-ee.
 
 If Agent Search MCP helps your agent, [star the repository](https://github.com/lennney/agent-search-mcp)
 so other developers can find the project.
+
+See [search request controls](./docs/search-request-controls.md), [native time and market limits](./docs/provider-native-time-and-market.md), and [release gates](./docs/release-pipeline.md) for the unreleased contracts and verification boundaries.

@@ -8,6 +8,10 @@ import { logger } from './logger.js';
 import { getProtocolReadiness } from './protocol.js';
 import { readCurrentVersion } from './version-check.js';
 
+// Search tools accept queries, URLs and filters, not uploaded documents. Count
+// streamed bytes in the SDK so chunked requests cannot bypass this ceiling.
+const MAX_MCP_REQUEST_BODY_BYTES = 256 * 1024;
+
 const CORS_REQUEST_HEADERS = [
   'Authorization',
   'Content-Type',
@@ -133,6 +137,7 @@ export function createHttpServer(
       const mcpServer = createMcpServer();
       const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
+        maxRequestBodySize: MAX_MCP_REQUEST_BODY_BYTES,
       });
       try {
         await mcpServer.connect(transport);
@@ -252,6 +257,13 @@ async function handleWebStandardRequest(
   for (const [name, value] of webResponse.headers) {
     response.setHeader(name, value);
   }
+  if (webResponse.status === 413) {
+    // A Content-Length rejection can leave the incoming body unread. Do not
+    // reuse that socket or drain an arbitrarily large upload just to keep it.
+    response.shouldKeepAlive = false;
+    response.setHeader('Connection', 'close');
+  }
+
   response.writeHead(webResponse.status);
 
   if (!webResponse.body) {

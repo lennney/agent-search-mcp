@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createSearchCacheKey,
+  SEARCH_CACHE_KEY_VERSION,
   type SearchCacheKeyInput,
 } from '../../src/infrastructure/search-cache-key.js';
 
@@ -55,8 +56,14 @@ describe('createSearchCacheKey', () => {
   it('is deterministic and does not expose the query', () => {
     const first = createSearchCacheKey(input());
     expect(first).toBe(createSearchCacheKey(input()));
-    expect(first).toMatch(/^search-cache-key-v2:/);
+    expect(first).toMatch(/^search-cache-key-v3:/);
     expect(first).not.toContain('MCP search');
+    expect(SEARCH_CACHE_KEY_VERSION).not.toBe('search-cache-key-v2');
+  });
+
+  it('partitions future URL policy changes without enabling the candidate', () => {
+    expect(createSearchCacheKey(input())).toBe(createSearchCacheKey(input(), 'v1'));
+    expect(createSearchCacheKey(input(), 'v2-candidate')).not.toBe(createSearchCacheKey(input()));
   });
 
   it.each([
