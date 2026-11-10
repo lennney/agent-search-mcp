@@ -22,6 +22,25 @@ Authorization: Bearer replace-with-generated-token
 
 `GET /health` remains unauthenticated for process and load-balancer probes. It does not expose MCP tools or search results.
 
+## Request limits
+
+MCP HTTP request bodies are limited to 256 KiB (262,144 bytes), including
+chunked uploads. Larger bodies receive `413` and the connection is closed so
+an unread upload cannot block a reused keep-alive socket. The SDK also rejects JSON-RPC
+batches over 100 messages with `400`. Authentication runs before body parsing.
+
+Each tool call is limited to 1,000 total array elements and object keys across
+its arguments, including nested collections. Calls over that limit return a
+tool error before schema validation or provider work. This guard also applies
+to stdio because both transports use the same server factory. Inputs at the
+limits remain accepted when otherwise valid. These limits suit search queries,
+URLs and domain filters; tools do not accept document uploads.
+
+The SDK 1.32 element guard is off by default, so retain the explicit
+`maxToolInputElements` setting when changing the server factory. Keep the
+explicit `maxRequestBodySize` setting on the HTTP transport as well. Dependency
+updates alone do not enable both protections.
+
 ## Origin policy
 
 `ALLOWED_ORIGINS` is a comma-separated exact allowlist for browser `Origin` values. Requests without an Origin header, such as normal server-to-server MCP clients, are still accepted after Bearer authentication. Requests with an unlisted Origin receive `403`.

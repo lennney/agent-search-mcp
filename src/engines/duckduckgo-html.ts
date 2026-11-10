@@ -71,6 +71,11 @@ function extractRealUrl(href: string): string | null {
  * Uses POST to https://html.duckduckgo.com/html/ (matches DDG's own form + ddgs).
  */
 export async function searchDuckDuckGoHtml(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
+  if (options?.nativeTimeRange !== undefined) {
+    throw new EngineAdapterError('validation_error',
+      'Native time filtering requires the verified DuckDuckGo Web representation',
+      { retryable: false, suggestion: 'Use the DuckDuckGo Web adapter' });
+  }
   try {
     const body = new URLSearchParams({
       q: query,
@@ -154,6 +159,11 @@ export async function searchDuckDuckGoHtml(query: string, limit: number = 10, op
  * It must not count as an independent source or as a rate-limit bypass.
  */
 export async function searchDuckDuckGoLiteHtml(query: string, limit: number = 10, options?: EngineSearchOptions): Promise<SearchResult[]> {
+  if (options?.nativeTimeRange !== undefined) {
+    throw new EngineAdapterError('validation_error',
+      'Native time filtering requires the verified DuckDuckGo Web representation',
+      { retryable: false, suggestion: 'Use the DuckDuckGo Web adapter' });
+  }
   try {
     const body = new URLSearchParams({
       q: query,

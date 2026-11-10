@@ -23,16 +23,16 @@ function canonicalizeV1(url: URL): string {
 }
 
 function canonicalizeV2Candidate(url: URL): string {
-  const path = url.pathname === '/'
-    ? ''
-    : url.pathname.replace(/\/$/, '');
+  // Keep distinctions whose equivalence needs site-specific evidence: scheme,
+  // path case, trailing slash, credentials, fragments and repeated-value order.
+  // URL normalizes only standard URL syntax (host case and default ports).
   const parameters = [...url.searchParams.entries()]
     .filter(([key]) => !TRACKING_PARAMETERS.has(key.toLowerCase()))
-    .sort(([leftKey, leftValue], [rightKey, rightValue]) => (
-      leftKey.localeCompare(rightKey) || leftValue.localeCompare(rightValue)
-    ));
-  const search = new URLSearchParams(parameters).toString();
-  return `${url.host.toLowerCase()}${path}${search ? `?${search}` : ''}`;
+    // Stable key-only ordering preserves order-sensitive duplicate parameters.
+    // Avoid localeCompare: persisted identity must not depend on host locale.
+    .sort(([leftKey], [rightKey]) => leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0);
+  url.search = new URLSearchParams(parameters).toString();
+  return url.href;
 }
 
 export function canonicalizeUrl(
@@ -45,6 +45,8 @@ export function canonicalizeUrl(
       ? canonicalizeV1(url)
       : canonicalizeV2Candidate(url);
   } catch {
-    return value.toLowerCase();
+    // Invalid URLs have no proven case-insensitive identity. Keep production's
+    // legacy behavior until the explicit migration, but do not extend it in v2.
+    return version === 'v1' ? value.toLowerCase() : value;
   }
 }

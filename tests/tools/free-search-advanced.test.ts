@@ -26,11 +26,11 @@ describe('free_search_advanced schema', () => {
     } as unknown as McpServer;
 
     registerFreeSearchAdvanced(server);
-    const countSchema = inputSchema?.count as {
+    const countSchema = (inputSchema as any)?.shape.count as {
       parse: (value: unknown) => number;
     };
 
-    expect(countSchema.parse(undefined)).toBe(5);
+    expect(countSchema.parse(undefined)).toBeUndefined();
     expect(countSchema.parse(1)).toBe(1);
     expect(countSchema.parse(20)).toBe(20);
     expect(() => countSchema.parse(0)).toThrow();

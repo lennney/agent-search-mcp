@@ -1,5 +1,7 @@
+import { createResultScope } from '../aggregation/result-scope.js';
+import { isNoRetention, withSearchPrivacy, type SearchPrivacy } from '../infrastructure/request-privacy.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
+import { freeSearchInputSchema } from './search-input.js';
 import {
   classifyEngineError,
   EngineAdapterError,
@@ -23,7 +25,6 @@ import {
   type SearchRuntime,
 } from '../infrastructure/search-runtime.js';
 import {
-  SEARCH_PROVIDERS,
   type EngineError,
   type SearchProvider,
   type SearchResult,
@@ -90,6 +91,8 @@ async function searchEngine(
   signal?: AbortSignal,
   budget?: SearchRequestBudget,
   callerSignal?: AbortSignal,
+  inScope: (url: string) => boolean = () => true,
+  nativeTimeRange?: SearchWithFallbackOptions['timeRange'],
 ): Promise<EngineOutcome> {
   signal?.throwIfAborted();
   if (
@@ -170,13 +173,14 @@ async function searchEngine(
           signal,
           throwOnError: true,
           requestContext,
+          ...(nativeTimeRange ? { nativeTimeRange } : {}),
         };
         const results = await runtime.searchProvider(engine, query, limit, engineOptions);
         signal?.throwIfAborted();
         const latency = Date.now() - startTime;
         lease.finish({ status: 'success', latency });
         logger.info({ engine, latency, count: results.length, attempt }, 'Search completed');
-        return { engine, status: 'success', results };
+        return { engine, status: 'success', results: results.filter(result => inScope(result.url)) };
       } catch (err) {
         callerSignal?.throwIfAborted();
         if (budget?.isBudgetAbort()) {
@@ -317,6 +321,11 @@ function getMissingCredentialFailures(
 // ─── Shared options & response types ────────────────────────────────────
 export interface SearchWithFallbackOptions {
   query: string;
+  queryMode?: 'standard' | 'literal';
+  privacy?: SearchPrivacy;
+  market?: 'US' | 'CN' | 'MY' | 'SG';
+  timeRange?: 'day' | 'week' | 'month' | 'year';
+  timeRangeMode?: 'provider_native';
   count?: number;
   engines?: SearchProvider[];
   minConfidence?: number;
@@ -340,6 +349,7 @@ export interface SearchWithFallbackOptions {
 
 interface ResolvedSearchWithFallbackOptions extends SearchWithFallbackOptions {
   requestContext: SearchRequestContext;
+  inScope: (url: string) => boolean;
 }
 
 type FormattedSearchPayload = ReturnType<typeof formatResults>;
@@ -349,6 +359,7 @@ interface SearchResponse {
   engines: SearchProvider[];
   results: FormattedSearchPayload['results'];
   meta: FormattedSearchPayload['meta'] & {
+    request_controls?: { query_mode: string; privacy: string; scope: string; market?: string; market_supported_by: string[]; time_range?: string; time_range_mode?: string };
     execution?: {
       mode: 'parallel' | 'waterfall';
       engine_calls: number;
@@ -403,6 +414,9 @@ function makeCollapseKey(options: ResolvedSearchWithFallbackOptions): string {
   return JSON.stringify({
     query,
     count,
+    market: options.market,
+    timeRange: options.timeRange,
+    queryMode: options.queryMode,
     engines: [...engines].sort(),
     minConfidence,
     minSourceCount,
@@ -433,6 +447,9 @@ function makeSearchCacheKey(
   return createSearchCacheKey({
     request: {
       query: options.query,
+      market: options.market,
+      time_range: options.timeRange,
+      query_mode: options.queryMode,
       count,
       engines: [...engines].sort(),
       language: options.requestContext.language,
@@ -535,11 +552,29 @@ function collectEngineOutcomes(
  * 3. Early exit: stop when enough results collected
  * 4. Frequency scoring: count how many engines returned each result
  */
-export async function searchWithFallback(
+export function searchWithFallback(
+  options: SearchWithFallbackOptions,
+  runtime: SearchRuntime = getDefaultSearchRuntime(),
+): Promise<SearchResponse> {
+  return withSearchPrivacy(options.privacy ?? 'standard', () => searchWithFallbackInternal(options, runtime));
+}
+
+async function searchWithFallbackInternal(
   options: SearchWithFallbackOptions,
   runtime: SearchRuntime = getDefaultSearchRuntime(),
 ): Promise<SearchResponse> {
   options.signal?.throwIfAborted();
+  if (options.queryMode && !['standard', 'literal'].includes(options.queryMode)) throw new Error('Invalid queryMode');
+  if (options.privacy && !['standard', 'no_retention'].includes(options.privacy)) throw new Error('Invalid privacy');
+  if (options.market !== undefined && !['US', 'CN', 'MY', 'SG'].includes(options.market)) throw new Error('Invalid market');
+  if (options.timeRange !== undefined || options.timeRangeMode !== undefined) {
+    if (options.timeRangeMode !== 'provider_native' || !options.timeRange
+      || !['day', 'week', 'month', 'year'].includes(options.timeRange)
+      || options.engines?.length !== 1 || options.engines[0] !== 'duckduckgo') {
+      throw new Error('UNSUPPORTED_FILTER: time_range requires time_range_mode=provider_native and engines=[duckduckgo]');
+    }
+  }
+  const inScope = createResultScope(options.includeDomains, options.excludeDomains);
   const requestedCount = options.count ?? 10;
   if (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 50) {
     throw new RangeError('count must be an integer between 1 and 50');
@@ -553,9 +588,11 @@ export async function searchWithFallback(
   const resolvedOptions: ResolvedSearchWithFallbackOptions = {
     ...options,
     providerMaxRetries,
-    requestContext: resolveSearchRequestContext(options.query, options.language),
+    inScope,
+    expandQueries: options.queryMode === 'literal' || options.timeRange ? false : options.expandQueries,
+    requestContext: resolveSearchRequestContext(options.query, options.language, options.market),
   };
-  if (options.signal) {
+  if (options.signal || isNoRetention()) {
     return executeSearch(resolvedOptions, runtime);
   }
   const collapseKey = makeCollapseKey(resolvedOptions);
@@ -597,6 +634,17 @@ async function executeSearch(
     const response = options.waterfall
       ? await executeWaterfallSearch(options, 0, budget, runtime)
       : await executeParallelSearch(options, budget, runtime);
+    if (options.privacy === 'no_retention') {
+      response.security_note += ' Local no_retention: query/result logs and caches are bypassed. Upstream providers and enrichment services still receive requests and may retain them.';
+    }
+    response.meta.request_controls = {
+      query_mode: options.queryMode ?? 'standard',
+      privacy: options.privacy ?? 'standard',
+      scope: 'returned_urls_only',
+      ...(options.market ? { market: options.market } : {}),
+      market_supported_by: options.market && response.meta.execution?.searched_engines.includes('duckduckgo') ? ['duckduckgo'] : [],
+      ...(options.timeRange ? { time_range: options.timeRange, time_range_mode: 'provider_native' } : {}),
+    };
     const evidence = response.meta.evidence_budget;
     budget.observeEvidence(evidence?.used ?? 0);
     const snapshot = budget.snapshot();
@@ -712,7 +760,7 @@ async function executeParallelSearch(
 
   // Check cache first
   const cacheKey = makeSearchCacheKey(runtime, options);
-  const cached = cache.get(cacheKey);
+  const cached = isNoRetention() || options.timeRange ? null : cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: userEngines }, 'Cache hit');
     return cloneCachedSearchResponse(cached as SearchResponse);
@@ -804,6 +852,8 @@ async function executeParallelSearch(
         budget.signal,
         budget,
         options.signal,
+        options.inScope,
+        options.timeRange,
       );
       outcomes.push(outcome);
       if (
@@ -996,7 +1046,7 @@ async function executeParallelSearch(
   // Don't block the response - write cache in background
   setImmediate(() => {
     try {
-      if (isCacheableSearchResponse(response)) {
+      if (!isNoRetention() && !options.timeRange && isCacheableSearchResponse(response)) {
         cache.set(cacheKey, response);
       }
       logger.info({ total: response.meta.total }, 'Search complete');
@@ -1020,7 +1070,7 @@ async function applySemanticProcessing(
 ): Promise<ScoredResult[]> {
   const { config } = runtime;
   signal?.throwIfAborted();
-  if (isSemanticRoutingEnabled(runtime)) {
+  if (isSemanticRoutingEnabled(runtime) && !isNoRetention()) {
     try {
       if (config.semanticDedup) {
         const dedupResult = await semanticDedup(scored, config.dedupThreshold, config.dedupModel);
@@ -1137,7 +1187,7 @@ async function executeWaterfallSearch(
   }, 'Search request context resolved (waterfall)');
 
   const cacheKey = makeSearchCacheKey(runtime, options);
-  const cached = cache.get(cacheKey);
+  const cached = isNoRetention() || options.timeRange ? null : cache.get(cacheKey);
   if (cached) {
     logger.info({ query, count, engines: options.engines }, 'Waterfall cache hit');
     return cloneCachedSearchResponse(cached as SearchResponse);
@@ -1250,6 +1300,8 @@ async function executeWaterfallSearch(
             budget.signal,
             budget,
             options.signal,
+            options.inScope,
+            options.timeRange,
           );
         })
       );
@@ -1401,7 +1453,7 @@ async function executeWaterfallSearch(
 
   setImmediate(() => {
     try {
-      if (isCacheableSearchResponse(response)) {
+      if (!isNoRetention() && !options.timeRange && isCacheableSearchResponse(response)) {
         cache.set(cacheKey, response);
       }
     } catch (err) {
@@ -1428,29 +1480,26 @@ export function setupFreeSearchTool(
         'Provider families are counted once even when several adapters use the same upstream. Optional API providers run only when credentials and policy allow.\n\n' +
         '@readOnly true @idempotent true — makes outbound HTTP requests to configured search engines. ' +
         'Injection detection and SSRF protection active.',
-      inputSchema: {
-        query: z.string().min(1, 'Search query must not be empty')
-          .describe('Search query string. Use natural language (e.g., "latest AI news 2026"). For Chinese coverage, include Sogou or Baidu in engines.'),
-        limit: z.number().int().min(1).max(50).default(10).describe('Number of results to return (1-50). Default 10. Higher values increase token usage.'),
-        engines: z.array(z.enum(SEARCH_PROVIDERS))
-          .min(1)
-          .optional()
-          .describe('Search engines to use. Omit to let SEARCH_PROVIDER_MODE / PAID_ENGINE_ORDER decide ' +
-            '(paid_first tries the first credentialed paid engine first, then duckduckgo + sogou). ' +
-            'Free engines work without API keys. ' +
-            'Optional API engines require their corresponding environment-variable credentials. ' +
-            'For Chinese results, include sogou or baidu.'),
-      },
+      inputSchema: freeSearchInputSchema,
       outputSchema: searchOutputSchema,
       annotations: { readOnlyHint: true, idempotentHint: true },
     },
-    async ({ query, limit = 10, engines: userEngines }, extra) => {
+    async (rawInput, extra) => {
       const start = Date.now();
       try {
+        const input = freeSearchInputSchema.parse(rawInput);
         const results = await searchWithFallback({
-          query,
-          count: limit,
-          engines: userEngines,
+          query: input.query,
+          language: input.language,
+          count: input.limit ?? input.count ?? 10,
+          engines: input.engines,
+          includeDomains: input.include_domains,
+          excludeDomains: input.exclude_domains,
+          queryMode: input.query_mode,
+          privacy: input.privacy,
+          market: input.market,
+          timeRange: input.time_range,
+          timeRangeMode: input.time_range_mode,
           signal: extra?.signal,
         }, runtime);
         runtime.serverMetrics.recordRequest(Date.now() - start);
@@ -1458,7 +1507,7 @@ export function setupFreeSearchTool(
       } catch (error) {
         if (extra?.signal.aborted) throw error;
         runtime.serverMetrics.recordRequest(Date.now() - start);
-        logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Search tool execution failed');
+        if (rawInput.privacy !== 'no_retention') logger.error({ err: error instanceof Error ? error.message : String(error) }, 'Search tool execution failed');
         return {
           content: [
             {

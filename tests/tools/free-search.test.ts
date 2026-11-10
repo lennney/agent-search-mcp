@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { z } from 'zod';
 
 const infrastructureState = vi.hoisted(() => ({
   cacheGet: vi.fn(() => null as unknown),
@@ -355,7 +354,7 @@ describe('searchWithFallback — parallel', () => {
       const server = { registerTool: vi.fn() } as any;
       setupFreeSearchTool(server);
       const [, definition, handler] = server.registerTool.mock.calls[0];
-      const input = z.object(definition.inputSchema).parse({
+      const input = definition.inputSchema.parse({
         query: 'MCP provider policy',
         limit: 1,
         ...(engines ? { engines: [...engines] } : {}),
@@ -1343,7 +1342,7 @@ describe('searchWithFallback — waterfall', () => {
     expect(result.cache_hit).toBe(true);
     expect(searchDuckDuckGo).not.toHaveBeenCalled();
     expect(infrastructureState.cacheGet).toHaveBeenCalledWith(
-      expect.stringMatching(/^search-cache-key-v2:[a-f0-9]{64}$/),
+      expect.stringMatching(/^search-cache-key-v3:[a-f0-9]{64}$/),
     );
   });
 

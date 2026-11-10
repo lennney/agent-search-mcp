@@ -7,6 +7,8 @@ import type { EngineSearchOptions, SearchResult } from '../types.js';
 import { EngineAdapterError } from './engine-error.js';
 import { profileHeaders, resolveRequestProfile, currentProfileWindowKey } from './request-profiles.js';
 
+const NATIVE_TIME_FILTERS = { day: 'd', week: 'w', month: 'm', year: 'y' } as const;
+
 const DDG_HOME_ORIGIN = 'https://duckduckgo.com';
 const DDG_PRELOAD_ORIGIN = 'https://links.duckduckgo.com';
 const MAX_DDG_QUERY_CHARS = 499;
@@ -42,6 +44,12 @@ export async function searchDuckDuckGoWeb(
         },
       );
     }
+    const timeFilter = options?.nativeTimeRange === undefined
+      ? undefined : Object.hasOwn(NATIVE_TIME_FILTERS, options.nativeTimeRange)
+        ? NATIVE_TIME_FILTERS[options.nativeTimeRange] : undefined;
+    if (options?.nativeTimeRange !== undefined && timeFilter === undefined) {
+      throw new EngineAdapterError('validation_error', 'Unsupported native time range', { retryable: false, suggestion: 'Use day, week, month or year' });
+    }
     options?.signal?.throwIfAborted();
     const signal = withTimeout(options?.signal, 10_000);
     const profile = resolveRequestProfile(query, currentProfileWindowKey());
@@ -49,6 +57,7 @@ export async function searchDuckDuckGoWeb(
     homeUrl.searchParams.set('q', query);
     homeUrl.searchParams.set('t', 'h_');
     homeUrl.searchParams.set('ia', 'web');
+    if (timeFilter) homeUrl.searchParams.set('df', timeFilter);
     if (options?.requestContext) {
       homeUrl.searchParams.set('kl', options.requestContext.region);
     }
@@ -73,6 +82,14 @@ export async function searchDuckDuckGoWeb(
     options?.signal?.throwIfAborted();
 
     const preloadUrl = extractPreloadUrl(homeHtml);
+    // Do not inject df into a signed URL: require the provider-issued URL to
+    // retain exactly the requested native filter before fetching any results.
+    if (timeFilter && (preloadUrl.searchParams.getAll('df').length !== 1
+      || preloadUrl.searchParams.get('df') !== timeFilter)) {
+      throw new EngineAdapterError('validation_error',
+        'DuckDuckGo native time filter could not be verified; no unfiltered fallback',
+        { retryable: false, suggestion: 'Retry later or explicitly remove the time filter' });
+    }
     const apiResponse = await fetchForEngine(
       'duckduckgo',
       buildJsonApiUrl(preloadUrl),
@@ -113,7 +130,7 @@ export async function searchDuckDuckGoWeb(
     return parseApiResults(payload, limit);
   } catch (error) {
     options?.signal?.throwIfAborted();
-    if (options?.throwOnError) throw error;
+    if (options?.throwOnError || options?.nativeTimeRange !== undefined) throw error;
     logger.warn(
       { err: error instanceof Error ? error.message : String(error) },
       'DDG Web representation failed',

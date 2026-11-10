@@ -15,6 +15,8 @@ export interface SearchResult {
 
 export interface EngineSearchOptions {
   signal?: AbortSignal;
+  /** Explicit DDG native filter; never silently fall back to unfiltered results. */
+  nativeTimeRange?: 'day' | 'week' | 'month' | 'year';
   /** Orchestrators set this to preserve upstream failures for partialFailures. */
   throwOnError?: boolean;
   /** Stable language and region context resolved once by the orchestrator. */

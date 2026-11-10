@@ -1,19 +1,25 @@
+import * as fs from 'node:fs';
 import {
   mkdtempSync,
   readdirSync,
   rmSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SearchCache } from '../../src/infrastructure/cache.js';
 import {
   FileExactCacheStore,
   MemoryExactCacheStore,
 } from '../../src/infrastructure/exact-cache-store.js';
+
+vi.mock('node:fs', async importOriginal => ({
+  ...await importOriginal<typeof import('node:fs')>(),
+}));
 
 const temporaryDirectories: string[] = [];
 
@@ -24,6 +30,7 @@ function temporaryCacheDirectory(): string {
 }
 
 afterEach(() => {
+  vi.restoreAllMocks();
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -76,6 +83,49 @@ describe('ExactCacheStore', () => {
     expect(store.size()).toBe(2);
     expect(store.get('a', Date.now())?.data).toBe('a');
     expect(store.get('c', Date.now())?.data).toBe('c');
+  });
+
+  function freezeFileWriteTimes(now: number): void {
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const rename = fs.renameSync;
+    vi.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
+      rename(from, to);
+      // Reproduce filesystem timestamp ties without sleeps or platform assumptions.
+      utimesSync(to, new Date(now), new Date(now));
+    });
+  }
+
+  it('retains the newest writes when filesystem timestamps tie, including after reopening', () => {
+    const now = Date.now();
+    freezeFileWriteTimes(now);
+    const directory = temporaryCacheDirectory();
+    for (let index = 0; index < 100; index++) {
+      // Each writer must recover recency from disk, not an in-memory counter.
+      const store = new FileExactCacheStore(directory, { maxSize: 20 });
+      store.set(`key-${index}`, { data: index, expiry: now + 60_000 });
+    }
+    const reader = new FileExactCacheStore(directory, { maxSize: 20 });
+    expect(reader.size()).toBe(20);
+    for (let index = 80; index < 100; index++) {
+      expect(reader.get(`key-${index}`, now)?.data).toBe(index);
+    }
+  });
+
+  it('keeps read recency when writes tie or the wall clock moves backwards', () => {
+    const now = Date.now();
+    freezeFileWriteTimes(now);
+    const directory = temporaryCacheDirectory();
+    const store = new FileExactCacheStore(directory, { maxSize: 2 });
+    const expiry = now + 60_000;
+    store.set('a', { data: 'a', expiry });
+    store.set('b', { data: 'b', expiry });
+    expect(store.get('a', now - 1_000)?.data).toBe('a');
+    const reopened = new FileExactCacheStore(directory, { maxSize: 2 });
+    reopened.set('c', { data: 'c', expiry });
+    expect(reopened.size()).toBe(2);
+    expect(reopened.get('b', now)).toBeNull();
+    expect(reopened.get('a', now)?.data).toBe('a');
+    expect(reopened.get('c', now)?.data).toBe('c');
   });
 
   it('rejects oversized entries without breaking the caller', () => {

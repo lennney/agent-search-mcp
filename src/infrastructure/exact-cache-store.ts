@@ -110,8 +110,7 @@ export class FileExactCacheStore implements ExactCacheStore {
         this.removeFile(path);
         return null;
       }
-      const accessed = new Date(now);
-      utimesSync(path, accessed, accessed);
+      this.touch(path, now);
       return { data: parsed.data, expiry: parsed.expiry };
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
@@ -147,7 +146,9 @@ export class FileExactCacheStore implements ExactCacheStore {
         return;
       }
       renameSync(tempPath, path);
-      this.evict(Date.now());
+      const now = Date.now();
+      this.touch(path, now);
+      this.evict(now);
     } catch (error) {
       this.removeFile(tempPath);
       logger.warn(
@@ -182,6 +183,22 @@ export class FileExactCacheStore implements ExactCacheStore {
     } catch (error) {
       return (error as NodeJS.ErrnoException).code === 'ENOENT' ? [] : [];
     }
+  }
+
+  private touch(path: string, now: number): void {
+    // Filesystem write times can tie, and wall clocks can move backwards. Use a
+    // strictly newer persisted mtime so eviction does not fall back to filename
+    // order. Read the directory so sequential store instances share the order.
+    let accessedMs = now;
+    for (const candidate of this.cacheFiles()) {
+      try {
+        accessedMs = Math.max(accessedMs, Math.ceil(statSync(candidate).mtimeMs) + 1);
+      } catch {
+        // Another process may have removed an entry since the directory scan.
+      }
+    }
+    const accessed = new Date(accessedMs);
+    utimesSync(path, accessed, accessed);
   }
 
   private evict(now: number): void {

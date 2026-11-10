@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "description": "Synthetic URL identity pairs. No retrieved text or live capture.",
+  "description": "Synthetic URL identity pairs only; conservative v2 migration preparation, not live calibration or authorization to enable it.",
   "cases": [
     {
-      "id": "host-case-and-trailing-slash",
-      "left": "HTTPS://Example.COM/docs/",
+      "id": "host-case",
+      "left": "HTTPS://Example.COM/docs",
       "right": "https://example.com/docs",
       "relation": "same"
     },
@@ -24,7 +24,7 @@
       "id": "fragment-only",
       "left": "https://example.com/docs#install",
       "right": "https://example.com/docs#usage",
-      "relation": "same"
+      "relation": "different"
     },
     {
       "id": "identity-parameter",
@@ -48,6 +48,72 @@
       "id": "case-sensitive-path",
       "left": "https://example.com/Release/Notes",
       "right": "https://example.com/release/notes",
+      "relation": "different"
+    },
+    {
+      "id": "trailing-slash",
+      "left": "https://example.com/docs/",
+      "right": "https://example.com/docs",
+      "relation": "different"
+    },
+    {
+      "id": "scheme",
+      "left": "http://example.com/docs",
+      "right": "https://example.com/docs",
+      "relation": "different"
+    },
+    {
+      "id": "nondefault-port",
+      "left": "https://example.com:444/docs",
+      "right": "https://example.com/docs",
+      "relation": "different"
+    },
+    {
+      "id": "default-port",
+      "left": "https://example.com:443/docs",
+      "right": "https://example.com/docs",
+      "relation": "same"
+    },
+    {
+      "id": "duplicate-value-order",
+      "left": "https://example.com/?sort=a&sort=b",
+      "right": "https://example.com/?sort=b&sort=a",
+      "relation": "different"
+    },
+    {
+      "id": "hash-route",
+      "left": "https://example.com/#/docs",
+      "right": "https://example.com/#/issues",
+      "relation": "different"
+    },
+    {
+      "id": "unknown-parameter",
+      "left": "https://example.com/?source=left",
+      "right": "https://example.com/?source=right",
+      "relation": "different"
+    },
+    {
+      "id": "encoded-slash",
+      "left": "https://example.com/a%2Fb",
+      "right": "https://example.com/a/b",
+      "relation": "different"
+    },
+    {
+      "id": "invalid-case",
+      "left": "Not-A-URL",
+      "right": "not-a-url",
+      "relation": "different"
+    },
+    {
+      "id": "empty-value",
+      "left": "https://example.com/?q=",
+      "right": "https://example.com/",
+      "relation": "different"
+    },
+    {
+      "id": "credential-context",
+      "left": "https://a@example.com/docs",
+      "right": "https://b@example.com/docs",
       "relation": "different"
     }
   ]

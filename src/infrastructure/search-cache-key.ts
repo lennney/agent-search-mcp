@@ -1,12 +1,19 @@
 import { createHash } from 'node:crypto';
+import {
+  ACTIVE_URL_CANONICALIZATION_VERSION,
+  type UrlCanonicalizationVersion,
+} from '../aggregation/url-canonicalization.js';
 
-export const SEARCH_CACHE_KEY_VERSION = 'search-cache-key-v2';
+export const SEARCH_CACHE_KEY_VERSION = 'search-cache-key-v3';
 export const SEARCH_EVIDENCE_SCHEMA_VERSION = 'search-evidence-packet-v1';
 export const PROVIDER_POLICY_VERSION = 'provider-families-v1';
 
 export interface SearchCacheKeyInput {
   request: {
     query: string;
+    market?: string;
+    time_range?: string;
+    query_mode?: string;
     count: number;
     engines: string[];
     language: string;
@@ -50,12 +57,16 @@ export interface SearchCacheKeyInput {
   };
 }
 
-export function createSearchCacheKey(input: SearchCacheKeyInput): string {
+export function createSearchCacheKey(
+  input: SearchCacheKeyInput,
+  urlCanonicalizationVersion: UrlCanonicalizationVersion = ACTIVE_URL_CANONICALIZATION_VERSION,
+): string {
   const envelope = {
+    ...input,
     key_version: SEARCH_CACHE_KEY_VERSION,
     evidence_schema: SEARCH_EVIDENCE_SCHEMA_VERSION,
     provider_policy_version: PROVIDER_POLICY_VERSION,
-    ...input,
+    url_canonicalization_version: urlCanonicalizationVersion,
   };
   const digest = createHash('sha256')
     .update(canonicalJson(envelope))

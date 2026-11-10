@@ -10,6 +10,10 @@ import { registerCapabilities } from './tools/capabilities.js';
 import { registerHealth, registerHealthMetrics } from './tools/health.js';
 import { registerConfiguredTools } from './tools/registry.js';
 
+// Bound collection validation before Zod builds per-element errors. SDK 1.32
+// leaves this guard disabled unless it is explicitly configured.
+const MAX_TOOL_INPUT_ELEMENTS = 1_000;
+
 /**
  * Build one fully registered stable MCP server.
  *
@@ -27,6 +31,7 @@ export function createAgentSearchServer(
       version: readCurrentVersion(),
     },
     {
+      maxToolInputElements: MAX_TOOL_INPUT_ELEMENTS,
       capabilities: {
         tools: { listChanged: true },
         resources: { subscribe: false, listChanged: false },
