@@ -122,6 +122,13 @@ export const providerCatalog = {
     waterfallPhase: undefined,
     strengths: { en: 'Optional Google SERP Search', zh: '可选 Google SERP 搜索' },
   },
+  specstream: {
+    id: 'specstream', name: 'SpecStream Search', access: 'optional-api', isFree: false,
+    languages: ['en', 'zh', 'auto'], family: 'specstream', weight: 0.9,
+    credentialEnvironment: 'SPECSTREAM_API_KEY',
+    waterfallPhase: undefined,
+    strengths: { en: 'Optional SpecStream Search', zh: '可选 SpecStream 搜索' },
+  },
 } as const;
 
 export type SearchProvider = keyof typeof providerCatalog;
