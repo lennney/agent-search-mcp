@@ -15,6 +15,7 @@ import {
 } from './provider-catalog.js';
 import { searchSerper } from './serper.js';
 import { searchSogou } from './sogou.js';
+import { SpecStreamProvider } from './specstream.js';
 import { searchStartpage } from './startpage.js';
 import { TavilyProvider } from './tavily.js';
 import { searchTencentWsa } from './tencent-wsa.js';
@@ -45,6 +46,7 @@ const providerExecutors = {
   wiby: searchWiby,
   brave: (query, count, options) => new BraveProvider().search(query, count, options),
   tavily: (query, count, options) => new TavilyProvider().search(query, count, options),
+  specstream: (query, count, options) => new SpecStreamProvider().search(query, count, options),
   exa: (query, count, options) => searchExa({
     query,
     count,
